@@ -1,29 +1,126 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
-    <title>Custom PDF Viewer with Coordinates</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PDF.js Live Sync</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            overflow: hidden; /* Prevent double scrollbars */
+        body, html { margin: 0; padding: 0; background: #333; height: 100%; overflow: hidden; font-family: sans-serif; }
+        
+        /* The scrollable container */
+        #viewer-container {
+            height: 100vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch; /* Momentum scrolling for iPad */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-        #pdf-frame {
-            width: 100%;
-            height: 100%;
-            border: none;
+
+        .page-wrapper { margin-bottom: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        canvas { display: block; max-width: 100%; height: auto; }
+
+        #status {
+            position: fixed; top: 20px; right: 20px; padding: 10px;
+            background: rgba(0,0,0,0.8); color: white; border-radius: 5px;
+            z-index: 100; display: none;
         }
     </style>
 </head>
 <body>
 
-    <iframe 
-        id="pdf-frame" 
-        src="pdfjs-dist/web/viewer.html?file=/example.pdf#zoom=200,0,500&page=2">
-    </iframe>
+    <div id="status">Syncing...</div>
+    <div id="viewer-container"></div>
 
+    <script>
+        const url = '/get-pdf';
+        const container = document.getElementById('viewer-container');
+        const status = document.getElementById('status');
+        
+        // Configure PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        let pdfDoc = null;
+        const pageElements = {}; // Map to store page positions
+
+        async function loadPDF() {
+            pdfDoc = await pdfjsLib.getDocument(url).promise;
+            container.innerHTML = ''; // Clear previous
+
+            for (let i = 1; i <= pdfDoc.numPages; i++) {
+                const page = await pdfDoc.getPage(i);
+                const viewport = page.getViewport({ scale: 1.5 }); // Higher scale for iPad retina
+                
+                const wrapper = document.createElement('div');
+                wrapper.className = 'page-wrapper';
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                wrapper.appendChild(canvas);
+                container.appendChild(wrapper);
+
+                await page.render({ canvasContext: context, viewport: viewport }).promise;
+                
+                // Track where this page starts for scrolling
+                pageElements[i] = wrapper;
+            }
+        }
+
+        function scrollToPage(pageNum) {
+            const target = pageElements[pageNum];
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+	
+
+	// Function to fetch state and sync
+	async function syncWithServer() {
+	    try {
+		const response = await fetch('/current-state');
+		const data = await response.json();
+		console.log("Syncing to page:", data.page);
+		scrollToPage(data.page);
+	    } catch (e) {
+		console.error("Sync failed", e);
+	    }
+	}
+
+	// Listen for the app being refocused
+	document.addEventListener("visibilitychange", () => {
+	    if (document.visibilityState === "visible") {
+		console.log("Tab refocused, syncing state...");
+		syncWithServer();
+		
+		// Optional: Reconnect WebSocket if it died
+		if (socket.readyState !== WebSocket.OPEN) {
+		    location.reload(); // Simple way to reset everything
+		}
+	    }
+	});
+
+
+        // --- WEBSOCKET LOGIC ---
+        const socket = new WebSocket(`ws://${window.location.hostname}:{{PORT}}/ws`);
+
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.action === "reload") {
+                status.innerText = `Scrolling to Page ${data.page}`;
+                status.style.display = 'block';
+                
+                scrollToPage(data.page);
+
+                setTimeout(() => { status.style.display = 'none'; }, 2000);
+            }
+        };
+
+        // Initialize
+        loadPDF().catch(console.error);
+    </script>
 </body>
 </html>
 
