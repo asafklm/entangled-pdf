@@ -13,7 +13,8 @@ SHARED_SECRET = "super-secret-123"
 CONFIG = {
     "pdf_file": "",
     "port": 8001,
-    "current_page": 1  
+    "current_page": 1,
+    "current_y": None
 }
 
 class ConnectionManager:
@@ -50,7 +51,7 @@ async def get_pdf():
 @app.get("/current-state")
 async def get_state():
     """Endpoint for the iPad to call when it refocuses"""
-    return {"page": CONFIG["current_page"]}
+    return {"page": CONFIG["current_page"], "y": CONFIG["current_y"]}
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -72,6 +73,7 @@ async def receive_webhook(data: dict, x_api_key: str = Header(None)):
     y = data.get("y")  # Optional: PDF y coordinate from synctex
     
     CONFIG["current_page"] = page
+    CONFIG["current_y"] = y  # Store y for refocus
     
     # Always broadcast as synctex (coordinates optional)
     await manager.broadcast({

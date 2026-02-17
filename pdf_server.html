@@ -14,7 +14,6 @@
         }
         .page-wrapper { 
             display: inline-block;
-            position: relative;
             margin: 0 auto 20px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.6);
             max-width: 100%;
@@ -189,12 +188,7 @@
             target.style.position = 'relative';
             target.appendChild(marker);
             
-            // Auto-remove after 3 seconds
-            setTimeout(() => {
-                if (marker.parentNode) {
-                    marker.remove();
-                }
-            }, 3000);
+            // Note: marker persists until next synctex event (which removes existing marker first)
         }
 
         // --- THE REFOCUS SYNC LOGIC ---
@@ -203,6 +197,10 @@
                 const res = await fetch('/current-state');
                 const data = await res.json();
                 scrollToPage(data.page, undefined, undefined);
+                // Show red dot if y coordinate exists
+                if (data.y != null) {
+                    showRedDot(data.page, data.y);
+                }
             } catch (e) { console.error("Sync error", e); }
         }
 
