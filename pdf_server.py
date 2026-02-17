@@ -63,30 +63,17 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.post("/webhook/update")
 async def receive_webhook(data: dict, x_api_key: str = Header(None)):
+    """Receive page updates and SyncTeX forward search coordinates"""
     if x_api_key != SHARED_SECRET:
         raise HTTPException(status_code=403, detail="Unauthorized")
     
     page = int(data.get("page", 1))
-    CONFIG["current_page"] = page  # Update the global state
+    x = data.get("x")  # Optional: PDF x coordinate from synctex
+    y = data.get("y")  # Optional: PDF y coordinate from synctex
     
-    await manager.broadcast({"action": "reload", "page": page})
-    return {"status": "success", "current_page": page}
-
-@app.post("/webhook/synctex")
-async def receive_synctex_webhook(data: dict, x_api_key: str = Header(None)):
-    """Receive SyncTeX forward search coordinates from Neovim"""
-    if x_api_key != SHARED_SECRET:
-        raise HTTPException(status_code=403, detail="Unauthorized")
-    
-    # Extract page number (required)
-    page = int(data.get("page", 1))
     CONFIG["current_page"] = page
     
-    # Extract optional coordinates for future red dot implementation
-    x = data.get("x")  # PDF x coordinate (points)
-    y = data.get("y")  # PDF y coordinate (points)
-    
-    # Broadcast to all connected clients
+    # Always broadcast as synctex (coordinates optional)
     await manager.broadcast({
         "action": "synctex",
         "page": page,
