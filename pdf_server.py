@@ -1,4 +1,5 @@
 import argparse
+import html
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Header, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
@@ -38,8 +39,8 @@ manager = ConnectionManager()
 @app.get("/view", response_class=HTMLResponse)
 async def view_page():
     html_content = Path("pdf_server.html").read_text()
-    html_content = html_content.replace("{{PORT}}", str(CONFIG['port']))
-    html_content = html_content.replace("{{FILENAME}}", str(CONFIG['pdf_file']))
+    html_content = html_content.replace("{{PORT}}", html.escape(str(CONFIG['port'])))
+    html_content = html_content.replace("{{FILENAME}}", html.escape(str(CONFIG['pdf_file'])))
     return html_content
 
 @app.get("/get-pdf")
