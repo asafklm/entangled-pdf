@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{FILENAME}}</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
@@ -11,8 +11,15 @@
             height: 100vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
             display: flex; flex-direction: column; align-items: center;
         }
-        .page-wrapper { margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); }
-        canvas { display: block; max-width: 100%; height: auto; }
+        .page-wrapper { 
+            margin-bottom: 20px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            max-width: 100%;
+            width: fit-content;
+        }
+        canvas { 
+            display: block; 
+        }
         #status {
             position: fixed; top: 20px; right: 20px; padding: 10px;
             background: rgba(0,0,0,0.8); color: white; border-radius: 8px;
@@ -36,43 +43,60 @@
 	async function loadPDF() {
 	    pdfDoc = await pdfjsLib.getDocument('/get-pdf').promise;
 	    container.innerHTML = '';
-	    
-	    // Detect the Retina scale (usually 2.0 or 3.0 on iPad)
-	    const outputScale = window.devicePixelRatio || 1;
 
 	    for (let i = 1; i <= pdfDoc.numPages; i++) {
 		const page = await pdfDoc.getPage(i);
+
+		const containerWidth = container.clientWidth - 40; // padding/margin
 		
-		// Base scale (1.5) multiplied by the screen density
-		const viewport = page.getViewport({ scale: 1.5 * outputScale });
+		// Calculate scale to fit container but ensure minimum quality
+		// On mobile: ensure at least 1.5x scale for crisp text
+		const dpr = window.devicePixelRatio || 1;
+		const pageWidthAt1x = page.getViewport({ scale: 1.0 }).width;
+		const fitScale = containerWidth / pageWidthAt1x;
+		const scale = Math.max(1.5, fitScale); // Minimum 1.5x to prevent blur
 		
+		const viewport = page.getViewport({ scale: scale });
+
 		const wrapper = document.createElement('div');
 		wrapper.className = 'page-wrapper';
-		
+
 		const canvas = document.createElement('canvas');
 		const context = canvas.getContext('2d');
 
-		// Set the actual internal resolution
-		canvas.width = Math.floor(viewport.width);
-		canvas.height = Math.floor(viewport.height);
+		// Get device pixel ratio - NO LIMITS for testing blur issue
+		const outputScaleX = window.devicePixelRatio || 1;
+		const outputScaleY = window.devicePixelRatio || 1;
 
-		// Use CSS to scale it back down to a readable size
-		// This makes the internal pixels "tighter"
-		canvas.style.width = Math.floor(viewport.width / outputScale) + "px";
-		canvas.style.height = Math.floor(viewport.height / outputScale) + "px";
+		// Calculate canvas dimensions at full device resolution
+		const canvasWidth = Math.round(viewport.width * outputScaleX);
+		const canvasHeight = Math.round(viewport.height * outputScaleY);
+
+		// Set internal canvas resolution (physical pixels) - NO LIMITS
+		canvas.width = canvasWidth;
+		canvas.height = canvasHeight;
+
+		// Set CSS display size (logical pixels) - critical for sharp rendering
+		canvas.style.width = Math.round(viewport.width) + 'px';
+		canvas.style.height = Math.round(viewport.height) + 'px';
 
 		wrapper.appendChild(canvas);
 		container.appendChild(wrapper);
 
-		const renderContext = {
+		// Use transform matrix for precise scaling (PDF.js best practice)
+		const transform = outputScaleX !== 1 || outputScaleY !== 1
+		    ? [outputScaleX, 0, 0, outputScaleY, 0, 0]
+		    : null;
+
+		await page.render({
 		    canvasContext: context,
-		    viewport: viewport
-		};
-		
-		await page.render(renderContext).promise;
+		    viewport: viewport,
+		    transform: transform
+		}).promise;
 		pageElements[i] = wrapper;
 	    }
-}
+	}
+
 
         function scrollToPage(pageNum) {
             const target = pageElements[pageNum];
