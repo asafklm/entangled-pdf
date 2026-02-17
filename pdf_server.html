@@ -101,19 +101,24 @@
 
         function scrollToPage(pageNum, x, y) {
             const target = pageElements[pageNum];
+            console.log('scrollToPage called:', pageNum, x, y);
+            console.log('target found:', !!target);
+            
             if (!target) return;
             
             if (y === undefined) {
-                // Fallback: scroll to top of page
+                console.log('No Y coordinate, using scrollIntoView');
                 target.scrollIntoView({ block: 'start' });
                 return;
             }
             
             // Calculate vertical position to center y coordinate in viewport
             const canvas = target.querySelector('canvas');
-            const cssHeight = parseFloat(canvas.style.height); // CSS pixels (display size)
-            const internalHeight = canvas.height; // Internal canvas resolution (physical pixels)
+            const cssHeight = parseFloat(canvas.style.height);
+            const internalHeight = canvas.height;
             const dpr = window.devicePixelRatio || 1;
+            
+            console.log('Canvas dims:', { cssHeight, internalHeight, dpr });
             
             // Calculate render scale: converts PDF points to CSS pixels
             const renderScale = (cssHeight * dpr) / internalHeight;
@@ -126,14 +131,38 @@
             const targetScrollTop = target.offsetTop + pixelY - (viewportHeight / 2);
             const finalScrollTop = Math.max(0, Math.round(targetScrollTop));
             
+            console.log('Scroll calculation:', {
+                inputY: y,
+                renderScale: renderScale,
+                pixelY: pixelY,
+                targetOffsetTop: target.offsetTop,
+                viewportHeight: viewportHeight,
+                targetScrollTop: targetScrollTop,
+                finalScrollTop: finalScrollTop,
+                containerScrollTop: container.scrollTop
+            });
+            
             // Safari-compatible scrolling: use scrollTo with RAF + setTimeout
             requestAnimationFrame(() => {
+                console.log('RAF executing, container scrollTop before:', container.scrollTop);
                 setTimeout(() => {
+                    console.log('setTimeout executing, scrolling to:', finalScrollTop);
+                    
+                    // Method 1: Try container.scrollTo
                     container.scrollTo({
                         top: finalScrollTop,
                         left: 0,
                         behavior: 'auto'
                     });
+                    
+                    // Method 2: Fallback to scrollTop property
+                    setTimeout(() => {
+                        if (Math.abs(container.scrollTop - finalScrollTop) > 5) {
+                            console.log('scrollTo failed, trying scrollTop property');
+                            container.scrollTop = finalScrollTop;
+                        }
+                        console.log('Final scrollTop:', container.scrollTop);
+                    }, 50);
                 }, 0);
             });
         }
