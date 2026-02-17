@@ -125,8 +125,14 @@
         const socket = new WebSocket(`ws://${window.location.hostname}:{{PORT}}/ws`);
         socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            if (data.action === "reload") {
+            if (data.action === "synctex" || data.action === "reload") {
                 scrollToPage(data.page);
+                
+                // Store coordinates for future red dot implementation
+                if (data.action === "synctex" && data.x !== undefined && data.y !== undefined) {
+                    // TODO: Implement red dot visualization at (data.x, data.y)
+                    console.log("SyncTeX position:", data.x, data.y);
+                }
             }
         };
 

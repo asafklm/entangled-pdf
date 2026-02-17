@@ -72,6 +72,30 @@ async def receive_webhook(data: dict, x_api_key: str = Header(None)):
     await manager.broadcast({"action": "reload", "page": page})
     return {"status": "success", "current_page": page}
 
+@app.post("/webhook/synctex")
+async def receive_synctex_webhook(data: dict, x_api_key: str = Header(None)):
+    """Receive SyncTeX forward search coordinates from Neovim"""
+    if x_api_key != SHARED_SECRET:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    # Extract page number (required)
+    page = int(data.get("page", 1))
+    CONFIG["current_page"] = page
+    
+    # Extract optional coordinates for future red dot implementation
+    x = data.get("x")  # PDF x coordinate (points)
+    y = data.get("y")  # PDF y coordinate (points)
+    
+    # Broadcast to all connected clients
+    await manager.broadcast({
+        "action": "synctex",
+        "page": page,
+        "x": x,
+        "y": y
+    })
+    
+    return {"status": "success", "page": page, "x": x, "y": y}
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("pdf_file")
