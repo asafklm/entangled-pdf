@@ -110,12 +110,16 @@
             
             // Calculate vertical position to center y coordinate in viewport
             const canvas = target.querySelector('canvas');
-            const canvasHeight = parseFloat(canvas.style.height); // CSS pixels
-            const internalHeight = canvas.height; // Internal resolution
-            const scale = canvasHeight / internalHeight;
+            const cssHeight = parseFloat(canvas.style.height); // CSS pixels (display size)
+            const internalHeight = canvas.height; // Internal canvas resolution (physical pixels)
+            const dpr = window.devicePixelRatio || 1;
             
-            // Convert PDF coordinate (in points, affected by render scale) to pixels
-            const renderScale = parseFloat(canvas.style.width) / (canvas.width / (window.devicePixelRatio || 1));
+            // Calculate render scale: converts PDF points to CSS pixels
+            // PDF points = internalHeight / dpr (since internal resolution = PDF_points * dpr)
+            // renderScale = cssHeight / PDF_points = cssHeight / (internalHeight / dpr)
+            const renderScale = (cssHeight * dpr) / internalHeight;
+            
+            // Convert PDF y-coordinate (in points) to CSS pixels
             const pixelY = y * renderScale;
             
             // Calculate scroll position to center vertically
