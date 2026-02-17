@@ -106,7 +106,7 @@
             
             if (!target) return;
             
-            if (y === undefined) {
+            if (y == null) {  // Check for null or undefined (Python None becomes null)
                 console.log('No Y coordinate, using scrollIntoView');
                 target.scrollIntoView({ block: 'start' });
                 return;
