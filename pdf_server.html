@@ -21,6 +21,22 @@
         canvas { 
             display: block; 
         }
+        .synctex-marker {
+            position: absolute;
+            left: -15px;
+            width: 10px;
+            height: 10px;
+            background-color: rgba(255, 0, 0, 0.8);
+            border-radius: 50%;
+            box-shadow: 0 0 8px rgba(255, 0, 0, 0.6);
+            z-index: 10;
+            pointer-events: none;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.2); opacity: 1; }
+        }
         #status {
             position: fixed; top: 20px; right: 20px; padding: 10px;
             background: rgba(0,0,0,0.8); color: white; border-radius: 8px;
@@ -101,13 +117,9 @@
 
         function scrollToPage(pageNum, x, y) {
             const target = pageElements[pageNum];
-            console.log('scrollToPage called:', pageNum, x, y);
-            console.log('target found:', !!target);
-            
             if (!target) return;
             
             if (y == null) {  // Check for null or undefined (Python None becomes null)
-                console.log('No Y coordinate, using scrollIntoView');
                 target.scrollIntoView({ block: 'start' });
                 return;
             }
@@ -117,8 +129,6 @@
             const cssHeight = parseFloat(canvas.style.height);
             const internalHeight = canvas.height;
             const dpr = window.devicePixelRatio || 1;
-            
-            console.log('Canvas dims:', { cssHeight, internalHeight, dpr });
             
             // Calculate render scale: converts PDF points to CSS pixels
             const renderScale = (cssHeight * dpr) / internalHeight;
@@ -131,23 +141,9 @@
             const targetScrollTop = target.offsetTop + pixelY - (viewportHeight / 2);
             const finalScrollTop = Math.max(0, Math.round(targetScrollTop));
             
-            console.log('Scroll calculation:', {
-                inputY: y,
-                renderScale: renderScale,
-                pixelY: pixelY,
-                targetOffsetTop: target.offsetTop,
-                viewportHeight: viewportHeight,
-                targetScrollTop: targetScrollTop,
-                finalScrollTop: finalScrollTop,
-                containerScrollTop: container.scrollTop
-            });
-            
             // Safari-compatible scrolling: use scrollTo with RAF + setTimeout
             requestAnimationFrame(() => {
-                console.log('RAF executing, container scrollTop before:', container.scrollTop);
                 setTimeout(() => {
-                    console.log('setTimeout executing, scrolling to:', finalScrollTop);
-                    
                     // Method 1: Try container.scrollTo
                     container.scrollTo({
                         top: finalScrollTop,
@@ -158,13 +154,46 @@
                     // Method 2: Fallback to scrollTop property
                     setTimeout(() => {
                         if (Math.abs(container.scrollTop - finalScrollTop) > 5) {
-                            console.log('scrollTo failed, trying scrollTop property');
                             container.scrollTop = finalScrollTop;
                         }
-                        console.log('Final scrollTop:', container.scrollTop);
                     }, 50);
                 }, 0);
             });
+        }
+
+        function showRedDot(pageNum, y) {
+            const target = pageElements[pageNum];
+            if (!target || y == null) return;
+            
+            // Remove any existing markers
+            const existingMarker = target.querySelector('.synctex-marker');
+            if (existingMarker) {
+                existingMarker.remove();
+            }
+            
+            // Get canvas and calculate position
+            const canvas = target.querySelector('canvas');
+            const cssHeight = parseFloat(canvas.style.height);
+            const internalHeight = canvas.height;
+            const dpr = window.devicePixelRatio || 1;
+            const renderScale = (cssHeight * dpr) / internalHeight;
+            const pixelY = y * renderScale;
+            
+            // Create red dot marker
+            const marker = document.createElement('div');
+            marker.className = 'synctex-marker';
+            marker.style.top = (pixelY - 5) + 'px'; // Center the 10px dot
+            
+            // Add marker to page wrapper
+            target.style.position = 'relative';
+            target.appendChild(marker);
+            
+            // Auto-remove after 3 seconds
+            setTimeout(() => {
+                if (marker.parentNode) {
+                    marker.remove();
+                }
+            }, 3000);
         }
 
         // --- THE REFOCUS SYNC LOGIC ---
@@ -190,10 +219,9 @@
             if (data.action === "synctex") {
                 scrollToPage(data.page, data.x, data.y);
                 
-                // Store coordinates for future red dot implementation
-                if (data.x !== undefined && data.y !== undefined) {
-                    // TODO: Implement red dot visualization at (data.x, data.y)
-                    console.log("SyncTeX position:", data.x, data.y);
+                // Show red dot marker at synctex position
+                if (data.y != null) {
+                    showRedDot(data.page, data.y);
                 }
             }
         };
