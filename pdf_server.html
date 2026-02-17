@@ -98,11 +98,32 @@
 	}
 
 
-        function scrollToPage(pageNum) {
+        function scrollToPage(pageNum, x, y) {
             const target = pageElements[pageNum];
-            if (target) {
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (!target) return;
+            
+            if (y === undefined) {
+                // Fallback: scroll to top of page
+                target.scrollIntoView({ block: 'start' });
+                return;
             }
+            
+            // Calculate vertical position to center y coordinate in viewport
+            const canvas = target.querySelector('canvas');
+            const canvasHeight = parseFloat(canvas.style.height); // CSS pixels
+            const internalHeight = canvas.height; // Internal resolution
+            const scale = canvasHeight / internalHeight;
+            
+            // Convert PDF coordinate (in points, affected by render scale) to pixels
+            const renderScale = parseFloat(canvas.style.width) / (canvas.width / (window.devicePixelRatio || 1));
+            const pixelY = y * renderScale;
+            
+            // Calculate scroll position to center vertically
+            const viewportHeight = container.clientHeight;
+            const targetScrollTop = target.offsetTop + pixelY - (viewportHeight / 2);
+            
+            // Instant scroll (simpler implementation)
+            container.scrollTop = Math.max(0, targetScrollTop);
         }
 
         // --- THE REFOCUS SYNC LOGIC ---
@@ -110,7 +131,7 @@
             try {
                 const res = await fetch('/current-state');
                 const data = await res.json();
-                scrollToPage(data.page);
+                scrollToPage(data.page, undefined, undefined);
             } catch (e) { console.error("Sync error", e); }
         }
 
@@ -126,7 +147,7 @@
         socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
             if (data.action === "synctex") {
-                scrollToPage(data.page);
+                scrollToPage(data.page, data.x, data.y);
                 
                 // Store coordinates for future red dot implementation
                 if (data.x !== undefined && data.y !== undefined) {
