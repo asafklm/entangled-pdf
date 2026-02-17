@@ -165,11 +165,8 @@
             const target = pageElements[pageNum];
             if (!target || y == null) return;
             
-            // Remove any existing markers
-            const existingMarker = target.querySelector('.synctex-marker');
-            if (existingMarker) {
-                existingMarker.remove();
-            }
+            // Remove markers from ALL pages first
+            document.querySelectorAll('.synctex-marker').forEach(m => m.remove());
             
             // Get canvas and calculate position
             const canvas = target.querySelector('canvas');
@@ -218,9 +215,11 @@
             if (data.action === "synctex") {
                 scrollToPage(data.page, data.x, data.y);
                 
-                // Show red dot marker at synctex position
+                // Show red dot marker after scroll completes
                 if (data.y != null) {
-                    showRedDot(data.page, data.y);
+                    setTimeout(() => {
+                        showRedDot(data.page, data.y);
+                    }, 150);
                 }
             }
         };
