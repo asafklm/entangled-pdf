@@ -9,13 +9,14 @@
         body, html { margin: 0; padding: 0; background: #333; height: 100%; overflow: hidden; font-family: sans-serif; }
         #viewer-container {
             height: 100vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
-            display: flex; flex-direction: column; align-items: center;
+            text-align: center;
+            padding: 20px;
         }
         .page-wrapper { 
-            margin-bottom: 20px; 
+            display: inline-block;
+            margin: 0 auto 20px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.6);
             max-width: 100%;
-            width: fit-content;
         }
         canvas { 
             display: block; 
@@ -115,8 +116,6 @@
             const dpr = window.devicePixelRatio || 1;
             
             // Calculate render scale: converts PDF points to CSS pixels
-            // PDF points = internalHeight / dpr (since internal resolution = PDF_points * dpr)
-            // renderScale = cssHeight / PDF_points = cssHeight / (internalHeight / dpr)
             const renderScale = (cssHeight * dpr) / internalHeight;
             
             // Convert PDF y-coordinate (in points) to CSS pixels
@@ -125,9 +124,18 @@
             // Calculate scroll position to center vertically
             const viewportHeight = container.clientHeight;
             const targetScrollTop = target.offsetTop + pixelY - (viewportHeight / 2);
+            const finalScrollTop = Math.max(0, Math.round(targetScrollTop));
             
-            // Instant scroll (simpler implementation)
-            container.scrollTop = Math.max(0, targetScrollTop);
+            // Safari-compatible scrolling: use scrollTo with RAF + setTimeout
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    container.scrollTo({
+                        top: finalScrollTop,
+                        left: 0,
+                        behavior: 'auto'
+                    });
+                }, 0);
+            });
         }
 
         // --- THE REFOCUS SYNC LOGIC ---
