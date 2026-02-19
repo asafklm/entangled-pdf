@@ -1,5 +1,7 @@
 import argparse
 import html
+import os
+import time
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Header, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
@@ -7,14 +9,15 @@ from typing import Set
 from pathlib import Path
 
 app = FastAPI()
-SHARED_SECRET = "super-secret-123"
+SHARED_SECRET = os.getenv("PDF_SERVER_SECRET", "super-secret-123")
 
 # Global Configuration & State
 CONFIG = {
     "pdf_file": "",
-    "port": 8001,
+    "port": int(os.getenv("PDF_SERVER_PORT", "8431")),
     "current_page": 1,
-    "current_y": None
+    "current_y": None,
+    "last_update_time": 0  # Timestamp of last broadcast
 }
 
 class ConnectionManager:
@@ -51,7 +54,11 @@ async def get_pdf():
 @app.get("/current-state")
 async def get_state():
     """Endpoint for the iPad to call when it refocuses"""
-    return {"page": CONFIG["current_page"], "y": CONFIG["current_y"]}
+    return {
+        "page": CONFIG["current_page"],
+        "y": CONFIG["current_y"],
+        "last_update_time": CONFIG["last_update_time"]
+    }
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -74,13 +81,15 @@ async def receive_webhook(data: dict, x_api_key: str = Header(None)):
     
     CONFIG["current_page"] = page
     CONFIG["current_y"] = y  # Store y for refocus
+    CONFIG["last_update_time"] = int(time.time() * 1000)  # Current timestamp in milliseconds
     
     # Always broadcast as synctex (coordinates optional)
     await manager.broadcast({
         "action": "synctex",
         "page": page,
         "x": x,
-        "y": y
+        "y": y,
+        "timestamp": CONFIG["last_update_time"]
     })
     
     return {"status": "success", "page": page, "x": x, "y": y}
@@ -88,10 +97,11 @@ async def receive_webhook(data: dict, x_api_key: str = Header(None)):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("pdf_file")
-    parser.add_argument("port_arg")
+    parser.add_argument("port_arg", nargs="?", help="Port in format port=8001 (optional, defaults to PDF_SERVER_PORT env var or 8001)")
     args = parser.parse_args()
     
-    CONFIG['port'] = int(args.port_arg.split('=')[1])
+    if args.port_arg:
+        CONFIG['port'] = int(args.port_arg.split('=')[1])
     CONFIG['pdf_file'] = args.pdf_file
     
     uvicorn.run(app, host="0.0.0.0", port=CONFIG['port'])

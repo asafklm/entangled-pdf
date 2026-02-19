@@ -58,7 +58,11 @@
         const pageElements = {};
 
 	async function loadPDF() {
-	    pdfDoc = await pdfjsLib.getDocument('/get-pdf').promise;
+	    try {
+	        pdfDoc = await pdfjsLib.getDocument('/get-pdf').promise;
+	    } catch (error) {
+	        throw new Error(`Failed to load PDF document: ${error.message}`);
+	    }
 	    container.innerHTML = '';
 
 	    for (let i = 1; i <= pdfDoc.numPages; i++) {
@@ -117,15 +121,24 @@
 
         function scrollToPage(pageNum, x, y) {
             const target = pageElements[pageNum];
-            if (!target) return;
+            if (!target) {
+                console.error(`Page ${pageNum} not found in pageElements`);
+                return;
+            }
             
             if (y == null) {  // Check for null or undefined (Python None becomes null)
+                console.log(`Scrolling to page ${pageNum} (no y coordinate)`);
                 target.scrollIntoView({ block: 'start' });
                 return;
             }
             
             // Calculate vertical position to center y coordinate in viewport
             const canvas = target.querySelector('canvas');
+            if (!canvas) {
+                console.error(`Canvas not found for page ${pageNum}`);
+                return;
+            }
+            
             const cssHeight = parseFloat(canvas.style.height);
             const internalHeight = canvas.height;
             const dpr = window.devicePixelRatio || 1;
@@ -136,27 +149,61 @@
             // Convert PDF y-coordinate (in points) to CSS pixels
             const pixelY = y * renderScale;
             
+            // Get the container's padding (20px as defined in CSS)
+            const containerStyle = window.getComputedStyle(container);
+            const paddingTop = parseFloat(containerStyle.paddingTop) || 20;
+            
             // Calculate scroll position to center vertically
+            // Account for container padding in the calculation
             const viewportHeight = container.clientHeight;
-            const targetScrollTop = target.offsetTop + pixelY - (viewportHeight / 2);
+            const targetScrollTop = target.offsetTop + pixelY - (viewportHeight / 2) + paddingTop;
             const finalScrollTop = Math.max(0, Math.round(targetScrollTop));
             
-            // Safari-compatible scrolling: use scrollTo with RAF + setTimeout
+            console.log(`Scrolling to page ${pageNum}, y=${y}, pixelY=${pixelY}, finalScrollTop=${finalScrollTop}`);
+            console.log(`  target.offsetTop=${target.offsetTop}, viewportHeight=${viewportHeight}, paddingTop=${paddingTop}`);
+            
+            // Force layout recalculation to ensure Safari has updated dimensions
+            void container.offsetHeight;
+            
+            // Safari-compatible scrolling with multiple fallback attempts
+            const attemptScroll = (attempt = 1) => {
+                console.log(`  Scroll attempt ${attempt}, current scrollTop=${container.scrollTop}, target=${finalScrollTop}`);
+                
+                // Method 1: scrollTo with smooth behavior disabled
+                container.scrollTo({
+                    top: finalScrollTop,
+                    left: 0,
+                    behavior: 'auto'
+                });
+                
+                // Check if scroll worked and retry if needed
+                setTimeout(() => {
+                    const currentScroll = container.scrollTop;
+                    const diff = Math.abs(currentScroll - finalScrollTop);
+                    console.log(`  After attempt ${attempt}: scrollTop=${currentScroll}, diff=${diff}`);
+                    
+                    if (diff > 5 && attempt < 3) {
+                        // Retry with direct scrollTop assignment
+                        container.scrollTop = finalScrollTop;
+                        
+                        // Force another layout recalculation
+                        void container.offsetHeight;
+                        
+                        // Final check and retry
+                        setTimeout(() => {
+                            if (Math.abs(container.scrollTop - finalScrollTop) > 5) {
+                                console.log(`  Retrying scroll (attempt ${attempt + 1})...`);
+                                attemptScroll(attempt + 1);
+                            }
+                        }, 50);
+                    }
+                }, 50);
+            };
+            
+            // Start scroll attempts with RAF for Safari compatibility
             requestAnimationFrame(() => {
                 setTimeout(() => {
-                    // Method 1: Try container.scrollTo
-                    container.scrollTo({
-                        top: finalScrollTop,
-                        left: 0,
-                        behavior: 'auto'
-                    });
-                    
-                    // Method 2: Fallback to scrollTop property
-                    setTimeout(() => {
-                        if (Math.abs(container.scrollTop - finalScrollTop) > 5) {
-                            container.scrollTop = finalScrollTop;
-                        }
-                    }, 50);
+                    attemptScroll(1);
                 }, 0);
             });
         }
@@ -164,10 +211,10 @@
         function showRedDot(pageNum, y) {
             const target = pageElements[pageNum];
             if (!target || y == null) return;
-            
+
             // Remove markers from ALL pages first
             document.querySelectorAll('.synctex-marker').forEach(m => m.remove());
-            
+
             // Get canvas and calculate position
             const canvas = target.querySelector('canvas');
             const cssHeight = parseFloat(canvas.style.height);
@@ -175,17 +222,22 @@
             const dpr = window.devicePixelRatio || 1;
             const renderScale = (cssHeight * dpr) / internalHeight;
             const pixelY = y * renderScale;
-            
+
             // Create red dot marker
             const marker = document.createElement('div');
             marker.className = 'synctex-marker';
             marker.style.top = (pixelY - 5) + 'px'; // Center the 10px dot
-            
+
             // Add marker to page wrapper
             target.style.position = 'relative';
             target.appendChild(marker);
-            
-            // Note: marker persists until next synctex event (which removes existing marker first)
+
+            // Remove marker after 5 seconds
+            setTimeout(() => {
+                if (marker.parentNode) {
+                    marker.remove();
+                }
+            }, 5000);
         }
 
         // --- THE REFOCUS SYNC LOGIC ---
@@ -193,38 +245,144 @@
             try {
                 const res = await fetch('/current-state');
                 const data = await res.json();
-                scrollToPage(data.page, undefined, undefined);
-                // Show red dot if y coordinate exists
-                if (data.y != null) {
-                    showRedDot(data.page, data.y);
+                console.log("SyncState received:", data);
+                
+                // Only scroll if there's a new update since last focus
+                if (data.last_update_time > lastUpdateTimestamp) {
+                    console.log(`New update detected since last focus: timestamp ${lastUpdateTimestamp}→${data.last_update_time}`);
+                    lastUpdateTimestamp = data.last_update_time;
+                    lastPage = data.page;
+                    lastY = data.y;
+                    
+                    // Pass the y coordinate to scrollToPage so it scrolls to the correct position
+                    scrollToPage(data.page, undefined, data.y);
+                    
+                    // Show red dot if y coordinate exists
+                    if (data.y != null) {
+                        showRedDot(data.page, data.y);
+                    }
+                } else {
+                    console.log("No new updates since last focus, skipping scroll");
                 }
             } catch (e) { console.error("Sync error", e); }
         }
 
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "visible") {
-                console.log("Welcome back! Syncing position...");
+                console.log("Welcome back! Checking for updates...");
                 syncState();
             }
         });
 
-        // --- WEBSOCKET ---
-        const socket = new WebSocket(`ws://${window.location.hostname}:{{PORT}}/ws`);
-        socket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.action === "synctex") {
-                scrollToPage(data.page, data.x, data.y);
-                
-                // Show red dot marker after scroll completes
-                if (data.y != null) {
-                    setTimeout(() => {
-                        showRedDot(data.page, data.y);
-                    }, 150);
+        // --- WEBSOCKET WITH RECONNECTION ---
+        let socket = null;
+        let reconnectAttempts = 0;
+        let pollingInterval = null;
+        let lastPage = null;
+        let lastY = null;
+        let lastUpdateTimestamp = 0; // Track last update timestamp from server
+        const MAX_RECONNECT_DELAY = 30000; // Max 30 seconds between reconnects
+        const POLLING_INTERVAL = 2000; // Poll every 2 seconds when disconnected
+        
+        function connectWebSocket() {
+            console.log(`Connecting to WebSocket (attempt ${reconnectAttempts + 1})...`);
+            
+            socket = new WebSocket(`ws://${window.location.hostname}:{{PORT}}/ws`);
+            
+            socket.onopen = () => {
+                console.log("WebSocket connected");
+                reconnectAttempts = 0;
+                // Stop polling when WebSocket is connected
+                if (pollingInterval) {
+                    clearInterval(pollingInterval);
+                    pollingInterval = null;
+                    console.log("Stopped polling (WebSocket connected)");
                 }
-            }
-        };
+            };
+            
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                console.log("WebSocket message received:", data);
+                
+                if (data.action === "synctex") {
+                    // Track last received position and timestamp
+                    lastPage = data.page;
+                    lastY = data.y;
+                    if (data.timestamp) {
+                        lastUpdateTimestamp = data.timestamp;
+                    }
+                    
+                    scrollToPage(data.page, data.x, data.y);
+                    
+                    // Show red dot marker after scroll completes
+                    if (data.y != null) {
+                        setTimeout(() => {
+                            showRedDot(data.page, data.y);
+                        }, 150);
+                    }
+                }
+            };
+            
+            socket.onclose = (event) => {
+                console.log(`WebSocket closed (code: ${event.code}, reason: ${event.reason})`);
+                socket = null;
+                
+                // Calculate reconnect delay with exponential backoff
+                const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), MAX_RECONNECT_DELAY);
+                reconnectAttempts++;
+                
+                console.log(`Reconnecting in ${delay}ms...`);
+                setTimeout(connectWebSocket, delay);
+                
+                // Start polling as fallback
+                startPolling();
+            };
+            
+            socket.onerror = (error) => {
+                console.error("WebSocket error:", error);
+            };
+        }
+        
+        // --- FALLBACK POLLING ---
+        function startPolling() {
+            if (pollingInterval) return; // Already polling
+            
+            console.log("Starting fallback polling...");
+            pollingInterval = setInterval(async () => {
+                try {
+                    const res = await fetch('/current-state');
+                    const data = await res.json();
+                    
+                    // Only scroll if there's a new update (based on timestamp)
+                    if (data.last_update_time > lastUpdateTimestamp) {
+                        console.log(`Polling detected new update: timestamp ${lastUpdateTimestamp}→${data.last_update_time}`);
+                        lastUpdateTimestamp = data.last_update_time;
+                        lastPage = data.page;
+                        lastY = data.y;
+                        
+                        scrollToPage(data.page, undefined, data.y);
+                        if (data.y != null) {
+                            showRedDot(data.page, data.y);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Polling error:", e);
+                }
+            }, POLLING_INTERVAL);
+        }
+        
+        // Initialize connection
+        connectWebSocket();
 
-        loadPDF().then(() => syncState());
+        loadPDF()
+            .then(() => {
+                console.log("PDF loaded successfully");
+                syncState();
+            })
+            .catch((error) => {
+                console.error("Failed to load PDF:", error);
+                container.innerHTML = '<div style="color: white; padding: 20px; text-align: center;"><h2>Error loading PDF</h2><p>Please check that the PDF file exists and is accessible.</p></div>';
+            });
     </script>
 </body>
 </html>
