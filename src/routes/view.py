@@ -49,9 +49,9 @@ async def view_page(request: Request) -> HTMLResponse:
     templates = get_templates()
     
     return templates.TemplateResponse(
+        request,
         "viewer.html",
         {
-            "request": request,
             "port": settings.port,
             "filename": settings.pdf_file.name
         }
