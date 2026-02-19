@@ -11,10 +11,10 @@ This is a Python-based PDF server application using FastAPI, WebSockets, and Jav
 /home/asaf/programming/PdfServer/bin/python <file.py>
 
 # Run FastAPI server with PDF file argument
-/home/asaf/programming/PdfServer/bin/python pdf_server.py example.pdf port=8001
+/home/asaf/programming/PdfServer/bin/python main.py examples/example.pdf port=8001
 
 # Run FastAPI server (alternative)
-/home/asaf/programming/PdfServer/bin/uvicorn pdf_server:app --reload --port 8001
+/home/asaf/programming/PdfServer/bin/uvicorn main:app --reload --port 8001
 
 # Run a single test file (when tests are added)
 /home/asaf/programming/PdfServer/bin/python -m pytest <test_file.py> -v
@@ -123,12 +123,20 @@ canvas.height = Math.round(viewport.height * dpr);
 - Check for both `null` and `undefined`: `if (y == null)`
 
 ### JavaScript/HTML - Template Safety
-- Always escape template placeholders to prevent XSS:
+- Use Jinja2 templating with FastAPI's TemplateResponse for automatic escaping
+- Pass configuration via `window` object, not template strings:
 
 ```javascript
-import html;
-// In the server-side template rendering:
-html_content = html_content.replace("{{PORT}}", html.escape(str(CONFIG['port'])))
+// In HTML template:
+<script>
+    window.PDF_CONFIG = {
+        port: {{ port }},
+        filename: "{{ filename }}"
+    };
+</script>
+
+// In JavaScript:
+const CONFIG = window.PDF_CONFIG || { port: 8431, filename: 'document.pdf' };
 ```
 
 ## FastAPI/WebSocket Patterns
@@ -180,14 +188,23 @@ class ConnectionManager:
         self.active_connections.add(websocket)
 
     def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+        try:
+            self.active_connections.remove(websocket)
+        except KeyError:
+            pass
 
     async def broadcast(self, message: dict):
+        disconnected = set()
         for connection in self.active_connections:
             try:
                 await connection.send_json(message)
-            except:
-                pass
+            except Exception as e:
+                disconnected.add(connection)
+                logger.warning(f"Failed to send: {e}")
+        
+        # Clean up failed connections
+        for conn in disconnected:
+            self.disconnect(conn)
 
 manager = ConnectionManager()
 ```
@@ -204,16 +221,32 @@ manager = ConnectionManager()
 
 ```
 /home/asaf/programming/PdfServer/
-├── pdf_server.py           # Main FastAPI server
-├── pdf_server.html         # PDF viewer template
-├── html_pdf_server.py      # Simple HTTP server
-├── webhook.py              # Webhook examples
-├── loc_listener.js         # iframe message handler
-├── sockets/                # Socket utilities
-│   ├── socket_server.py
-│   └── socket_client.py
-├── pdfjs-dist/             # PDF.js library files
-└── bin/, lib/, include/    # Virtual environment
+├── main.py                 # Entry point
+├── src/
+│   ├── config.py          # Configuration management (Pydantic Settings)
+│   ├── connection_manager.py  # WebSocket connection handling
+│   ├── state.py           # PDF state tracking
+│   └── routes/            # API endpoints
+│       ├── __init__.py    # Route exports
+│       ├── view.py        # HTML viewer endpoint (Jinja2 templates)
+│       ├── pdf.py         # PDF file serving
+│       ├── state.py       # Current state endpoint
+│       ├── webhook.py     # SyncTeX webhook endpoint
+│       ├── websocket.py   # WebSocket endpoint
+│       └── static_files.py # Static file serving
+├── static/                # Frontend assets
+│   ├── viewer.html        # Jinja2 HTML template
+│   └── viewer.js          # JavaScript viewer (PDF.js)
+├── tests/                 # Test suite
+│   ├── __init__.py
+│   ├── test_config.py     # Configuration tests
+│   ├── test_connection_manager.py  # WebSocket tests
+│   └── test_state.py      # State management tests
+├── examples/              # Example PDFs and LaTeX files
+│   ├── example.tex
+│   └── example.pdf
+├── pdfjs-dist/            # PDF.js library files
+└── bin/, lib/, include/   # Virtual environment
 ```
 
 ## Dependencies
@@ -222,7 +255,13 @@ Key packages installed in venv:
 - `fastapi`, `uvicorn` - Web server
 - `websockets` - Real-time communication
 - `requests` - HTTP client
-- `gevent` - Async networking
+- `pydantic`, `pydantic-settings` - Configuration management
+- `jinja2` - HTML templating
+- `python-multipart` - Form data parsing
+
+Development dependencies:
+- `pytest`, `pytest-asyncio` - Testing framework
+- `httpx` - HTTP client for tests
 
 When adding new dependencies, prefer packages already in use.
 

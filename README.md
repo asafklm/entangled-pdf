@@ -26,18 +26,18 @@ pip install -r requirements.txt
 
 Basic usage:
 ```bash
-python pdf_server.py example.pdf
+python main.py examples/example.pdf
 ```
 
 With custom port (default is 8431):
 ```bash
-python pdf_server.py example.pdf port=8080
+python main.py examples/example.pdf port=8080
 ```
 
 Or using environment variable:
 ```bash
 export PDF_SERVER_PORT=8080
-python pdf_server.py example.pdf
+python main.py examples/example.pdf
 ```
 
 ### Connecting in Browser
@@ -78,6 +78,46 @@ Parameters:
 
 - `PDF_SERVER_PORT`: Server port (default: 8431)
 - `PDF_SERVER_SECRET`: API key for webhook authentication (default: super-secret-123)
+- `PDF_SERVER_HOST`: Server host address (default: 0.0.0.0)
+
+### Project Structure
+
+```
+PdfServer/
+├── main.py                 # Entry point
+├── src/
+│   ├── config.py          # Configuration management
+│   ├── connection_manager.py  # WebSocket connections
+│   ├── state.py           # PDF state tracking
+│   └── routes/            # API endpoints
+│       ├── view.py        # HTML viewer
+│       ├── pdf.py         # PDF file serving
+│       ├── state.py       # State endpoint
+│       ├── webhook.py     # SyncTeX webhook
+│       └── websocket.py   # WebSocket endpoint
+├── static/                # Frontend assets
+│   ├── viewer.html        # HTML template
+│   └── viewer.js          # JavaScript viewer
+├── tests/                 # Test suite
+├── examples/              # Example PDFs
+└── requirements.txt       # Dependencies
+```
+
+### Running Tests
+
+```bash
+# Install test dependencies
+pip install pytest pytest-asyncio httpx
+
+# Run all tests
+python -m pytest tests/ -v
+
+# Run specific test file
+python -m pytest tests/test_config.py -v
+
+# Run specific test
+python -m pytest tests/test_config.py::TestSettings::test_default_values -v
+```
 
 ## Neovim + VimTeX Integration
 

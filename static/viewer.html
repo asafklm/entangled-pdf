@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ filename }}</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; background: #333; height: 100%; overflow: hidden; font-family: sans-serif; }
+        #viewer-container {
+            height: 100vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+            text-align: center;
+            padding: 20px;
+        }
+        .page-wrapper { 
+            display: inline-block;
+            margin: 0 auto 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            max-width: 100%;
+        }
+        canvas { 
+            display: block; 
+        }
+        .synctex-marker {
+            position: absolute;
+            left: 5px;
+            width: 10px;
+            height: 10px;
+            background-color: rgba(255, 0, 0, 0.8);
+            border-radius: 50%;
+            box-shadow: 0 0 8px rgba(255, 0, 0, 0.6);
+            z-index: 10;
+            pointer-events: none;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.2); opacity: 1; }
+        }
+        #status {
+            position: fixed; top: 20px; right: 20px; padding: 10px;
+            background: rgba(0,0,0,0.8); color: white; border-radius: 8px;
+            z-index: 100; display: none; backdrop-filter: blur(5px);
+        }
+    </style>
+</head>
+<body>
+    <div id="status">Syncing...</div>
+    <div id="viewer-container"></div>
+
+    <script>
+        // Configuration from server
+        window.PDF_CONFIG = {
+            port: {{ port }},
+            filename: "{{ filename }}"
+        };
+    </script>
+    <script src="/static/viewer.js"></script>
+</body>
+</html>
