@@ -4,10 +4,12 @@
  * Handles PDF rendering, WebSocket communication, and SyncTeX synchronization.
  */
 
+// @ts-ignore - Browser module import, resolved at runtime
+import * as pdfjsLib from '/pdfjs/pdf.mjs';
 import type { PDFPageProxy, PDFDocumentProxy } from '../types/pdfjs';
 
-// Initialize PDF.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+// Initialize PDF.js with local worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.mjs';
 
 // Constants
 const ACTION_SYNCTEX: string = 'synctex';
