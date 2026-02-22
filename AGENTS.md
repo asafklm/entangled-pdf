@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is a Python-based PDF server application using FastAPI, WebSockets, and JavaScript/HTML for serving and synchronizing PDF viewing across devices. It integrates with Neovim/VimTex via SyncTeX for LaTeX forward search.
+This is a Python-based PDF server application using FastAPI, WebSockets, and TypeScript/JavaScript for serving and synchronizing PDF viewing across devices. It integrates with Neovim/VimTex via SyncTeX for LaTeX forward search. The frontend is written in TypeScript and compiled to JavaScript.
 
 ## Build / Test / Run Commands
 
@@ -31,6 +31,19 @@ This is a Python-based PDF server application using FastAPI, WebSockets, and Jav
 # Linting (when ruff is added)
 /home/asaf/programming/PdfServer/bin/python -m ruff check <file.py>
 /home/asaf/programming/PdfServer/bin/python -m ruff format <file.py>
+
+# TypeScript / JavaScript Commands
+# Compile TypeScript to JavaScript
+npm run build
+
+# Type check without emitting files
+npm run typecheck
+
+# Run JavaScript/TypeScript unit tests
+npm test
+
+# Run tests in watch mode
+npm test -- --watch
 ```
 
 ## Code Style Guidelines
@@ -97,15 +110,15 @@ except:
 - Use `===` for equality checks (not `==`)
 - Always check for `null` AND `undefined` when validating: `if (value == null)`
 
-### JavaScript/HTML - Canvas Rendering (PDF.js)
-When rendering PDFs with PDF.js, follow these patterns:
+### TypeScript/HTML - Canvas Rendering (PDF.js)
+When rendering PDFs with PDF.js, follow these TypeScript patterns:
 
-```javascript
+```typescript
 // Calculate render scale correctly for high-DPI displays
-const cssHeight = parseFloat(canvas.style.height);
-const internalHeight = canvas.height;
-const dpr = window.devicePixelRatio || 1;
-const renderScale = (cssHeight * dpr) / internalHeight;
+const cssHeight: number = parseFloat(canvas.style.height);
+const internalHeight: number = canvas.height;
+const dpr: number = window.devicePixelRatio || 1;
+const renderScale: number = (cssHeight * dpr) / internalHeight;
 
 // Set both CSS display size AND internal canvas resolution
 canvas.style.width = Math.round(viewport.width) + 'px';
@@ -139,6 +152,45 @@ canvas.height = Math.round(viewport.height * dpr);
 const CONFIG = window.PDF_CONFIG || { port: 8431, filename: 'document.pdf' };
 ```
 
+### TypeScript Guidelines
+
+- **Use strict mode**: `strict: true` in tsconfig.json enforces type safety
+- **Type annotations**: Always annotate function parameters and return types
+- **Interfaces over types**: Prefer `interface` for object shapes, `type` for unions/aliases
+- **Explicit any**: Avoid `any`; use `unknown` when type is truly unknown
+- **Export types**: Export interfaces that are used across multiple files
+- **Global declarations**: Use `declare global` sparingly, prefer module imports
+
+```typescript
+// Good: Interface with typed properties
+interface StateUpdate {
+  page: number;
+  y?: number;
+  timestamp?: number;
+}
+
+// Good: Function with full type annotations
+function calculateScrollPosition(
+  container: HTMLElement,
+  target: { offsetTop: number },
+  canvas: MockCanvas,
+  y: number
+): number {
+  // implementation
+}
+
+// Good: Export types for reuse
+export interface MockCanvas {
+  style: { height: string };
+  height: number;
+}
+
+// Avoid: implicit any
+function badFunction(canvas) {  // Error in strict mode
+  return canvas.height;
+}
+```
+
 ## FastAPI/WebSocket Patterns
 
 ### Endpoint Pattern
@@ -164,12 +216,18 @@ async def receive_webhook(data: dict, x_api_key: str = Header(None)):
 ```
 
 ### WebSocket Handler (Client-Side)
-```javascript
-const socket = new WebSocket(`ws://${window.location.hostname}:{{PORT}}/ws`);
-socket.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    if (data.action === "synctex") {
-        scrollToPage(data.page, data.x, data.y);
+```typescript
+interface StateUpdate {
+  action?: string;
+  page: number;
+  y?: number;
+}
+
+const socket = new WebSocket(`ws://${window.location.hostname}:${CONFIG.port}/ws`);
+socket.onmessage = (event: MessageEvent) => {
+    const data: StateUpdate = JSON.parse(event.data);
+    if (data.action === ACTION_SYNCTEX) {
+        scrollToPage(data.page, data.y);
         if (data.y != null) {
             showRedDot(data.page, data.y);
         }
@@ -234,9 +292,17 @@ manager = ConnectionManager()
 │       ├── webhook.py     # SyncTeX webhook endpoint
 │       ├── websocket.py   # WebSocket endpoint
 │       └── static_files.py # Static file serving
-├── static/                # Frontend assets
+├── static/                # Frontend assets (TypeScript)
 │   ├── viewer.html        # Jinja2 HTML template
-│   └── viewer.js          # JavaScript viewer (PDF.js)
+│   ├── viewer.ts          # Main viewer TypeScript (compiles to viewer.js)
+│   ├── viewer-utils.ts    # Testable utility module
+│   ├── viewer.js          # Compiled JavaScript output
+│   └── *.d.ts             # TypeScript declaration files
+├── tests/js/              # JavaScript/TypeScript tests
+│   ├── viewer-utils.test.ts  # Unit tests (Vitest)
+│   └── setup.ts           # Test setup with mocks
+├── types/                 # TypeScript type declarations
+│   └── pdfjs.d.ts         # PDF.js type definitions
 ├── tests/                 # Test suite
 │   ├── __init__.py
 │   ├── test_config.py     # Configuration tests
@@ -262,6 +328,12 @@ Key packages installed in venv:
 Development dependencies:
 - `pytest`, `pytest-asyncio` - Testing framework
 - `httpx` - HTTP client for tests
+
+TypeScript/JavaScript dependencies:
+- `typescript` - TypeScript compiler
+- `vitest` - Testing framework for TypeScript
+- `happy-dom` - DOM environment for testing
+- `@types/node` - Node.js type definitions
 
 When adding new dependencies, prefer packages already in use.
 

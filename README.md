@@ -1,6 +1,6 @@
 # PdfServer
 
-A FastAPI-based PDF synchronization server that enables real-time PDF viewing across multiple devices with SyncTeX integration for LaTeX forward search from Neovim/VimTeX.
+A FastAPI-based PDF synchronization server with TypeScript frontend that enables real-time PDF viewing across multiple devices with SyncTeX integration for LaTeX forward search from Neovim/VimTeX.
 
 ## Main Idea
 
@@ -95,9 +95,15 @@ PdfServer/
 │       ├── state.py       # State endpoint
 │       ├── webhook.py     # SyncTeX webhook
 │       └── websocket.py   # WebSocket endpoint
-├── static/                # Frontend assets
-│   ├── viewer.html        # HTML template
-│   └── viewer.js          # JavaScript viewer
+├── static/                # Frontend assets (TypeScript)
+│   ├── viewer.html        # Jinja2 HTML template
+│   ├── viewer.ts          # TypeScript viewer (compiled to viewer.js)
+│   └── viewer-utils.ts    # Testable utility module
+├── tests/js/              # JavaScript/TypeScript tests
+│   ├── viewer-utils.test.ts  # Unit tests
+│   └── setup.ts           # Test setup and mocks
+├── types/                 # TypeScript type declarations
+│   └── pdfjs.d.ts         # PDF.js type definitions
 ├── tests/                 # Test suite
 ├── examples/              # Example PDFs
 └── requirements.txt       # Dependencies
@@ -117,6 +123,25 @@ python -m pytest tests/test_config.py -v
 
 # Run specific test
 python -m pytest tests/test_config.py::TestSettings::test_default_values -v
+```
+
+### TypeScript Build & Test
+
+```bash
+# Install Node.js dependencies
+npm install
+
+# Compile TypeScript (generates .js and .d.ts files)
+npm run build
+
+# Type check without compiling
+npm run typecheck
+
+# Run JavaScript unit tests
+npm test
+
+# Run tests in watch mode
+npm test -- --watch
 ```
 
 ## Neovim + VimTeX Integration
@@ -217,10 +242,12 @@ synctex view -i 42:1:document.tex -o document.pdf
 
 ## Architecture
 
-- **Backend**: FastAPI with WebSocket support
-- **Frontend**: Vanilla JavaScript with PDF.js for rendering
+- **Backend**: FastAPI with WebSocket support (Python)
+- **Frontend**: TypeScript with PDF.js for rendering, compiled to ES2020
+- **Build**: TypeScript compiler (tsc) outputs .js alongside .ts sources
 - **Protocol**: WebSocket for real-time, HTTP polling as fallback
 - **Sync**: Timestamp-based update tracking prevents unnecessary scrolling
+- **Testing**: Vitest for TypeScript unit tests with happy-dom environment
 
 ## License
 
