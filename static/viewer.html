@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ filename }}</title>
+    <title>{{ pdf | default(filename) }}</title>
 
     <style>
         body, html { margin: 0; padding: 0; background: #333; height: 100%; overflow: hidden; font-family: sans-serif; }
@@ -52,7 +52,8 @@
         // Configuration from server
         window.PDF_CONFIG = {
             port: {{ port }},
-            filename: "{{ filename }}"
+            filename: "{{ filename }}",
+            mtime: {{ mtime }}
         };
     </script>
     <script type="module" src="/static/viewer.js"></script>

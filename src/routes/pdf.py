@@ -22,9 +22,14 @@ async def get_pdf() -> FileResponse:
         FileResponse: The PDF file with application/pdf content type
     """
     settings = get_settings()
+    mtime = settings.pdf_file.stat().st_mtime
     
     return FileResponse(
         settings.pdf_file,
         media_type="application/pdf",
-        filename=settings.pdf_file.name
+        filename=settings.pdf_file.name,
+        headers={
+            "Cache-Control": "public, max-age=31536000",
+            "ETag": f'"{int(mtime)}"'
+        }
     )

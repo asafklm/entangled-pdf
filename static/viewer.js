@@ -3,8 +3,10 @@
  *
  * Handles PDF rendering, WebSocket communication, and SyncTeX synchronization.
  */
-// Initialize PDF.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+// @ts-ignore - Browser module import, resolved at runtime
+import * as pdfjsLib from '/pdfjs/pdf.mjs';
+// Initialize PDF.js with local worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.mjs';
 // Constants
 const ACTION_SYNCTEX = 'synctex';
 const MAX_RECONNECT_DELAY = 30000;
@@ -22,7 +24,7 @@ let pollingInterval = null;
 let lastPage = null;
 let lastY = null;
 let lastUpdateTimestamp = 0;
-const CONFIG = window.PDF_CONFIG || { port: 8431, filename: 'document.pdf' };
+const CONFIG = window.PDF_CONFIG || { port: 8431, filename: 'document.pdf', mtime: 0 };
 /**
  * Calculate render scale from canvas dimensions
  * @param canvas - The canvas element
@@ -76,7 +78,8 @@ async function loadPDF() {
         throw new Error('Viewer container not found');
     }
     try {
-        pdfDoc = await pdfjsLib.getDocument('/get-pdf').promise;
+        const pdfUrl = `/get-pdf?v=${CONFIG.mtime}`;
+        pdfDoc = await pdfjsLib.getDocument(pdfUrl).promise;
     }
     catch (error) {
         throw new Error(`Failed to load PDF document: ${error.message}`);
@@ -280,5 +283,4 @@ loadPDF()
         container.innerHTML = '<div style="color: white; padding: 20px; text-align: center;"><h2>Error loading PDF</h2><p>Please check that the PDF file exists and is accessible.</p></div>';
     }
 });
-export {};
 //# sourceMappingURL=viewer.js.map

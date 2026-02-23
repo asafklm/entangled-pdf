@@ -35,6 +35,7 @@ let lastUpdateTimestamp: number = 0;
 interface PDFConfig {
   port: number;
   filename: string;
+  mtime: number;
 }
 
 declare global {
@@ -43,7 +44,7 @@ declare global {
   }
 }
 
-const CONFIG: PDFConfig = window.PDF_CONFIG || { port: 8431, filename: 'document.pdf' };
+const CONFIG: PDFConfig = window.PDF_CONFIG || { port: 8431, filename: 'document.pdf', mtime: 0 };
 
 /**
  * Canvas element with required style property
@@ -121,7 +122,8 @@ async function loadPDF(): Promise<void> {
   }
 
   try {
-    pdfDoc = await pdfjsLib.getDocument('/get-pdf').promise;
+    const pdfUrl = `/get-pdf?v=${CONFIG.mtime}`;
+    pdfDoc = await pdfjsLib.getDocument(pdfUrl).promise;
   } catch (error) {
     throw new Error(`Failed to load PDF document: ${(error as Error).message}`);
   }

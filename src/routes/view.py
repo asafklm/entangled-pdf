@@ -4,7 +4,7 @@ Uses Jinja2 templating for proper HTML rendering with variable substitution.
 """
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from src.config import get_settings
@@ -13,6 +13,17 @@ router = APIRouter()
 
 # Templates initialized lazily to avoid circular import issues
 _templates = None
+
+
+@router.get("/", response_class=RedirectResponse)
+async def root() -> RedirectResponse:
+    """Redirect root URL to /view with PDF filename.
+    
+    Returns:
+        RedirectResponse: Redirect to /view?pdf=filename
+    """
+    settings = get_settings()
+    return RedirectResponse(f"/view?pdf={settings.pdf_file.name}")
 
 
 def get_templates() -> Jinja2Templates:
@@ -47,12 +58,14 @@ async def view_page(request: Request) -> HTMLResponse:
     """
     settings = get_settings()
     templates = get_templates()
+    mtime = settings.pdf_file.stat().st_mtime
     
     return templates.TemplateResponse(
         request,
         "viewer.html",
         {
             "port": settings.port,
-            "filename": settings.pdf_file.name
+            "filename": settings.pdf_file.name,
+            "mtime": mtime
         }
     )

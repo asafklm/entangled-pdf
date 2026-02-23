@@ -149,3 +149,36 @@ class TestGetPdf:
             # Empty file should still be served successfully
             assert response.status_code == 200
             assert response.content == b""
+
+
+class TestPdfCachingHeaders:
+    """Test suite for PDF caching headers."""
+    
+    def test_get_pdf_has_cache_control(self, client):
+        """Test response includes Cache-Control header."""
+        response = client.get("/get-pdf")
+        assert response.status_code == 200
+        assert "Cache-Control" in response.headers
+        assert "max-age" in response.headers["Cache-Control"]
+    
+    def test_get_pdf_has_etag(self, client, mock_settings):
+        """Test response includes ETag header based on mtime."""
+        response = client.get("/get-pdf")
+        assert response.status_code == 200
+        assert "ETag" in response.headers
+        mtime = int(mock_settings.pdf_file.stat().st_mtime)
+        assert f'"{mtime}"' == response.headers["ETag"]
+    
+    def test_etag_format(self, client):
+        """Test ETag is properly quoted."""
+        response = client.get("/get-pdf")
+        etag = response.headers["ETag"]
+        assert etag.startswith('"')
+        assert etag.endswith('"')
+    
+    def test_cache_control_max_age_value(self, client):
+        """Test Cache-Control has reasonable max-age."""
+        response = client.get("/get-pdf")
+        cache_control = response.headers["Cache-Control"]
+        # Should be 1 year (31536000 seconds)
+        assert "31536000" in cache_control

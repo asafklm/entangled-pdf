@@ -58,7 +58,8 @@ def temp_pdf_file(tmp_path_factory):
     <script>
         window.PDF_CONFIG = {
             port: {{ port }},
-            filename: "{{ filename }}"
+            filename: "{{ filename }}",
+            mtime: {{ mtime }}
         };
     </script>
 </body>

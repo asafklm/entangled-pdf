@@ -26,6 +26,14 @@ def mock_settings(tmp_path):
 <body>
     <p>Port: {{ port }}</p>
     <p>File: {{ filename }}</p>
+    <p>Mtime: {{ mtime }}</p>
+    <script>
+        window.PDF_CONFIG = {
+            port: {{ port }},
+            filename: "{{ filename }}",
+            mtime: {{ mtime }}
+        };
+    </script>
 </body>
 </html>""")
     
@@ -211,3 +219,41 @@ class TestViewPage:
                 assert "complex.pdf" in response.text
                 assert "7777" in response.text
                 assert "{{" not in response.text  # All variables substituted
+
+
+class TestRootRedirect:
+    """Test suite for GET / endpoint (root redirect)."""
+    
+    def test_root_redirect_status(self, client):
+        """Test that root returns 307 redirect."""
+        response = client.get("/", follow_redirects=False)
+        assert response.status_code == 307
+    
+    def test_root_redirect_location(self, client, mock_settings):
+        """Test redirect location contains pdf filename."""
+        response = client.get("/", follow_redirects=False)
+        assert response.status_code == 307
+        assert f"pdf={mock_settings.pdf_file.name}" in response.headers["location"]
+
+    def test_root_redirect_to_view(self, client):
+        """Test redirect goes to /view path."""
+        response = client.get("/", follow_redirects=False)
+        assert "/view" in response.headers["location"]
+
+
+class TestViewPageMtime:
+    """Test suite for mtime in view response."""
+    
+    def test_view_page_contains_mtime(self, client, mock_settings):
+        """Test HTML contains mtime value."""
+        response = client.get("/view")
+        assert response.status_code == 200
+        mtime = int(mock_settings.pdf_file.stat().st_mtime)
+        assert str(mtime) in response.text
+    
+    def test_view_page_contains_mtime_in_config(self, client, mock_settings):
+        """Test mtime is present in PDF_CONFIG."""
+        response = client.get("/view")
+        assert response.status_code == 200
+        mtime = mock_settings.pdf_file.stat().st_mtime
+        assert f"mtime: {int(mtime)}" in response.text

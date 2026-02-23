@@ -6,6 +6,7 @@
 interface PDFConfig {
     port: number;
     filename: string;
+    mtime: number;
 }
 declare global {
     interface Window {
