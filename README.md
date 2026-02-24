@@ -151,7 +151,7 @@ PdfServer integrates seamlessly with Neovim and VimTeX for LaTeX forward search 
 
 ### Setup
 
-Add to your Neovim configuration (e.g., `~/.config/nvim/init.lua`):
+Add to your Neovim configuration (e.g., `[~/.config/nvim/init.lua](~/.config/nvim/init.lua)`):
 
 ```lua
 -- Load the enhanced PdfServer integration
