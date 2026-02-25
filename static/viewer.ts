@@ -32,6 +32,13 @@ let lastPage: number | null = null;
 let lastY: number | null = null;
 let lastUpdateTimestamp: number = 0;
 
+// Keyboard navigation state
+let keyBuffer: string = '';
+let keyTimeout: number | null = null;
+const KEY_TIMEOUT_MS: number = 500;
+const LINE_SCROLL_AMOUNT: number = 40;
+const HORIZONTAL_SCROLL_AMOUNT: number = 40;
+
 // Configuration from server
 interface PDFConfig {
   port: number;
@@ -274,6 +281,177 @@ function showRedDot(pageNum: number, y?: number): void {
 }
 
 /**
+ * Scroll by a number of lines
+ * @param amount - Number of pixels to scroll (positive = down, negative = up)
+ */
+function scrollByLines(amount: number): void {
+  if (!container) return;
+  const targetScrollTop: number = container.scrollTop + amount;
+  container.scrollTo({ top: targetScrollTop, left: container.scrollLeft, behavior: 'auto' });
+}
+
+/**
+ * Scroll horizontally
+ * @param amount - Number of pixels to scroll (positive = right, negative = left)
+ */
+function scrollHorizontally(amount: number): void {
+  if (!container) return;
+  const targetScrollLeft: number = container.scrollLeft + amount;
+  container.scrollTo({ top: container.scrollTop, left: targetScrollLeft, behavior: 'auto' });
+}
+
+/**
+ * Navigate to the next page
+ */
+function nextPage(): void {
+  if (!pdfDoc || !lastPage) return;
+  const targetPage: number = Math.min(lastPage + 1, pdfDoc.numPages);
+  scrollToPage(targetPage);
+}
+
+/**
+ * Navigate to the previous page
+ */
+function prevPage(): void {
+  if (!pdfDoc || !lastPage) return;
+  const targetPage: number = Math.max(lastPage - 1, 1);
+  scrollToPage(targetPage);
+}
+
+/**
+ * Navigate to the first page
+ */
+function goToFirstPage(): void {
+  if (!pdfDoc) return;
+  scrollToPage(1);
+}
+
+/**
+ * Navigate to the last page
+ */
+function goToLastPage(): void {
+  if (!pdfDoc) return;
+  scrollToPage(pdfDoc.numPages);
+}
+
+/**
+ * Scroll a full page down (90% of viewport)
+ */
+function scrollFullPageDown(): void {
+  if (!container) return;
+  const viewportHeight: number = container.clientHeight;
+  const amount: number = Math.round(viewportHeight * 0.9);
+  scrollByLines(amount);
+}
+
+/**
+ * Scroll a full page up (90% of viewport)
+ */
+function scrollFullPageUp(): void {
+  if (!container) return;
+  const viewportHeight: number = container.clientHeight;
+  const amount: number = -Math.round(viewportHeight * 0.9);
+  scrollByLines(amount);
+}
+
+/**
+ * Reset the key buffer and clear timeout
+ */
+function resetKeyBuffer(): void {
+  keyBuffer = '';
+  if (keyTimeout) {
+    clearTimeout(keyTimeout);
+    keyTimeout = null;
+  }
+}
+
+/**
+ * Handle keyboard navigation events
+ * @param event - Keyboard event
+ */
+function handleKeydown(event: KeyboardEvent): void {
+  const key: string = event.key;
+
+  // Handle multi-key sequences first (gg for first page)
+  if (key === 'g') {
+    if (keyBuffer === 'g') {
+      event.preventDefault();
+      goToFirstPage();
+      resetKeyBuffer();
+      return;
+    }
+    // First 'g' press - set buffer and timeout
+    event.preventDefault();
+    keyBuffer = 'g';
+    if (keyTimeout) clearTimeout(keyTimeout);
+    keyTimeout = window.setTimeout(resetKeyBuffer, KEY_TIMEOUT_MS);
+    return;
+  }
+
+  // If we get here with a key buffer, reset it (sequence broken)
+  if (keyBuffer) {
+    resetKeyBuffer();
+  }
+
+  // Single key actions
+  switch (key) {
+    case 'j':
+    case 'ArrowDown':
+      event.preventDefault();
+      scrollByLines(LINE_SCROLL_AMOUNT);
+      break;
+
+    case 'k':
+    case 'ArrowUp':
+      event.preventDefault();
+      scrollByLines(-LINE_SCROLL_AMOUNT);
+      break;
+
+    case 'h':
+    case 'ArrowLeft':
+      event.preventDefault();
+      scrollHorizontally(-HORIZONTAL_SCROLL_AMOUNT);
+      break;
+
+    case 'l':
+    case 'ArrowRight':
+      event.preventDefault();
+      scrollHorizontally(HORIZONTAL_SCROLL_AMOUNT);
+      break;
+
+    case 'J':
+    case 'PageDown':
+      event.preventDefault();
+      nextPage();
+      break;
+
+    case 'K':
+    case 'PageUp':
+      event.preventDefault();
+      prevPage();
+      break;
+
+    case ' ':
+      event.preventDefault();
+      if (event.shiftKey) {
+        scrollFullPageUp();
+      } else {
+        scrollFullPageDown();
+      }
+      break;
+
+    case 'G':
+      event.preventDefault();
+      goToLastPage();
+      break;
+
+    default:
+      // Don't prevent default for unhandled keys
+      return;
+  }
+}
+
+/**
  * Synchronize state when tab regains focus
  */
 async function syncState(): Promise<void> {
@@ -375,6 +553,13 @@ loadPDF()
   .then(() => {
     console.log("PDF loaded successfully");
     syncState();
+    // Attach keyboard handler after PDF loads and container is ready
+    if (container) {
+      container.addEventListener('keydown', handleKeydown);
+      // Auto-focus container so user doesn't need to click
+      container.focus();
+      console.log("Keyboard navigation ready (container focused)");
+    }
   })
   .catch((error: Error) => {
     console.error("Failed to load PDF:", error);
@@ -382,3 +567,10 @@ loadPDF()
       container.innerHTML = '<div style="color: white; padding: 20px; text-align: center;"><h2>Error loading PDF</h2><p>Please check that the PDF file exists and is accessible.</p></div>';
     }
   });
+
+// Focus container when user clicks anywhere on the page (in case they unfocused it)
+document.addEventListener('click', () => {
+  if (container && document.activeElement !== container) {
+    container.focus();
+  }
+});
