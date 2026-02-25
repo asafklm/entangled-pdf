@@ -15,7 +15,7 @@ def setup_static_files(app) -> None:
     
     Mounts:
     - /static - Application static files (JS, CSS, templates)
-    - /pdfjs - PDF.js library files from pdfjs-dist/build
+    - /pdfjs - PDF.js library files from node_modules/pdfjs-dist/build
     
     Args:
         app: FastAPI application instance
@@ -29,8 +29,8 @@ def setup_static_files(app) -> None:
         name="static"
     )
     
-    # Mount PDF.js library files (local copy for offline/air-gapped use)
-    pdfjs_path = Path(__file__).parent.parent.parent / "pdfjs-dist" / "build"
+    # Mount PDF.js library files from node_modules (installed via npm)
+    pdfjs_path = Path(__file__).parent.parent.parent / "node_modules" / "pdfjs-dist" / "build"
     if pdfjs_path.exists():
         app.mount(
             "/pdfjs",

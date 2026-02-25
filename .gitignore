@@ -70,6 +70,5 @@ session-*.md
 dist/
 build/
 
-# PDF.js is vendored - can be tracked or installed
-# Uncomment if you prefer to install via npm instead:
-# pdfjs-dist/
+# PDF.js - installed via npm from node_modules, not tracked
+pdfjs-dist/
