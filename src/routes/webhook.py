@@ -247,3 +247,45 @@ async def receive_synctex_update(
             "status": "success",
             "page": None
         })
+
+
+@router.post("/webhook/shutdown")
+async def shutdown_server(
+    x_api_key: Optional[str] = Header(None)
+) -> JSONResponse:
+    """Shutdown the PDF server gracefully.
+    
+    Authenticates requests using the X-API-Key header and initiates
+    a graceful shutdown of the server. This is used by VimTeX when
+    switching to a different PDF file.
+    
+    Args:
+        x_api_key: API key from X-API-Key header
+    
+    Returns:
+        JSONResponse: Success status
+    
+    Raises:
+        HTTPException: 403 if API key is invalid
+    """
+    settings = get_settings()
+    
+    # Validate API key
+    if x_api_key != settings.secret:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    logger.info("Shutdown requested, initiating graceful shutdown...")
+    
+    # Schedule shutdown after response is sent
+    async def do_shutdown():
+        await asyncio.sleep(1)  # Give time for response to be sent
+        import signal
+        import os
+        os.kill(os.getpid(), signal.SIGTERM)
+    
+    asyncio.create_task(do_shutdown())
+    
+    return JSONResponse(content={
+        "status": "success",
+        "message": "Server shutting down gracefully"
+    })
