@@ -80,7 +80,7 @@ describe('getRenderScale', () => {
 });
 
 describe('pdfYToPixels', () => {
-  it('should convert PDF y-coordinate to pixels', () => {
+  it('should convert PDF y-coordinate to pixels with default scale 1.0', () => {
     const canvas: MockCanvas = {
       style: { height: '800px' },
       height: 1600
@@ -88,7 +88,29 @@ describe('pdfYToPixels', () => {
     global.window = { ...global.window, devicePixelRatio: 2 } as unknown as Window & typeof globalThis;
 
     const pixels: number = pdfYToPixels(canvas, 100);
-    expect(pixels).toBe(100); // 100 * 1 = 100
+    expect(pixels).toBe(100); // 100 * 1.0 * 1 = 100
+  });
+
+  it('should convert PDF y-coordinate to pixels with scale 1.5', () => {
+    const canvas: MockCanvas = {
+      style: { height: '800px' },
+      height: 1600
+    };
+    global.window = { ...global.window, devicePixelRatio: 2 } as unknown as Window & typeof globalThis;
+
+    const pixels: number = pdfYToPixels(canvas, 100, 1.5);
+    expect(pixels).toBe(150); // 100 * 1.5 * 1 = 150
+  });
+
+  it('should convert PDF y-coordinate to pixels with scale 2.0', () => {
+    const canvas: MockCanvas = {
+      style: { height: '800px' },
+      height: 1600
+    };
+    global.window = { ...global.window, devicePixelRatio: 2 } as unknown as Window & typeof globalThis;
+
+    const pixels: number = pdfYToPixels(canvas, 100, 2.0);
+    expect(pixels).toBe(200); // 100 * 2.0 * 1 = 200
   });
 
   it('should handle zero y-coordinate', () => {
@@ -98,24 +120,48 @@ describe('pdfYToPixels', () => {
     };
     global.window = { ...global.window, devicePixelRatio: 1 } as unknown as Window & typeof globalThis;
 
-    const pixels: number = pdfYToPixels(canvas, 0);
+    const pixels: number = pdfYToPixels(canvas, 0, 1.0);
     expect(pixels).toBe(0);
   });
 
-  it('should handle large y-coordinates', () => {
+  it('should handle y at top of page (small y value)', () => {
+    const canvas: MockCanvas = {
+      style: { height: '600px' },
+      height: 600
+    };
+    global.window = { ...global.window, devicePixelRatio: 1 } as unknown as Window & typeof globalThis;
+
+    const yFromTop = 50; // Near top of page
+    const pixels: number = pdfYToPixels(canvas, yFromTop, 1.0);
+    expect(pixels).toBe(50); // 50 * 1.0 = 50 (near top)
+  });
+
+  it('should handle y at bottom of page (large y value)', () => {
+    const canvas: MockCanvas = {
+      style: { height: '600px' },
+      height: 600
+    };
+    global.window = { ...global.window, devicePixelRatio: 1 } as unknown as Window & typeof globalThis;
+
+    const yFromTop = 550; // Near bottom of page
+    const pixels: number = pdfYToPixels(canvas, yFromTop, 1.0);
+    expect(pixels).toBe(550); // 550 * 1.0 = 550 (near bottom)
+  });
+
+  it('should handle large y-coordinates with scale', () => {
     const canvas: MockCanvas = {
       style: { height: '800px' },
       height: 1600
     };
     global.window = { ...global.window, devicePixelRatio: 2 } as unknown as Window & typeof globalThis;
 
-    const pixels: number = pdfYToPixels(canvas, 1000);
-    expect(pixels).toBe(1000);
+    const pixels: number = pdfYToPixels(canvas, 500, 1.5);
+    expect(pixels).toBe(750); // 500 * 1.5 * 1 = 750
   });
 });
 
 describe('calculateScrollPosition', () => {
-  it('should calculate correct scroll position', () => {
+  it('should calculate correct scroll position with default scale', () => {
     const container: HTMLElement = {
       clientHeight: 800,
       style: {}
@@ -137,9 +183,63 @@ describe('calculateScrollPosition', () => {
     } as unknown as Window & typeof globalThis;
 
     const scrollPos: number = calculateScrollPosition(container, target, canvas, 300);
-    // pixelY = 300 * 1 = 300
+    // pixelY = 300 * 1.0 * 1 = 300
     // targetScrollTop = 200 + 300 - (800/2) + 20 = 200 + 300 - 400 + 20 = 120
     expect(scrollPos).toBe(120);
+  });
+
+  it('should calculate correct scroll position with scale 1.5', () => {
+    const container: HTMLElement = {
+      clientHeight: 800,
+      style: {}
+    } as HTMLElement;
+
+    const target: { offsetTop: number } = {
+      offsetTop: 200
+    };
+
+    const canvas: MockCanvas = {
+      style: { height: '600px' },
+      height: 1200
+    };
+
+    global.window = {
+      ...global.window,
+      devicePixelRatio: 2,
+      getComputedStyle: () => ({ paddingTop: '20px' } as CSSStyleDeclaration)
+    } as unknown as Window & typeof globalThis;
+
+    const scrollPos: number = calculateScrollPosition(container, target, canvas, 300, 1.5);
+    // pixelY = 300 * 1.5 * 1 = 450
+    // targetScrollTop = 200 + 450 - (800/2) + 20 = 200 + 450 - 400 + 20 = 270
+    expect(scrollPos).toBe(270);
+  });
+
+  it('should calculate correct scroll position with scale 2.0', () => {
+    const container: HTMLElement = {
+      clientHeight: 800,
+      style: {}
+    } as HTMLElement;
+
+    const target: { offsetTop: number } = {
+      offsetTop: 200
+    };
+
+    const canvas: MockCanvas = {
+      style: { height: '600px' },
+      height: 1200
+    };
+
+    global.window = {
+      ...global.window,
+      devicePixelRatio: 2,
+      getComputedStyle: () => ({ paddingTop: '20px' } as CSSStyleDeclaration)
+    } as unknown as Window & typeof globalThis;
+
+    const scrollPos: number = calculateScrollPosition(container, target, canvas, 200, 2.0);
+    // pixelY = 200 * 2.0 * 1 = 400
+    // targetScrollTop = 200 + 400 - (800/2) + 20 = 200 + 400 - 400 + 20 = 220
+    expect(scrollPos).toBe(220);
   });
 
   it('should not return negative scroll position', () => {
@@ -163,9 +263,70 @@ describe('calculateScrollPosition', () => {
       getComputedStyle: () => ({ paddingTop: '20px' } as CSSStyleDeclaration)
     } as unknown as Window & typeof globalThis;
 
-    const scrollPos: number = calculateScrollPosition(container, target, canvas, 10);
-    // This would be negative, so it should return 0
+    const scrollPos: number = calculateScrollPosition(container, target, canvas, 10, 1.0);
+    // pixelY = 10 * 1.0 * 1 = 10
+    // targetScrollTop = 0 + 10 - (1000/2) + 20 = 10 - 500 + 20 = -470 -> 0
     expect(scrollPos).toBe(0);
+  });
+
+  it('should handle y near top of page correctly', () => {
+    const container: HTMLElement = {
+      clientHeight: 800,
+      style: {}
+    } as HTMLElement;
+
+    const target: { offsetTop: number } = {
+      offsetTop: 100
+    };
+
+    const canvas: MockCanvas = {
+      style: { height: '792px' },
+      height: 1584
+    };
+
+    global.window = {
+      ...global.window,
+      devicePixelRatio: 2,
+      getComputedStyle: () => ({ paddingTop: '20px' } as CSSStyleDeclaration)
+    } as unknown as Window & typeof globalThis;
+
+    // SynTeX Y for line 5 (title near top): ~159 pts
+    const synctexY = 159;
+    const pdfScale = 1.5;
+    const scrollPos: number = calculateScrollPosition(container, target, canvas, synctexY, pdfScale);
+    // pixelY = 159 * 1.5 * 1 = 238.5
+    // targetScrollTop = 100 + 238.5 - (800/2) + 20 = 100 + 238.5 - 400 + 20 = -41.5 -> 0
+    expect(scrollPos).toBe(0);
+  });
+
+  it('should handle y near bottom of page correctly', () => {
+    const container: HTMLElement = {
+      clientHeight: 800,
+      style: {}
+    } as HTMLElement;
+
+    const target: { offsetTop: number } = {
+      offsetTop: 100
+    };
+
+    const canvas: MockCanvas = {
+      style: { height: '792px' },
+      height: 1584
+    };
+
+    global.window = {
+      ...global.window,
+      devicePixelRatio: 2,
+      getComputedStyle: () => ({ paddingTop: '20px' } as CSSStyleDeclaration)
+    } as unknown as Window & typeof globalThis;
+
+    // SynTeX Y for line 44 (near bottom of page 1): ~628 pts
+    const synctexY = 628;
+    const pdfScale = 1.5;
+    const scrollPos: number = calculateScrollPosition(container, target, canvas, synctexY, pdfScale);
+    // pixelY = 628 * 1.5 * 1 = 942
+    // targetScrollTop = 100 + 942 - (800/2) + 20 = 100 + 942 - 400 + 20 = 662
+    expect(scrollPos).toBe(662);
   });
 });
 

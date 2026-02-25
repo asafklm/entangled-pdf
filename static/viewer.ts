@@ -24,6 +24,7 @@ const container: HTMLElement | null = document.getElementById('viewer-container'
 // State
 let pdfDoc: PDFDocumentProxy | null = null;
 const pageElements: { [key: number]: HTMLElement } = {};
+const pageScales: { [key: number]: number } = {};
 let socket: WebSocket | null = null;
 let reconnectAttempts: number = 0;
 let pollingInterval: number | null = null;
@@ -79,11 +80,17 @@ function getRenderScale(canvas: CanvasWithStyle): number {
 /**
  * Convert PDF y-coordinate to CSS pixels
  * @param canvas - The canvas element
- * @param y - Y coordinate in PDF points
- * @returns Pixel Y coordinate
+ * @param y - Y coordinate in PDF points (from top, SynTeX format)
+ * @param pdfScale - The PDF viewport scale used during rendering (default: 1.0)
+ * @returns Pixel Y coordinate from top of canvas
  */
-function pdfYToPixels(canvas: CanvasWithStyle, y: number): number {
-  return y * getRenderScale(canvas);
+function pdfYToPixels(canvas: CanvasWithStyle, y: number, pdfScale: number = 1.0): number {
+  // SynTeX reports coordinates in PDF points (1/72 inch) from the TOP of the page
+  // This matches CSS/Canvas coordinates which are also from the top
+  // At PDF scale 1.0, 1 PDF point = 1 CSS pixel (approximately)
+  // At PDF scale 1.5, we multiply by 1.5 to get correct CSS pixels
+  const cssPixels: number = y * pdfScale;
+  return cssPixels * getRenderScale(canvas);
 }
 
 /**
@@ -144,6 +151,9 @@ async function loadPDF(): Promise<void> {
     const scale: number = Math.max(1.5, fitScale);
 
     const viewport = page.getViewport({ scale: scale });
+
+    // Store the scale for this page for coordinate conversion
+    pageScales[i] = scale;
 
     const wrapper: HTMLElement = document.createElement('div');
     wrapper.className = 'page-wrapper';
@@ -207,7 +217,8 @@ function scrollToPage(pageNum: number, y?: number): void {
     return;
   }
 
-  const pixelY: number = pdfYToPixels(canvas as CanvasWithStyle, y);
+  const pdfScale: number = pageScales[pageNum] || 1.0;
+  const pixelY: number = pdfYToPixels(canvas as CanvasWithStyle, y, pdfScale);
 
   const containerStyle: CSSStyleDeclaration = window.getComputedStyle(container);
   const paddingTop: number = parseFloat(containerStyle.paddingTop) || 20;
@@ -249,7 +260,8 @@ function showRedDot(pageNum: number, y?: number): void {
   const canvas: HTMLCanvasElement | null = target.querySelector('canvas');
   if (!canvas) return;
 
-  const pixelY: number = pdfYToPixels(canvas as CanvasWithStyle, y);
+  const pdfScale: number = pageScales[pageNum] || 1.0;
+  const pixelY: number = pdfYToPixels(canvas as CanvasWithStyle, y, pdfScale);
 
   const marker: HTMLElement = document.createElement('div');
   marker.className = 'synctex-marker';

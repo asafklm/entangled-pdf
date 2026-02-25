@@ -62,11 +62,17 @@ export function getRenderScale(canvas: MockCanvas): number {
 /**
  * Convert PDF y-coordinate to CSS pixels
  * @param canvas - The canvas element
- * @param y - Y coordinate in PDF points
- * @returns Pixel Y coordinate
+ * @param y - Y coordinate in PDF points (from top, SynTeX format)
+ * @param pdfScale - The PDF viewport scale used during rendering (default: 1.0)
+ * @returns Pixel Y coordinate from top of canvas
  */
-export function pdfYToPixels(canvas: MockCanvas, y: number): number {
-  return y * getRenderScale(canvas);
+export function pdfYToPixels(canvas: MockCanvas, y: number, pdfScale: number = 1.0): number {
+  // SynTeX reports coordinates in PDF points (1/72 inch) from the TOP of the page
+  // This matches CSS/Canvas coordinates which are also from the top
+  // At PDF scale 1.0, 1 PDF point = 1 CSS pixel (approximately)
+  // At PDF scale 1.5, we multiply by 1.5 to get correct CSS pixels
+  const cssPixels: number = y * pdfScale;
+  return cssPixels * getRenderScale(canvas);
 }
 
 /**
@@ -74,16 +80,18 @@ export function pdfYToPixels(canvas: MockCanvas, y: number): number {
  * @param container - The scroll container
  * @param target - The target page element
  * @param canvas - The canvas element
- * @param y - Y coordinate in PDF points
+ * @param y - Y coordinate in PDF points (from top, SynTeX format)
+ * @param pdfScale - The PDF viewport scale used during rendering (default: 1.0)
  * @returns The scroll top position
  */
 export function calculateScrollPosition(
   container: HTMLElement,
   target: { offsetTop: number },
   canvas: MockCanvas,
-  y: number
+  y: number,
+  pdfScale: number = 1.0
 ): number {
-  const pixelY: number = pdfYToPixels(canvas, y);
+  const pixelY: number = pdfYToPixels(canvas, y, pdfScale);
   const containerStyle: CSSStyleDeclaration = window.getComputedStyle(container);
   const paddingTop: number = parseFloat(containerStyle.paddingTop) || 20;
   const viewportHeight: number = container.clientHeight;
