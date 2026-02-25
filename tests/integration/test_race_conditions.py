@@ -258,7 +258,7 @@ class TestRaceConditions:
             results.append(("write", response.status_code, page))
         
         async def reader_task():
-            response = test_client.get("/current-state")
+            response = test_client.get("/state")
             data = response.json()
             results.append(("read", data["page"], data["y"]))
         

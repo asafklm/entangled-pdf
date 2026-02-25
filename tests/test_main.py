@@ -68,7 +68,7 @@ class TestCreateApp:
             with patch("main.init_settings", return_value=mock_settings):
                 app = create_app()
                 routes = [str(route) for route in app.routes]
-                assert any("/current-state" in route for route in routes)
+                assert any("/state" in route for route in routes)
     
     def test_create_app_includes_webhook_router(self, mock_settings):
         """Test that webhook router is included."""

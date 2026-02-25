@@ -149,11 +149,14 @@ class TestTypeContracts:
         assert isinstance(data["status"], str), f"status should be string, got {type(data['status'])}"
     
     def test_state_endpoint_returns_correct_types(self, test_client, reset_state):
-        """Test /current-state returns correct types matching StateUpdate."""
-        response = test_client.get("/current-state")
+        """Test /state returns correct types matching StateUpdate."""
+        response = test_client.get("/state")
         assert response.status_code == 200
         
         data = response.json()
+        
+        # pdf_file: string (required)
+        assert isinstance(data["pdf_file"], str), "pdf_file should be string"
         
         # page: number (required)
         assert isinstance(data["page"], int), "page should be int"

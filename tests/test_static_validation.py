@@ -67,7 +67,7 @@ class TestCDNUsageValidation:
             "/static/",
             "/pdfjs/",
             "/get-pdf",
-            "/current-state",
+            "/state",
             "/webhook/",
             "/ws",
         ]

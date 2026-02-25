@@ -12,29 +12,17 @@ from src.state import pdf_state
 router = APIRouter()
 
 
-@router.get("/current-state")
+@router.get("/state")
 async def get_state() -> JSONResponse:
-    """Get the current PDF viewing state.
+    """Get the current PDF state including file path and viewing position.
     
-    Returns the current page, y-coordinate, and last update timestamp.
+    Returns the PDF file path, current page, y-coordinate, and last update timestamp.
     Used by clients when they refocus to check for new updates.
     
     Returns:
-        JSONResponse: Current state with page, y, and last_update_time
-    """
-    return JSONResponse(content=pdf_state.to_dict())
-
-
-@router.get("/current-pdf")
-async def get_current_pdf() -> JSONResponse:
-    """Get the path of the PDF file currently being served.
-    
-    Used by VimTeX to check if the server is running and which
-    PDF file it's serving. This helps determine whether to start
-    a new server or reuse the existing one.
-    
-    Returns:
-        JSONResponse: Object containing the current PDF file path
+        JSONResponse: Current state with pdf_file, page, y, and last_update_time
     """
     settings = get_settings()
-    return JSONResponse(content={"pdf_file": str(settings.pdf_file)})
+    state_dict = pdf_state.to_dict()
+    state_dict["pdf_file"] = str(settings.pdf_file)
+    return JSONResponse(content=state_dict)

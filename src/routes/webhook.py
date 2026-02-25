@@ -64,9 +64,9 @@ async def run_synctex_view(
         
         # Parse synctex output
         result = {}
-        for line in stdout.decode().split('\n'):
-            if isinstance(line, str) and ":" in line:
-                key, value = line.split(":", 1)
+        for output_line in stdout.decode().split('\n'):
+            if ":" in output_line:
+                key, value = output_line.split(":", 1)
                 result[key.strip()] = value.strip()
         
         return result
@@ -86,83 +86,23 @@ async def receive_webhook(
 ) -> JSONResponse:
     """Receive PDF position updates and broadcast to clients.
     
-    Authenticates requests using the X-API-Key header, updates the
-    global state, and broadcasts the new position to all connected
-    WebSocket clients.
-    
-    Args:
-        data: JSON payload with page number and optional coordinates
-            - page (int): Page number to navigate to (required)
-            - y (float): Vertical position in PDF points (optional)
-            - x (float): Horizontal position (optional, reserved)
-        x_api_key: API key from X-API-Key header
-    
-    Returns:
-        JSONResponse: Success status with the received parameters
-    
-    Raises:
-        HTTPException: 403 if API key is invalid
-        HTTPException: 400 if page number is missing or invalid
-    """
-    settings = get_settings()
-    
-    # Validate API key
-    if x_api_key != settings.secret:
-        raise HTTPException(status_code=403, detail="Unauthorized")
-    
-    # Extract and validate parameters
-    try:
-        page = int(data.get("page", 1))
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=400, detail="Invalid page number")
-    
-    x = data.get("x")  # Optional: PDF x coordinate from synctex
-    y = data.get("y")  # Optional: PDF y coordinate from synctex
-    
-    # Update global state
-    pdf_state.update(page, y)
-    
-    # Broadcast to all connected clients
-    await manager.broadcast({
-        "action": "synctex",
-        "page": page,
-        "x": x,
-        "y": y,
-        "timestamp": pdf_state.last_update_time
-    })
-    
-    return JSONResponse(content={
-        "status": "success",
-        "page": page,
-        "x": x,
-        "y": y
-    })
-
-
-@router.post("/webhook/synctex")
-async def receive_synctex_update(
-    data: dict,
-    x_api_key: Optional[str] = Header(None)
-) -> JSONResponse:
-    """Receive Synctex coordinates from VimTeX and broadcast to clients.
-    
-    Converts line:column coordinates to PDF page and y-coordinate using synctex.
-    If synctex fails and PDF was updated, triggers client-side PDF reload.
+    Always attempts to use synctex to convert TeX coordinates to PDF coordinates.
+    If synctex succeeds, broadcasts the PDF position. If synctex fails or no
+    TeX coordinates are provided, simply returns success without scrolling.
     
     Args:
         data: JSON payload with TeX coordinates
-            - line (int): Line number in TeX file (required)
-            - col (int): Column number in TeX file (required)
-            - tex_file (str): Path to TeX source file (required)
-            - pdf_file (str): Path to PDF file (required)
+            - line (int): Line number in TeX file
+            - col (int): Column number in TeX file  
+            - tex_file (str): Path to TeX source file
+            - pdf_file (str): Path to PDF file
         x_api_key: API key from X-API-Key header
     
     Returns:
-        JSONResponse: Success status with PDF coordinates or None
+        JSONResponse: Success status with PDF coordinates or None if synctex failed
     
     Raises:
         HTTPException: 403 if API key is invalid
-        HTTPException: 400 if required parameters are missing or invalid
     """
     settings = get_settings()
     
@@ -170,14 +110,19 @@ async def receive_synctex_update(
     if x_api_key != settings.secret:
         raise HTTPException(status_code=403, detail="Unauthorized")
     
-    # Extract and validate parameters
+    # Extract parameters
     try:
         line = int(data["line"])
         col = int(data["col"])
         tex_file = data["tex_file"]
         pdf_file = data["pdf_file"]
     except (ValueError, TypeError, KeyError) as e:
-        raise HTTPException(status_code=400, detail=f"Invalid parameters: {e}")
+        # Missing or invalid synctex parameters - don't scroll, just return success
+        return JSONResponse(content={
+            "status": "success",
+            "page": None,
+            "message": "No valid synctex parameters, no scroll performed"
+        })
     
     # Normalize PDF file path
     pdf_path = Path(pdf_file)
@@ -188,7 +133,7 @@ async def receive_synctex_update(
     synctex_result = await run_synctex_view(line, col, tex_file, pdf_path)
     
     if synctex_result:
-        # Successful synctex lookup - extract coordinates
+        # Successful synctex lookup - extract coordinates and broadcast
         try:
             page = int(synctex_result.get("Page", 0))
             y = float(synctex_result.get("y", 0))
@@ -214,12 +159,12 @@ async def receive_synctex_update(
             })
             
         except (ValueError, TypeError):
-            # Invalid coordinate values
+            # Invalid coordinate values - don't scroll
             logger.warning(f"Invalid synctex coordinates: {synctex_result}")
             return JSONResponse(content={
-                "status": "error",
-                "message": "Invalid coordinate values",
-                "page": None
+                "status": "success",
+                "page": None,
+                "message": "Invalid synctex coordinates, no scroll performed"
             })
     else:
         # Synctex failed - check if PDF needs reload
@@ -242,10 +187,11 @@ async def receive_synctex_update(
         except Exception as e:
             logger.warning(f"Error checking PDF mtime: {e}")
         
-        # Return success with empty result
+        # Synctex failed and no PDF update - don't scroll
         return JSONResponse(content={
             "status": "success",
-            "page": None
+            "page": None,
+            "message": "Synctex lookup failed, no scroll performed"
         })
 
 

@@ -40,33 +40,51 @@ def client(mock_settings):
 class TestWebhookAuthentication:
     """Test suite for webhook authentication."""
     
-    def test_webhook_success_valid_api_key(self, client):
-        """Test successful webhook with valid API key."""
-        with patch("src.routes.webhook.manager") as mock_manager:
-            mock_manager.broadcast = AsyncMock()
-            mock_manager.broadcast.return_value = None
+    def test_webhook_success_valid_api_key(self, client, mock_settings):
+        """Test successful webhook with valid API key and valid synctex result."""
+        with patch("src.routes.webhook.run_synctex_view", new_callable=AsyncMock) as mock_synctex:
+            mock_synctex.return_value = {
+                "Page": "5",
+                "y": "150.5",
+                "x": "100.0"
+            }
             
-            with patch("src.routes.webhook.pdf_state") as mock_state:
-                mock_state.update = MagicMock()
-                mock_state.last_update_time = 1234567890
+            with patch("src.routes.webhook.manager") as mock_manager:
+                mock_manager.broadcast = AsyncMock()
+                mock_manager.broadcast.return_value = None
                 
-                response = client.post(
-                    "/webhook/update",
-                    json={"page": 5, "y": 100.5},
-                    headers={"X-API-Key": "test-secret-123"}
-                )
-                
-                assert response.status_code == 200
-                assert response.json()["status"] == "success"
-                assert response.json()["page"] == 5
-                assert response.json()["y"] == 100.5
-                mock_manager.broadcast.assert_called_once()
+                with patch("src.routes.webhook.pdf_state") as mock_state:
+                    mock_state.update = MagicMock()
+                    mock_state.last_update_time = 1234567890
+                    
+                    response = client.post(
+                        "/webhook/update",
+                        json={
+                            "line": 42,
+                            "col": 10,
+                            "tex_file": "/path/to/file.tex",
+                            "pdf_file": str(mock_settings.pdf_file)
+                        },
+                        headers={"X-API-Key": "test-secret-123"}
+                    )
+                    
+                    assert response.status_code == 200
+                    assert response.json()["status"] == "success"
+                    assert response.json()["page"] == 5
+                    assert response.json()["y"] == 150.5
+                    assert response.json()["x"] == 100.0
+                    mock_manager.broadcast.assert_called_once()
     
     def test_webhook_unauthorized_invalid_api_key(self, client):
         """Test webhook with invalid API key returns 403."""
         response = client.post(
             "/webhook/update",
-            json={"page": 5},
+            json={
+                "line": 42,
+                "col": 10,
+                "tex_file": "/path/to/file.tex",
+                "pdf_file": "/path/to/file.pdf"
+            },
             headers={"X-API-Key": "wrong-secret"}
         )
         
@@ -77,154 +95,160 @@ class TestWebhookAuthentication:
         """Test webhook without API key returns 403."""
         response = client.post(
             "/webhook/update",
-            json={"page": 5}
+            json={
+                "line": 42,
+                "col": 10,
+                "tex_file": "/path/to/file.tex",
+                "pdf_file": "/path/to/file.pdf"
+            }
         )
         
         assert response.status_code == 403
         assert "Unauthorized" in response.json()["detail"]
 
 
-class TestWebhookValidation:
-    """Test suite for webhook input validation."""
+class TestWebhookSynctexFailure:
+    """Test suite for webhook when synctex fails or no parameters provided."""
     
-    def test_webhook_invalid_page_number_string(self, client):
-        """Test webhook with non-numeric page returns 400."""
+    def test_webhook_missing_synctex_params(self, client):
+        """Test webhook without synctex parameters returns success with page=None."""
         response = client.post(
             "/webhook/update",
-            json={"page": "not-a-number"},
+            json={},
             headers={"X-API-Key": "test-secret-123"}
         )
         
-        assert response.status_code == 400
-        assert "Invalid page number" in response.json()["detail"]
+        assert response.status_code == 200
+        assert response.json()["status"] == "success"
+        assert response.json()["page"] is None
     
-    def test_webhook_invalid_page_number_none(self, client):
-        """Test webhook with null page returns 400."""
+    def test_webhook_invalid_synctex_params(self, client):
+        """Test webhook with invalid synctex parameters returns success with page=None."""
         response = client.post(
             "/webhook/update",
-            json={"page": None},
+            json={
+                "line": "invalid",
+                "col": 10,
+                "tex_file": "/path/to/file.tex",
+                "pdf_file": "/path/to/file.pdf"
+            },
             headers={"X-API-Key": "test-secret-123"}
         )
         
-        # None cannot be converted to int, so this should fail
-        assert response.status_code == 400
-        assert "Invalid page number" in response.json()["detail"]
+        assert response.status_code == 200
+        assert response.json()["status"] == "success"
+        assert response.json()["page"] is None
     
-    def test_webhook_missing_page_uses_default(self, client):
-        """Test webhook without page defaults to 1."""
-        with patch("src.routes.webhook.manager") as mock_manager:
-            mock_manager.broadcast = AsyncMock()
-            mock_manager.broadcast.return_value = None
+    def test_webhook_synctex_lookup_fails(self, client, mock_settings):
+        """Test webhook when synctex lookup fails returns success with page=None."""
+        with patch("src.routes.webhook.run_synctex_view", new_callable=AsyncMock) as mock_synctex:
+            mock_synctex.return_value = None
             
-            with patch("src.routes.webhook.pdf_state") as mock_state:
-                mock_state.update = MagicMock()
-                mock_state.last_update_time = 1234567890
-                
-                response = client.post(
-                    "/webhook/update",
-                    json={},
-                    headers={"X-API-Key": "test-secret-123"}
-                )
-                
-                assert response.status_code == 200
-                assert response.json()["page"] == 1
+            response = client.post(
+                "/webhook/update",
+                json={
+                    "line": 42,
+                    "col": 10,
+                    "tex_file": "/path/to/file.tex",
+                    "pdf_file": str(mock_settings.pdf_file)
+                },
+                headers={"X-API-Key": "test-secret-123"}
+            )
+            
+            assert response.status_code == 200
+            assert response.json()["status"] == "success"
+            assert response.json()["page"] is None
 
 
 class TestWebhookBroadcasting:
     """Test suite for webhook broadcasting functionality."""
     
-    def test_webhook_broadcasts_to_clients(self, client):
-        """Test that webhook broadcasts message to connected clients."""
-        with patch("src.routes.webhook.manager") as mock_manager:
-            mock_manager.broadcast = AsyncMock()
-            mock_manager.broadcast.return_value = None
+    def test_webhook_broadcasts_synctex_result(self, client, mock_settings):
+        """Test that webhook broadcasts synctex result to connected clients."""
+        with patch("src.routes.webhook.run_synctex_view", new_callable=AsyncMock) as mock_synctex:
+            mock_synctex.return_value = {
+                "Page": "3",
+                "y": "150.0",
+                "x": "50.0"
+            }
             
-            with patch("src.routes.webhook.pdf_state") as mock_state:
-                mock_state.update = MagicMock()
-                mock_state.last_update_time = 1234567890
+            with patch("src.routes.webhook.manager") as mock_manager:
+                mock_manager.broadcast = AsyncMock()
+                mock_manager.broadcast.return_value = None
                 
-                response = client.post(
-                    "/webhook/update",
-                    json={"page": 3, "y": 150.0, "x": 50.0},
-                    headers={"X-API-Key": "test-secret-123"}
-                )
-                
-                assert response.status_code == 200
-                mock_manager.broadcast.assert_called_once()
-                
-                # Verify broadcast message structure
-                call_args = mock_manager.broadcast.call_args[0][0]
-                assert call_args["action"] == "synctex"
-                assert call_args["page"] == 3
-                assert call_args["y"] == 150.0
-                assert call_args["x"] == 50.0
-                assert "timestamp" in call_args
+                with patch("src.routes.webhook.pdf_state") as mock_state:
+                    mock_state.update = MagicMock()
+                    mock_state.last_update_time = 1234567890
+                    
+                    response = client.post(
+                        "/webhook/update",
+                        json={
+                            "line": 10,
+                            "col": 5,
+                            "tex_file": "/path/to/file.tex",
+                            "pdf_file": str(mock_settings.pdf_file)
+                        },
+                        headers={"X-API-Key": "test-secret-123"}
+                    )
+                    
+                    assert response.status_code == 200
+                    mock_manager.broadcast.assert_called_once()
+                    
+                    # Verify broadcast message structure
+                    call_args = mock_manager.broadcast.call_args[0][0]
+                    assert call_args["action"] == "synctex"
+                    assert call_args["page"] == 3
+                    assert call_args["y"] == 150.0
+                    assert call_args["x"] == 50.0
+                    assert "timestamp" in call_args
     
-    def test_webhook_updates_global_state(self, client):
+    def test_webhook_updates_global_state(self, client, mock_settings):
         """Test that webhook updates the global PDF state."""
-        with patch("src.routes.webhook.manager") as mock_manager:
-            mock_manager.broadcast = AsyncMock()
-            mock_manager.broadcast.return_value = None
+        with patch("src.routes.webhook.run_synctex_view", new_callable=AsyncMock) as mock_synctex:
+            mock_synctex.return_value = {
+                "Page": "7",
+                "y": "200.5",
+                "x": "100.0"
+            }
             
-            with patch("src.routes.webhook.pdf_state") as mock_state:
-                mock_state.update = MagicMock()
-                mock_state.last_update_time = 1234567890
+            with patch("src.routes.webhook.manager") as mock_manager:
+                mock_manager.broadcast = AsyncMock()
+                mock_manager.broadcast.return_value = None
                 
-                response = client.post(
-                    "/webhook/update",
-                    json={"page": 7, "y": 200.5},
-                    headers={"X-API-Key": "test-secret-123"}
-                )
-                
-                assert response.status_code == 200
-                mock_state.update.assert_called_once_with(7, 200.5)
+                with patch("src.routes.webhook.pdf_state") as mock_state:
+                    mock_state.update = MagicMock()
+                    mock_state.last_update_time = 1234567890
+                    
+                    response = client.post(
+                        "/webhook/update",
+                        json={
+                            "line": 100,
+                            "col": 20,
+                            "tex_file": "/path/to/file.tex",
+                            "pdf_file": str(mock_settings.pdf_file)
+                        },
+                        headers={"X-API-Key": "test-secret-123"}
+                    )
+                    
+                    assert response.status_code == 200
+                    mock_state.update.assert_called_once_with(7, 200.5)
     
-    def test_webhook_optional_coordinates(self, client):
-        """Test webhook with only page number (no coordinates)."""
-        with patch("src.routes.webhook.manager") as mock_manager:
-            mock_manager.broadcast = AsyncMock()
-            mock_manager.broadcast.return_value = None
+    def test_webhook_no_scroll_when_synctex_fails(self, client, mock_settings):
+        """Test that webhook returns success with page=None when synctex fails."""
+        with patch("src.routes.webhook.run_synctex_view", new_callable=AsyncMock) as mock_synctex:
+            mock_synctex.return_value = None  # synctex fails
             
-            with patch("src.routes.webhook.pdf_state") as mock_state:
-                mock_state.update = MagicMock()
-                mock_state.last_update_time = 1234567890
-                
-                response = client.post(
-                    "/webhook/update",
-                    json={"page": 2},
-                    headers={"X-API-Key": "test-secret-123"}
-                )
-                
-                assert response.status_code == 200
-                assert response.json()["page"] == 2
-                assert response.json()["y"] is None
-                assert response.json()["x"] is None
-                
-                # Verify broadcast includes null coordinates
-                call_args = mock_manager.broadcast.call_args[0][0]
-                assert call_args["y"] is None
-                assert call_args["x"] is None
-    
-    def test_webhook_response_format(self, client):
-        """Test webhook response format."""
-        with patch("src.routes.webhook.manager") as mock_manager:
-            mock_manager.broadcast = AsyncMock()
-            mock_manager.broadcast.return_value = None
+            response = client.post(
+                "/webhook/update",
+                json={
+                    "line": 42,
+                    "col": 10,
+                    "tex_file": "/path/to/file.tex",
+                    "pdf_file": str(mock_settings.pdf_file)
+                },
+                headers={"X-API-Key": "test-secret-123"}
+            )
             
-            with patch("src.routes.webhook.pdf_state") as mock_state:
-                mock_state.update = MagicMock()
-                mock_state.last_update_time = 1234567890
-                
-                response = client.post(
-                    "/webhook/update",
-                    json={"page": 10, "y": 300.0, "x": 100.0},
-                    headers={"X-API-Key": "test-secret-123"}
-                )
-                
-                assert response.status_code == 200
-                data = response.json()
-                assert "status" in data
-                assert "page" in data
-                assert "x" in data
-                assert "y" in data
-                assert data["status"] == "success"
+            assert response.status_code == 200
+            assert response.json()["status"] == "success"
+            assert response.json()["page"] is None

@@ -20,12 +20,12 @@ class TestStateConsistency:
     async def test_state_consistency_webhook_vs_polling(
         self, test_client, reset_state, reset_connections
     ):
-        """Test that webhook updates are visible via /current-state endpoint."""
+        """Test that webhook updates are visible via /state endpoint."""
         from src.state import pdf_state
         from src.connection_manager import manager
         
         # Initial state
-        response = test_client.get("/current-state")
+        response = test_client.get("/state")
         initial_data = response.json()
         initial_timestamp = initial_data["last_update_time"]
         
@@ -38,7 +38,7 @@ class TestStateConsistency:
         assert response.status_code == 200
         
         # Poll for state
-        response = test_client.get("/current-state")
+        response = test_client.get("/state")
         polled_data = response.json()
         
         # Verify consistency
@@ -152,7 +152,7 @@ class TestStateConsistency:
         assert len(client2.sent_messages) == 0  # No broadcast since connection
         
         # Verify via API
-        response = test_client.get("/current-state")
+        response = test_client.get("/state")
         data = response.json()
         assert data["page"] == 3
         assert data["y"] == 200
@@ -164,13 +164,13 @@ class TestStateConsistency:
     async def test_state_read_during_update(
         self, test_client, reset_state, reset_connections
     ):
-        """Test /current-state called while webhook is updating."""
+        """Test /state called while webhook is updating."""
         from src.state import pdf_state
         
         results = []
         
         async def read_state():
-            response = test_client.get("/current-state")
+            response = test_client.get("/state")
             results.append(("read", response.json()))
         
         async def update_state(page):
@@ -214,7 +214,7 @@ class TestStateConsistency:
         assert response.status_code == 200
         
         # Read state
-        response = test_client.get("/current-state")
+        response = test_client.get("/state")
         data = response.json()
         
         # Verify types

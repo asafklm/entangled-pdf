@@ -95,7 +95,7 @@ class TestEndToEndSyncTeX:
         await manager.connect(browser2)
         
         # Browser polls for current state (simulating syncState())
-        response = test_client.get("/current-state")
+        response = test_client.get("/state")
         current_state = response.json()
         
         # Browser syncs to current position
@@ -242,7 +242,7 @@ class TestEndToEndSyncTeX:
         # No WebSocket connection (simulating failure)
         
         # Initial state check via polling
-        response = test_client.get("/current-state")
+        response = test_client.get("/state")
         initial_data = response.json()
         initial_timestamp = initial_data["last_update_time"]
         
@@ -255,7 +255,7 @@ class TestEndToEndSyncTeX:
         assert response.status_code == 200
         
         # Browser polls and detects new state
-        response = test_client.get("/current-state")
+        response = test_client.get("/state")
         polled_data = response.json()
         
         # Browser detects update via polling

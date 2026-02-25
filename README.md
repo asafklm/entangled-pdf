@@ -179,10 +179,10 @@ That's it! The `remote_pdf` tool handles everything automatically:
 When you press `<leader>lv` (VimTeX's default forward search key):
 
 1. **VimTeX** calls: `remote_pdf --synctex-forward line:col:texfile pdffile &`
-2. **remote_pdf** checks if pdf_server is running via HTTP `/current-pdf`
+2. **remote_pdf** checks if pdf_server is running via HTTP `/state`
 3. If not running: starts pdf_server automatically
 4. If serving different PDF: restarts server with new PDF
-5. Sends synctex coordinates to `/webhook/synctex` endpoint
+5. Sends synctex coordinates to `/webhook/update` endpoint
 6. Server converts line:column to PDF coordinates and broadcasts to browser
 7. Browser scrolls to position and shows red dot marker
 

@@ -4,6 +4,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
+from pathlib import Path
 
 from src.routes import state as state_route
 
@@ -16,15 +17,23 @@ def client():
     return TestClient(app)
 
 
-class TestGetState:
-    """Test suite for GET /current-state endpoint."""
+@pytest.fixture
+def mock_settings(tmp_path):
+    """Create mock settings for testing."""
+    pdf_file = tmp_path / "test.pdf"
+    pdf_file.write_text("dummy pdf content")
     
-    def test_get_state_returns_current_state(self, client):
-        """Test that endpoint returns current PDF state."""
+    mock_settings = MagicMock()
+    mock_settings.pdf_file = pdf_file
+    return mock_settings
+
+
+class TestGetState:
+    """Test suite for GET /state endpoint."""
+    
+    def test_get_state_returns_current_state(self, client, mock_settings):
+        """Test that endpoint returns current PDF state with file path."""
         mock_state = MagicMock()
-        mock_state.current_page = 5
-        mock_state.current_y = 150.5
-        mock_state.last_update_time = 1234567890
         mock_state.to_dict.return_value = {
             "page": 5,
             "y": 150.5,
@@ -32,15 +41,17 @@ class TestGetState:
         }
         
         with patch("src.routes.state.pdf_state", mock_state):
-            response = client.get("/current-state")
-            
-            assert response.status_code == 200
-            data = response.json()
-            assert data["page"] == 5
-            assert data["y"] == 150.5
-            assert data["last_update_time"] == 1234567890
+            with patch("src.routes.state.get_settings", return_value=mock_settings):
+                response = client.get("/state")
+                
+                assert response.status_code == 200
+                data = response.json()
+                assert data["pdf_file"] == str(mock_settings.pdf_file)
+                assert data["page"] == 5
+                assert data["y"] == 150.5
+                assert data["last_update_time"] == 1234567890
     
-    def test_get_state_json_format(self, client):
+    def test_get_state_json_format(self, client, mock_settings):
         """Test that response is valid JSON with correct structure."""
         mock_state = MagicMock()
         mock_state.to_dict.return_value = {
@@ -50,18 +61,20 @@ class TestGetState:
         }
         
         with patch("src.routes.state.pdf_state", mock_state):
-            response = client.get("/current-state")
-            
-            assert response.status_code == 200
-            assert response.headers["content-type"] == "application/json"
-            
-            data = response.json()
-            assert isinstance(data, dict)
-            assert "page" in data
-            assert "y" in data
-            assert "last_update_time" in data
+            with patch("src.routes.state.get_settings", return_value=mock_settings):
+                response = client.get("/state")
+                
+                assert response.status_code == 200
+                assert response.headers["content-type"] == "application/json"
+                
+                data = response.json()
+                assert isinstance(data, dict)
+                assert "pdf_file" in data
+                assert "page" in data
+                assert "y" in data
+                assert "last_update_time" in data
     
-    def test_get_state_default_values(self, client):
+    def test_get_state_default_values(self, client, mock_settings):
         """Test that endpoint returns default state values."""
         mock_state = MagicMock()
         mock_state.to_dict.return_value = {
@@ -71,14 +84,15 @@ class TestGetState:
         }
         
         with patch("src.routes.state.pdf_state", mock_state):
-            response = client.get("/current-state")
-            
-            assert response.status_code == 200
-            data = response.json()
-            assert data["page"] == 1
-            assert data["y"] is None
+            with patch("src.routes.state.get_settings", return_value=mock_settings):
+                response = client.get("/state")
+                
+                assert response.status_code == 200
+                data = response.json()
+                assert data["page"] == 1
+                assert data["y"] is None
     
-    def test_get_state_reflects_updates(self, client):
+    def test_get_state_reflects_updates(self, client, mock_settings):
         """Test that endpoint reflects state updates."""
         # First update
         mock_state1 = MagicMock()
@@ -89,10 +103,11 @@ class TestGetState:
         }
         
         with patch("src.routes.state.pdf_state", mock_state1):
-            response = client.get("/current-state")
-            data = response.json()
-            assert data["page"] == 3
-            assert data["y"] == 100.0
+            with patch("src.routes.state.get_settings", return_value=mock_settings):
+                response = client.get("/state")
+                data = response.json()
+                assert data["page"] == 3
+                assert data["y"] == 100.0
         
         # Second update
         mock_state2 = MagicMock()
@@ -103,12 +118,13 @@ class TestGetState:
         }
         
         with patch("src.routes.state.pdf_state", mock_state2):
-            response = client.get("/current-state")
-            data = response.json()
-            assert data["page"] == 7
-            assert data["y"] == 250.5
+            with patch("src.routes.state.get_settings", return_value=mock_settings):
+                response = client.get("/state")
+                data = response.json()
+                assert data["page"] == 7
+                assert data["y"] == 250.5
     
-    def test_get_state_with_zero_y(self, client):
+    def test_get_state_with_zero_y(self, client, mock_settings):
         """Test that y=0 is properly returned (not treated as None)."""
         mock_state = MagicMock()
         mock_state.to_dict.return_value = {
@@ -118,14 +134,15 @@ class TestGetState:
         }
         
         with patch("src.routes.state.pdf_state", mock_state):
-            response = client.get("/current-state")
-            
-            assert response.status_code == 200
-            data = response.json()
-            assert data["page"] == 2
-            assert data["y"] == 0.0
+            with patch("src.routes.state.get_settings", return_value=mock_settings):
+                response = client.get("/state")
+                
+                assert response.status_code == 200
+                data = response.json()
+                assert data["page"] == 2
+                assert data["y"] == 0.0
     
-    def test_get_state_large_page_number(self, client):
+    def test_get_state_large_page_number(self, client, mock_settings):
         """Test with large page numbers."""
         mock_state = MagicMock()
         mock_state.to_dict.return_value = {
@@ -135,14 +152,15 @@ class TestGetState:
         }
         
         with patch("src.routes.state.pdf_state", mock_state):
-            response = client.get("/current-state")
-            
-            assert response.status_code == 200
-            data = response.json()
-            assert data["page"] == 9999
-            assert data["y"] == 5000.5
+            with patch("src.routes.state.get_settings", return_value=mock_settings):
+                response = client.get("/state")
+                
+                assert response.status_code == 200
+                data = response.json()
+                assert data["page"] == 9999
+                assert data["y"] == 5000.5
     
-    def test_get_state_timestamp_type(self, client):
+    def test_get_state_timestamp_type(self, client, mock_settings):
         """Test that timestamp is returned as integer."""
         mock_state = MagicMock()
         mock_state.to_dict.return_value = {
@@ -152,9 +170,10 @@ class TestGetState:
         }
         
         with patch("src.routes.state.pdf_state", mock_state):
-            response = client.get("/current-state")
-            
-            assert response.status_code == 200
-            data = response.json()
-            assert isinstance(data["last_update_time"], int)
-            assert data["last_update_time"] == 1234567890123
+            with patch("src.routes.state.get_settings", return_value=mock_settings):
+                response = client.get("/state")
+                
+                assert response.status_code == 200
+                data = response.json()
+                assert isinstance(data["last_update_time"], int)
+                assert data["last_update_time"] == 1234567890123

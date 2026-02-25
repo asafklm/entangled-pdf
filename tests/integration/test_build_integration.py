@@ -138,24 +138,26 @@ class TestTypeScriptInterfaceContracts:
         return viewer_ts.read_text()
     
     def test_state_update_interface_matches_api(self, viewer_ts_content, test_client, reset_state):
-        """Test that StateUpdate interface matches /current-state API response."""
+        """Test that StateUpdate interface matches /state API response."""
         # Get actual API response
         response = test_client.post(
             "/webhook/update",
-            json={"page": 5, "y": 150.5},
+            json={"line": 10, "col": 5, "tex_file": "/path/to/test.tex", "pdf_file": str(get_settings().pdf_file)},
             headers={"X-API-Key": get_settings().secret}
         )
         assert response.status_code == 200
         
-        response = test_client.get("/current-state")
+        response = test_client.get("/state")
         api_data = response.json()
         
         # Verify API fields match StateUpdate interface
+        assert "pdf_file" in api_data, "API missing 'pdf_file' field"
         assert "page" in api_data, "API missing 'page' field"
         assert "y" in api_data, "API missing 'y' field"
         assert "last_update_time" in api_data, "API missing 'last_update_time' field"
         
         # Type checks
+        assert isinstance(api_data["pdf_file"], str), "pdf_file should be string"
         assert isinstance(api_data["page"], int), "page should be number (int)"
         assert isinstance(api_data["y"], (float, type(None))), "y should be number or null"
         assert isinstance(api_data["last_update_time"], int), "last_update_time should be number"
