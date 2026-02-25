@@ -1,0 +1,75 @@
+# Python virtual environment
+bin/
+lib/
+lib64
+include/
+pyvenv.cfg
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# pytest cache
+.pytest_cache/
+
+# Coverage
+.coverage
+htmlcov/
+
+# Node.js
+node_modules/
+
+# Compiled TypeScript output (keep only .ts source)
+static/*.js
+static/*.js.map
+static/*.d.ts
+static/*.d.ts.map
+tests/js/*.js
+tests/js/*.js.map
+tests/js/*.d.ts
+tests/js/*.d.ts.map
+
+# Keep type declarations in types/ directory
+!types/*.d.ts
+
+# Keep vitest config (needed for tests)
+!vitest.config.js
+
+# LaTeX build artifacts
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.synctex.gz
+*.synctex(busy)
+*.out
+*.toc
+
+# Editor/IDE files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+session-*.md
+
+# Build directories
+dist/
+build/
+
+# PDF.js is vendored - can be tracked or installed
+# Uncomment if you prefer to install via npm instead:
+# pdfjs-dist/
