@@ -17,9 +17,13 @@ The server uses WebSockets for real-time updates with automatic fallback to HTTP
 ### Installation
 
 1. Clone or download this repository
-2. Install dependencies:
+2. Install Python dependencies:
 ```bash
 pip install -r requirements.txt
+```
+3. Install Node.js dependencies (required for PDF.js):
+```bash
+npm install
 ```
 
 ### Running the Server
