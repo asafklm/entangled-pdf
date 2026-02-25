@@ -103,7 +103,8 @@ PdfServer/
 │   ├── viewer.html        # Jinja2 HTML template
 │   ├── viewer.ts          # TypeScript viewer (compiled to viewer.js)
 │   └── viewer-utils.ts    # Testable utility module
-├── VimTeX-integration.lua # Enhanced VimTeX integration script
+├── bin/
+│   └── remote_pdf           # CLI client for VimTeX integration (Zathura-compatible)
 ├── tests/js/              # JavaScript/TypeScript tests
 │   ├── viewer-utils.test.ts  # Unit tests
 │   └── setup.ts           # Test setup and mocks
@@ -151,85 +152,57 @@ npm test -- --watch
 
 ## Neovim + VimTeX Integration
 
-PdfServer integrates seamlessly with Neovim and VimTeX for LaTeX forward search with automatic Synctex support.
+PdfServer integrates seamlessly with Neovim and VimTeX using the `remote_pdf` CLI tool (Zathura-compatible interface).
 
-### Setup
+### Quick Setup (Recommended)
 
-Add to your Neovim configuration (e.g., `[~/.config/nvim/init.lua](~/.config/nvim/init.lua)`):
+Simply configure VimTeX to use `remote_pdf` as the general viewer:
 
 ```lua
--- Load the enhanced PdfServer integration
--- Option 1: Include the provided Lua file
-local pdfserver_config = require('path/to/VimTeX-integration')
-
--- Option 2: Or copy the configuration directly
+-- Add to your Neovim configuration (e.g., ~/.config/nvim/init.lua)
 vim.g.vimtex_view_method = 'general'
-vim.g.vimtex_view_general_viewer = 'curl'
-vim.g.vimtex_view_general_options = [[
-  -X POST
-  -H "X-API-Key: super-secret-123"
-  -H "Content-Type: application/json"
-  -d '{"line": @line, "col": @col, "tex_file": "@tex", "pdf_file": "@pdf"}'
-  http://localhost:8431/webhook/synctex
-]]
+vim.g.vimtex_view_general_viewer = 'remote_pdf'
 
--- Enhanced forward search with automatic Synctex conversion
-local function forward_search()
-  local line = vim.fn.line('.')
-  local col = vim.fn.col('.')
-  local file = vim.fn.expand('%:p')
-  local pdf = vim.fn.expand('%:r') .. '.pdf'
-  
-  -- The server now handles synctex conversion automatically
-  local curl_cmd = string.format(
-    'curl -s -X POST http://localhost:8431/webhook/synctex -H "X-API-Key: super-secret-123" -H "Content-Type: application/json" -d \'{"line": %d, "col": %d, "tex_file": "%s", "pdf_file": "%s"}\' > /dev/null',
-    line, col, file, pdf
-  )
-  os.execute(curl_cmd)
-end
-
--- Map to <leader>lv (VimTeX default forward search)
-vim.keymap.set('n', '<leader>lv', forward_search, { buffer = true, desc = 'VimTeX forward search' })
-
--- Optional: Auto-reload PDF when compilation completes
-vim.api.nvim_create_autocmd("User", {
-  pattern = "VimtexEventCompileSuccess",
-  callback = function()
-    local curl_cmd = 'curl -s -X POST http://localhost:8431/webhook/update -H "X-API-Key: super-secret-123" -H "Content-Type: application/json" -d \'{"page": 1}\' > /dev/null'
-    os.execute(curl_cmd)
-  end,
-  desc = "Auto-reload PDF after compilation"
-})
+-- Optional: Configure port and API key via environment variables
+-- vim.env.PDF_SERVER_PORT = '8431'
+-- vim.env.PDF_SERVER_SECRET = 'your-secret-key'
 ```
 
-### Environment Variable Configuration
+That's it! The `remote_pdf` tool handles everything automatically:
+- **First compile**: Starts pdf_server automatically when you first view a PDF
+- **Forward search**: Standard `<leader>lv` jumps to cursor position in PDF
+- **PDF reload**: Automatic reload when the PDF file is modified
+- **Server lifecycle**: Automatic server management (start, restart, shutdown)
 
-Set the API key as an environment variable for security:
+### How It Works
+
+When you press `<leader>lv` (VimTeX's default forward search key):
+
+1. **VimTeX** calls: `remote_pdf --synctex-forward line:col:texfile pdffile &`
+2. **remote_pdf** checks if pdf_server is running via HTTP `/current-pdf`
+3. If not running: starts pdf_server automatically
+4. If serving different PDF: restarts server with new PDF
+5. Sends synctex coordinates to `/webhook/synctex` endpoint
+6. Server converts line:column to PDF coordinates and broadcasts to browser
+7. Browser scrolls to position and shows red dot marker
+
+### Manual Usage (Without VimTeX)
+
+You can also use `remote_pdf` standalone:
 
 ```bash
-export PDF_SERVER_SECRET=your-secret-key
+# Open PDF (auto-starts server if needed)
+remote_pdf document.pdf &
+
+# Open with forward search
+remote_pdf --synctex-forward "42:5:chapter.tex" document.pdf &
+
+# Custom port
+remote_pdf --port 8080 document.pdf &
+
+# Verbose output (for debugging)
+remote_pdf -v --synctex-forward "10:1:main.tex" main.pdf
 ```
-
-Then use it in your Neovim config:
-
-```lua
-vim.g.vimtex_view_general_options = [[
-  -X POST
-  -H "X-API-Key: ]] .. os.getenv("PDF_SERVER_SECRET") .. [["
-  -H "Content-Type: application/json"
-  -d '{"line": @line, "col": @col, "tex_file": "@tex", "pdf_file": "@pdf"}'
-  http://localhost:8431/webhook/synctex
-]]
-```
-
-### Usage with VimTeX
-
-1. Open a `.tex` file in Neovim
-2. Compile with `:VimtexCompile` (or `<leader>ll`)
-3. Open the PDF in your browser at `http://<server>:8431/view`
-4. Press `<leader>lv` (or your mapped key) to jump to the current cursor position in the PDF
-
-The browser will automatically scroll to the corresponding location and display a red dot marker at the exact position. If the PDF was updated during compilation, it will automatically reload.
 
 ### SyncTeX Support
 
@@ -240,29 +213,25 @@ PdfServer supports SyncTeX for precise forward search:
 pdflatex -synctex=1 document.tex
 ```
 
-2. The server automatically converts line:column coordinates to PDF page and y-coordinate using the `/webhook/synctex` endpoint
+2. Forward search automatically converts line:column coordinates to PDF positions
 
-3. Use the enhanced synctex integration for more precise positioning:
-   - The server handles all synctex processing
-   - No need to run synctex manually from VimTeX
-   - Automatic PDF reload detection when compilation completes
+3. The server handles all synctex processing internally
 
-### Debugging
+### Environment Variables
 
-Use the provided helper functions to debug the integration:
+Configure `remote_pdf` and the server via environment variables:
 
-```vim
-:SynctexTest    " Test synctex command output
-:PdfServerTest  " Test PdfServer connectivity
+```bash
+export PDF_SERVER_PORT=8431        # Server port
+export PDF_SERVER_SECRET=super-secret-123  # API authentication
 ```
 
-### Advanced Features
+Or set in your Neovim init.lua:
 
-- **Automatic PDF Reload**: If synctex fails but the PDF was updated, the browser automatically reloads
-- **Silent Failure**: If synctex lookup fails, the operation completes without error
-- **Flexible Path Handling**: Accepts both relative and absolute paths for PDF files
-- **No Caching**: Each forward search runs fresh synctex for accuracy
-- **Single-User Setup**: Designed for individual development workflows
+```lua
+vim.env.PDF_SERVER_PORT = '8080'
+vim.env.PDF_SERVER_SECRET = 'my-secret-key'
+```
 
 ## Features
 

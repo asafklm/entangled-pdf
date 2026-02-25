@@ -5,6 +5,9 @@ lib64
 include/
 pyvenv.cfg
 
+# But keep the remote_pdf CLI tool (not part of venv)
+!bin/remote_pdf
+
 # Python cache
 __pycache__/
 *.pyc
