@@ -60,12 +60,17 @@ async def view_page(request: Request) -> HTMLResponse:
     templates = get_templates()
     mtime = settings.pdf_file.stat().st_mtime
     
+    # Get viewer.js modification time for cache-busting
+    viewer_js_path = settings.static_dir / "viewer.js"
+    js_mtime = viewer_js_path.stat().st_mtime if viewer_js_path.exists() else mtime
+    
     return templates.TemplateResponse(
         request,
         "viewer.html",
         {
             "port": settings.port,
             "filename": settings.pdf_file.name,
-            "mtime": mtime
+            "mtime": mtime,
+            "js_mtime": js_mtime
         }
     )

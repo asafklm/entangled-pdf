@@ -171,16 +171,28 @@ PdfServer integrates seamlessly with Neovim and VimTeX using the `remote_pdf` CL
 
 ### Quick Setup (Recommended)
 
-Simply configure VimTeX to use `remote_pdf` as the general viewer:
+Configure VimTeX to use `remote_pdf` as the general viewer:
 
+**Neovim** (Lua configuration, e.g., `~/.config/nvim/init.lua`):
 ```lua
--- Add to your Neovim configuration (e.g., ~/.config/nvim/init.lua)
 vim.g.vimtex_view_method = 'general'
 vim.g.vimtex_view_general_viewer = 'remote_pdf'
+vim.g.vimtex_view_general_options = '--synctex-forward @line:@col:@tex @pdf'
 
 -- Optional: Configure port and API key via environment variables
 -- vim.env.PDF_SERVER_PORT = '8431'
 -- vim.env.PDF_SERVER_SECRET = 'your-secret-key'
+```
+
+**Vim** (Vimscript, e.g., `~/.vimrc`):
+```vim
+let g:vimtex_view_method = 'general'
+let g:vimtex_view_general_viewer = 'remote_pdf'
+let g:vimtex_view_general_options = '--synctex-forward @line:@col:@tex @pdf'
+
+" Optional: Configure port and API key via environment variables
+" let $PDF_SERVER_PORT = '8431'
+" let $PDF_SERVER_SECRET = 'your-secret-key'
 ```
 
 That's it! The `remote_pdf` tool handles everything automatically:
@@ -188,6 +200,8 @@ That's it! The `remote_pdf` tool handles everything automatically:
 - **Forward search**: Standard `<leader>lv` jumps to cursor position in PDF
 - **PDF reload**: Automatic reload when the PDF file is modified
 - **Server lifecycle**: Automatic server management (start, restart, shutdown)
+
+**Note**: The `@line`, `@col`, and `@tex` placeholders are replaced by VimTeX with the current cursor position when you trigger forward search.
 
 ### How It Works
 
@@ -241,11 +255,18 @@ export PDF_SERVER_PORT=8431        # Server port
 export PDF_SERVER_SECRET=super-secret-123  # API authentication
 ```
 
-Or set in your Neovim init.lua:
+Or in your editor configuration:
 
+**Neovim** (Lua):
 ```lua
 vim.env.PDF_SERVER_PORT = '8080'
 vim.env.PDF_SERVER_SECRET = 'my-secret-key'
+```
+
+**Vim** (Vimscript):
+```vim
+let $PDF_SERVER_PORT = '8080'
+let $PDF_SERVER_SECRET = 'my-secret-key'
 ```
 
 ## Features

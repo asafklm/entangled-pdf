@@ -445,7 +445,7 @@ function handleKeydown(event: KeyboardEvent): void {
  */
 async function syncState(): Promise<void> {
   try {
-    const res: Response = await fetch('/current-state');
+    const res: Response = await fetch('/state');
     const data: StateUpdate = await res.json();
     console.log("SyncState received:", data);
 
@@ -522,7 +522,7 @@ function startPolling(): void {
   console.log("Starting fallback polling...");
   pollingInterval = window.setInterval(async () => {
     try {
-      const res: Response = await fetch('/current-state');
+      const res: Response = await fetch('/state');
       const data: StateUpdate = await res.json();
 
       if ((data.last_update_time ?? 0) > lastUpdateTimestamp) {

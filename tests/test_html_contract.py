@@ -32,7 +32,9 @@ class TestScriptLoadingOrder:
         
         # Find positions of both scripts
         pdf_config_pos = html.find("window.PDF_CONFIG")
-        viewer_js_pos = html.find('src="/static/viewer.js"')
+        # Match viewer.js with optional query parameters (cache-busting)
+        viewer_js_match = re.search(r'src="/static/viewer\.js[^"]*"', html)
+        viewer_js_pos = viewer_js_match.start() if viewer_js_match else -1
         
         assert pdf_config_pos != -1, (
             "PDF_CONFIG must be defined in HTML. "
@@ -61,8 +63,8 @@ class TestScriptLoadingOrder:
         
         html = response.text
         
-        # Find the viewer.js script tag
-        script_pattern = r'<script[^>]*src="/static/viewer\.js"[^>]*>'
+        # Find the viewer.js script tag (with optional cache-busting query params)
+        script_pattern = r'<script[^>]*src="/static/viewer\.js[^"]*"[^>]*>'
         matches = re.findall(script_pattern, html, re.IGNORECASE)
         
         assert len(matches) > 0, "viewer.js script tag must be present"
@@ -94,7 +96,9 @@ class TestScriptLoadingOrder:
         
         # Find element positions
         container_pos = html.find('id="viewer-container"')
-        viewer_js_pos = html.find('src="/static/viewer.js"')
+        # Match viewer.js with optional query parameters (cache-busting)
+        viewer_js_match = re.search(r'src="/static/viewer\.js[^"]*"', html)
+        viewer_js_pos = viewer_js_match.start() if viewer_js_match else -1
         
         assert container_pos != -1, (
             "viewer-container element must exist in HTML. "
@@ -123,8 +127,8 @@ class TestModuleScriptValidation:
         
         html = response.text
         
-        # Find the viewer.js script tag
-        script_pattern = r'<script[^>]*src="/static/viewer\.js"[^>]*>'
+        # Find the viewer.js script tag (with optional cache-busting query params)
+        script_pattern = r'<script[^>]*src="/static/viewer\.js[^"]*"[^>]*>'
         matches = re.findall(script_pattern, html, re.IGNORECASE)
         
         assert len(matches) > 0, "viewer.js script tag must be present"
@@ -151,8 +155,8 @@ class TestModuleScriptValidation:
         # Count pdfjsLib imports (should only be in viewer.js)
         import_count = html.count("import * as pdfjsLib")
         
-        # Remove the viewer.js reference to count only inline scripts
-        viewer_js_pattern = r'<script[^>]*src="/static/viewer\.js"[^>]*>.*?</script>'
+        # Remove the viewer.js reference to count only inline scripts (with optional query params)
+        viewer_js_pattern = r'<script[^>]*src="/static/viewer\.js[^"]*"[^>]*>.*?</script>'
         html_without_viewer_js = re.sub(
             viewer_js_pattern, 
             '', 
