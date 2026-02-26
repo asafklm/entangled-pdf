@@ -176,7 +176,7 @@ class TestTypeScriptInterfaceContracts:
         assert test_settings.pdf_file.name in html, "Filename not in PDF_CONFIG"
     
     @pytest.mark.asyncio
-    async def test_websocket_message_format_matches_interface(self, test_client, reset_state, reset_connections):
+    async def test_websocket_message_format_matches_interface(self, test_client, reset_state, reset_connections, mock_synctex):
         """Test that WebSocket message format matches StateUpdate interface."""
         from src.connection_manager import manager
         
@@ -184,10 +184,10 @@ class TestTypeScriptInterfaceContracts:
         
         await manager.connect(client)
         
-        # Send webhook
+        # Send webhook with synctex params (line: 30, col: 5 -> page 3, y 305, x 25)
         response = test_client.post(
             "/webhook/update",
-            json={"page": 3, "y": 200, "x": 50},
+            json={"line": 30, "col": 5, "tex_file": "/path/to/test.tex", "pdf_file": str(get_settings().pdf_file)},
             headers={"X-API-Key": get_settings().secret}
         )
         
@@ -208,6 +208,11 @@ class TestTypeScriptInterfaceContracts:
         assert isinstance(msg["y"], (int, float, type(None)))
         assert isinstance(msg["action"], str)
         assert isinstance(msg["timestamp"], int)
+        
+        # Values (line 30, col 5 -> page 3, y 305, x 25)
+        assert msg["page"] == 3
+        assert msg["y"] == 305.0
+        assert msg["x"] == 25.0
         
         # Cleanup
         manager.disconnect(client)

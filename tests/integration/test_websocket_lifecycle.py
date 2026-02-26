@@ -18,7 +18,7 @@ class TestWebSocketLifecycle:
     
     @pytest.mark.asyncio
     async def test_client_receives_message_after_reconnect(
-        self, test_client, reset_state, reset_connections
+        self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test that client receives message after reconnecting."""
         from src.connection_manager import manager
@@ -27,10 +27,10 @@ class TestWebSocketLifecycle:
         client1 = MockWebSocket()
         await manager.connect(client1)
         
-        # Send first message
+        # Send first message (line: 30 -> page 3, y 300)
         response = test_client.post(
             "/webhook/update",
-            json={"page": 3, "y": 150},
+            json={"line": 30, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
             headers={"X-API-Key": get_settings().secret}
         )
         assert response.status_code == 200
@@ -47,10 +47,10 @@ class TestWebSocketLifecycle:
         client2 = MockWebSocket()
         await manager.connect(client2)
         
-        # Send second message
+        # Send second message (line: 50 -> page 5, y 500)
         response = test_client.post(
             "/webhook/update",
-            json={"page": 5, "y": 250},
+            json={"line": 50, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
             headers={"X-API-Key": get_settings().secret}
         )
         assert response.status_code == 200
@@ -64,7 +64,7 @@ class TestWebSocketLifecycle:
     
     @pytest.mark.asyncio
     async def test_broadcast_skips_disconnected_clients(
-        self, test_client, reset_state, reset_connections
+        self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test that broadcast doesn't fail when some clients disconnect."""
         from src.connection_manager import manager
@@ -81,10 +81,10 @@ class TestWebSocketLifecycle:
         manager.disconnect(clients[0])
         clients[0].disconnect()
         
-        # Send broadcast (should not crash despite failures)
+        # Send broadcast (should not crash despite failures) (line: 70 -> page 7, y 700)
         response = test_client.post(
             "/webhook/update",
-            json={"page": 7, "y": 300},
+            json={"line": 70, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
             headers={"X-API-Key": get_settings().secret}
         )
         
@@ -103,7 +103,7 @@ class TestWebSocketLifecycle:
     
     @pytest.mark.asyncio
     async def test_multiple_clients_receive_same_message(
-        self, test_client, reset_state, reset_connections
+        self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test that 10+ simultaneous connections all receive broadcast."""
         from src.connection_manager import manager
@@ -115,10 +115,10 @@ class TestWebSocketLifecycle:
             await manager.connect(client)
             clients.append(client)
         
-        # Send single broadcast
+        # Send single broadcast (line: 100 -> page 10, y 1000)
         response = test_client.post(
             "/webhook/update",
-            json={"page": 10, "y": 500},
+            json={"line": 100, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
             headers={"X-API-Key": get_settings().secret}
         )
         
@@ -128,7 +128,7 @@ class TestWebSocketLifecycle:
         for client in clients:
             assert len(client.sent_messages) == 1
             assert client.sent_messages[0]["page"] == 10
-            assert client.sent_messages[0]["y"] == 500
+            assert client.sent_messages[0]["y"] == 1000.0
         
         # Cleanup
         for client in clients:
@@ -136,7 +136,7 @@ class TestWebSocketLifecycle:
     
     @pytest.mark.asyncio
     async def test_websocket_message_format_integrity(
-        self, test_client, reset_state, reset_connections
+        self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Verify JSON structure matches expected format."""
         from src.connection_manager import manager
@@ -145,10 +145,10 @@ class TestWebSocketLifecycle:
         client = MockWebSocket()
         await manager.connect(client)
         
-        # Send webhook with all fields
+        # Send webhook with synctex params (line: 30, col: 5 -> page 3, y 305, x 25)
         response = test_client.post(
             "/webhook/update",
-            json={"page": 3, "y": 150.5, "x": 50, "extra_field": "test"},
+            json={"line": 30, "col": 5, "tex_file": "test.tex", "pdf_file": "test.pdf"},
             headers={"X-API-Key": get_settings().secret}
         )
         
@@ -169,14 +169,14 @@ class TestWebSocketLifecycle:
         assert isinstance(msg["action"], str)
         assert isinstance(msg["page"], int)
         assert isinstance(msg["y"], float)
-        assert isinstance(msg["x"], int)
+        assert isinstance(msg["x"], float)
         assert isinstance(msg["timestamp"], int)
         
-        # Values
+        # Values (line 30, col 5 -> page 3, y 305, x 25)
         assert msg["action"] == "synctex"
         assert msg["page"] == 3
-        assert msg["y"] == 150.5
-        assert msg["x"] == 50
+        assert msg["y"] == 305.0
+        assert msg["x"] == 25.0
         assert msg["timestamp"] == pdf_state.last_update_time
         
         # Cleanup
@@ -203,7 +203,7 @@ class TestWebSocketLifecycle:
     
     @pytest.mark.asyncio
     async def test_multiple_broadcasts_sequence_integrity(
-        self, test_client, reset_state, reset_connections
+        self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test that multiple broadcasts maintain sequence."""
         from src.connection_manager import manager
@@ -211,11 +211,13 @@ class TestWebSocketLifecycle:
         client = MockWebSocket()
         await manager.connect(client)
         
-        # Send 5 sequential broadcasts
+        # Send 5 sequential broadcasts using synctex params
+        # Lines 10, 20, 30, 40, 50 -> pages 1, 2, 3, 4, 5
         for i in range(5):
+            line = (i + 1) * 10  # 10, 20, 30, 40, 50
             response = test_client.post(
                 "/webhook/update",
-                json={"page": i + 1, "y": i * 100},
+                json={"line": line, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
                 headers={"X-API-Key": get_settings().secret}
             )
             assert response.status_code == 200
@@ -224,8 +226,10 @@ class TestWebSocketLifecycle:
         assert len(client.sent_messages) == 5
         
         for i, msg in enumerate(client.sent_messages):
-            assert msg["page"] == i + 1
-            assert msg["y"] == i * 100
+            expected_page = i + 1  # 1, 2, 3, 4, 5
+            expected_y = (i + 1) * 10 * 10  # 100, 200, 300, 400, 500
+            assert msg["page"] == expected_page
+            assert msg["y"] == float(expected_y)
         
         # Cleanup
         manager.disconnect(client)

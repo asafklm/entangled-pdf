@@ -121,12 +121,12 @@ class TestPDFJSIntegration:
 class TestTypeContracts:
     """Test runtime type contracts."""
     
-    def test_api_response_types_match_interfaces(self, test_client, reset_state):
+    def test_api_response_types_match_interfaces(self, test_client, reset_state, mock_synctex):
         """Test that API responses have correct types."""
-        # Update state
+        # Update state using synctex params (line: 50, col: 5 -> page 5, y 505)
         response = test_client.post(
             "/webhook/update",
-            json={"page": 5, "y": 150.5},
+            json={"line": 50, "col": 5, "tex_file": "/path/to/test.tex", "pdf_file": str(get_settings().pdf_file)},
             headers={"X-API-Key": get_settings().secret}
         )
         assert response.status_code == 200
@@ -140,7 +140,7 @@ class TestTypeContracts:
         
         # y should be number or null
         assert isinstance(data["y"], (float, type(None))), f"y should be float or null, got {type(data['y'])}"
-        assert data["y"] == 150.5
+        assert data["y"] == 505.0
         
         # x should be number or null (optional in TS)
         assert isinstance(data["x"], (float, int, type(None))), f"x should be number or null, got {type(data['x'])}"
@@ -173,7 +173,7 @@ class TestTypeScriptNullHandling:
     """Test TypeScript null/undefined handling in integration."""
     
     @pytest.mark.asyncio
-    async def test_nullish_coalescing_in_state(self, test_client, reset_state, reset_connections):
+    async def test_nullish_coalescing_in_state(self, test_client, reset_state, reset_connections, mock_synctex):
         """Test that TypeScript nullish coalescing (??) works correctly at runtime."""
         from src.connection_manager import manager
         
@@ -181,37 +181,37 @@ class TestTypeScriptNullHandling:
         
         await manager.connect(client)
         
-        # Test with y = null (should be preserved as null, not undefined)
+        # Test with synctex params that result in y = 0 (line: 0, col: 0)
         response = test_client.post(
             "/webhook/update",
-            json={"page": 3, "y": None},
+            json={"line": 0, "col": 0, "tex_file": "/path/to/test.tex", "pdf_file": str(get_settings().pdf_file)},
             headers={"X-API-Key": get_settings().secret}
         )
         
         assert response.status_code == 200
         
-        # y should be null (not undefined, which would be missing key)
+        # y should be 0.0, not null (line 0, col 0 -> page 1, y 0)
         assert "y" in client.sent_messages[0], "y key should be present"
-        assert client.sent_messages[0]["y"] is None, "y should be null"
+        assert client.sent_messages[0]["y"] == 0.0, "y should be 0.0 (not null)"
         
         # Cleanup
         manager.disconnect(client)
     
-    def test_optional_chaining_equivalent_behavior(self, test_client, reset_state):
+    def test_optional_chaining_equivalent_behavior(self, test_client, reset_state, mock_synctex):
         """Test behavior equivalent to TypeScript optional chaining."""
-        # Test with missing optional fields
+        # Test with valid synctex params (line: 50 -> page 5, y 500)
         response = test_client.post(
             "/webhook/update",
-            json={"page": 5},  # No y, x, timestamp
+            json={"line": 50, "col": 0, "tex_file": "/path/to/test.tex", "pdf_file": str(get_settings().pdf_file)},
             headers={"X-API-Key": get_settings().secret}
         )
         
         assert response.status_code == 200
         
-        # Response should handle missing fields gracefully
+        # Response should handle fields gracefully
         data = response.json()
-        assert "y" in data, "y should be present (as null)"
-        assert data["y"] is None, "y should be null when not provided"
+        assert "y" in data, "y should be present"
+        assert data["y"] == 500.0, "y should be 500.0"
 
 
 class TestViewerHTMLTypes:

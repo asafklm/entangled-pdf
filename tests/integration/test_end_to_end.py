@@ -16,7 +16,7 @@ class TestEndToEndSyncTeX:
     
     @pytest.mark.asyncio
     async def test_full_synctex_workflow(
-        self, test_client, reset_state, reset_connections
+        self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Simulate complete flow: Neovim → webhook → WebSocket → browser."""
         from src.state import pdf_state
@@ -29,23 +29,23 @@ class TestEndToEndSyncTeX:
         assert browser.accepted
         
         # Step 2: User edits in Neovim, SyncTeX triggers webhook
-        # (Simulated by direct webhook call)
+        # Send webhook with synctex params (line: 42, col: 5 -> page 5, y 425)
         response = test_client.post(
             "/webhook/update",
-            json={"page": 5, "y": 250.5},
+            json={"line": 42, "col": 5, "tex_file": "test.tex", "pdf_file": "test.pdf"},
             headers={"X-API-Key": get_settings().secret}
         )
         assert response.status_code == 200
         
-        # Step 3: State updated
+        # Step 3: State updated (line 42 -> page 5, y 425)
         assert pdf_state.current_page == 5
-        assert pdf_state.current_y == 250.5
+        assert pdf_state.current_y == 425.0
         
         # Step 4: Browser receives WebSocket message
         assert len(browser.sent_messages) == 1
         msg = browser.sent_messages[0]
         assert msg["page"] == 5
-        assert msg["y"] == 250.5
+        assert msg["y"] == 425.0
         assert msg["action"] == "synctex"
         
         # Step 5: Browser would scroll (verified by message content)
@@ -56,7 +56,7 @@ class TestEndToEndSyncTeX:
     
     @pytest.mark.asyncio
     async def test_browser_reconnects_and_syncs(
-        self, test_client, reset_state, reset_connections
+        self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test browser disconnects, comes back, syncs to current position."""
         from src.state import pdf_state
@@ -67,10 +67,10 @@ class TestEndToEndSyncTeX:
         
         await manager.connect(browser1)
         
-        # Updates happen while connected
+        # Updates happen while connected (line: 100 -> page 10, y 1000)
         response = test_client.post(
             "/webhook/update",
-            json={"page": 10, "y": 500},
+            json={"line": 100, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
             headers={"X-API-Key": get_settings().secret}
         )
         assert response.status_code == 200
@@ -81,10 +81,10 @@ class TestEndToEndSyncTeX:
         # Browser disconnects (e.g., network issue, page refresh)
         manager.disconnect(browser1)
         
-        # More updates happen while disconnected
+        # More updates happen while disconnected (line: 150 -> page 15, y 1500)
         response = test_client.post(
             "/webhook/update",
-            json={"page": 15, "y": 750},
+            json={"line": 150, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
             headers={"X-API-Key": get_settings().secret}
         )
         assert response.status_code == 200
@@ -100,13 +100,13 @@ class TestEndToEndSyncTeX:
         
         # Browser syncs to current position
         assert current_state["page"] == 15
-        assert current_state["y"] == 750
+        assert current_state["y"] == 1500.0
         assert current_state["last_update_time"] == pdf_state.last_update_time
         
-        # New updates go to reconnected browser
+        # New updates go to reconnected browser (line: 200 -> page 20, y 2000)
         response = test_client.post(
             "/webhook/update",
-            json={"page": 20, "y": 1000},
+            json={"line": 200, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
             headers={"X-API-Key": get_settings().secret}
         )
         assert response.status_code == 200
@@ -120,7 +120,7 @@ class TestEndToEndSyncTeX:
     
     @pytest.mark.asyncio
     async def test_multiple_browsers_sync_together(
-        self, test_client, reset_state, reset_connections
+        self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test two browsers, one update, both sync."""
         from src.connection_manager import manager
@@ -133,10 +133,10 @@ class TestEndToEndSyncTeX:
         await manager.connect(browser1)
         await manager.connect(browser2)
         
-        # User edits in Neovim
+        # User edits in Neovim (line: 80 -> page 8, y 800)
         response = test_client.post(
             "/webhook/update",
-            json={"page": 8, "y": 400},
+            json={"line": 80, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
             headers={"X-API-Key": get_settings().secret}
         )
         assert response.status_code == 200
@@ -147,7 +147,7 @@ class TestEndToEndSyncTeX:
         
         assert browser1.sent_messages[0] == browser2.sent_messages[0]
         assert browser1.sent_messages[0]["page"] == 8
-        assert browser1.sent_messages[0]["y"] == 400
+        assert browser1.sent_messages[0]["y"] == 800.0
         
         # Cleanup
         manager.disconnect(browser1)
@@ -155,7 +155,7 @@ class TestEndToEndSyncTeX:
     
     @pytest.mark.asyncio
     async def test_editing_session_with_multiple_updates(
-        self, test_client, reset_state, reset_connections
+        self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Simulate a full editing session with multiple updates."""
         from src.state import pdf_state
@@ -166,20 +166,21 @@ class TestEndToEndSyncTeX:
         
         await manager.connect(browser)
         
-        # Simulate editing session
+        # Simulate editing session with synctex params
+        # Line numbers map to pages: (line-1)//10 + 1
         edits = [
-            {"page": 1, "y": 100},   # Introduction
-            {"page": 3, "y": 200},   # Chapter 1
-            {"page": 3, "y": 350},   # Chapter 1 continued
-            {"page": 5, "y": 150},   # Chapter 2
-            {"page": 7, "y": 400},   # Conclusion
+            {"line": 10, "col": 0},   # Introduction -> page 1, y 100
+            {"line": 25, "col": 0},   # Chapter 1 -> page 3, y 250
+            {"line": 30, "col": 0},   # Chapter 1 continued -> page 3, y 300
+            {"line": 50, "col": 0},   # Chapter 2 -> page 5, y 500
+            {"line": 70, "col": 0},   # Conclusion -> page 7, y 700
         ]
         
         for edit in edits:
             # Neovim triggers SyncTeX
             response = test_client.post(
                 "/webhook/update",
-                json=edit,
+                json={**edit, "tex_file": "test.tex", "pdf_file": "test.pdf"},
                 headers={"X-API-Key": get_settings().secret}
             )
             assert response.status_code == 200
@@ -187,17 +188,19 @@ class TestEndToEndSyncTeX:
             # Small delay between edits
             await asyncio.sleep(0.01)
         
-        # Verify final state
+        # Verify final state (last edit: line 70 -> page 7, y 700)
         assert pdf_state.current_page == 7
-        assert pdf_state.current_y == 400
+        assert pdf_state.current_y == 700.0
         
         # All updates received by browser
         assert len(browser.sent_messages) == 5
         
         # Verify sequence
+        expected_pages = [1, 3, 3, 5, 7]
+        expected_ys = [100.0, 250.0, 300.0, 500.0, 700.0]
         for i, msg in enumerate(browser.sent_messages):
-            assert msg["page"] == edits[i]["page"]
-            assert msg["y"] == edits[i]["y"]
+            assert msg["page"] == expected_pages[i]
+            assert msg["y"] == expected_ys[i]
         
         # Cleanup
         manager.disconnect(browser)
@@ -233,7 +236,7 @@ class TestEndToEndSyncTeX:
     
     @pytest.mark.asyncio
     async def test_fallback_polling_when_websocket_fails(
-        self, test_client, reset_state, reset_connections
+        self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test browser falls back to polling when WebSocket fails."""
         from src.state import pdf_state
@@ -246,10 +249,10 @@ class TestEndToEndSyncTeX:
         initial_data = response.json()
         initial_timestamp = initial_data["last_update_time"]
         
-        # Update happens via webhook
+        # Update happens via webhook (line: 42 -> page 5, y 420)
         response = test_client.post(
             "/webhook/update",
-            json={"page": 5, "y": 250},
+            json={"line": 42, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
             headers={"X-API-Key": get_settings().secret}
         )
         assert response.status_code == 200
@@ -261,4 +264,4 @@ class TestEndToEndSyncTeX:
         # Browser detects update via polling
         assert polled_data["last_update_time"] > initial_timestamp
         assert polled_data["page"] == 5
-        assert polled_data["y"] == 250
+        assert polled_data["y"] == 420.0

@@ -18,7 +18,7 @@ class TestRaceConditions:
     
     @pytest.mark.asyncio
     async def test_rapid_updates_dont_cause_inconsistent_state(
-        self, test_client, reset_state, reset_connections
+        self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test that 100 updates/sec don't cause inconsistent state."""
         from src.state import pdf_state
@@ -28,18 +28,18 @@ class TestRaceConditions:
         
         await manager.connect(mock_ws)
         
-        # Rapid updates (100 updates)
+        # Rapid updates (100 updates) using synctex params
         start_time = time.time()
         
-        async def send_update(page):
+        async def send_update(line):
             response = test_client.post(
                 "/webhook/update",
-                json={"page": page, "y": page * 10},
+                json={"line": line, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
                 headers={"X-API-Key": get_settings().secret}
             )
             return response.status_code
         
-        # Send 100 rapid updates
+        # Send 100 rapid updates (lines 1-100)
         tasks = [send_update(i) for i in range(1, 101)]
         results = await asyncio.gather(*tasks)
         
@@ -49,7 +49,8 @@ class TestRaceConditions:
         assert all(status == 200 for status in results)
         
         # State should be one of the updates (last one likely won)
-        assert 1 <= pdf_state.current_page <= 100
+        # Page = line//10 + 1, so range is roughly 1-10
+        assert 1 <= pdf_state.current_page <= 10
         assert pdf_state.current_y is not None
         
         # Should have received all 100 broadcasts
@@ -60,7 +61,7 @@ class TestRaceConditions:
     
     @pytest.mark.asyncio
     async def test_broadcast_during_client_connection(
-        self, test_client, reset_state, reset_connections
+        self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test broadcast sent while client is connecting."""
         from src.connection_manager import manager
@@ -77,12 +78,12 @@ class TestRaceConditions:
         # Start connecting
         connect_task = asyncio.create_task(manager.connect(mock_ws))
         
-        # Immediately send a webhook while connection is in progress
+        # Immediately send a webhook while connection is in progress (line: 50)
         await asyncio.sleep(0.01)  # Tiny delay to ensure connection started
         
         response = test_client.post(
             "/webhook/update",
-            json={"page": 5, "y": 100},
+            json={"line": 50, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
             headers={"X-API-Key": get_settings().secret}
         )
         
@@ -99,7 +100,7 @@ class TestRaceConditions:
     
     @pytest.mark.asyncio
     async def test_multiple_broadcasts_order_preserved(
-        self, test_client, reset_state, reset_connections
+        self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test that sequential broadcasts arrive in order."""
         from src.connection_manager import manager
@@ -108,11 +109,13 @@ class TestRaceConditions:
         
         await manager.connect(mock_ws)
         
-        # Send 10 sequential updates
+        # Send 10 sequential updates using synctex params
+        # Lines 10, 20, 30, ... 100 -> pages 1, 2, 3, ... 10
         for i in range(10):
+            line = (i + 1) * 10  # 10, 20, 30, ..., 100
             response = test_client.post(
                 "/webhook/update",
-                json={"page": i + 1, "y": i * 50},
+                json={"line": line, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
                 headers={"X-API-Key": get_settings().secret}
             )
             assert response.status_code == 200
@@ -130,7 +133,7 @@ class TestRaceConditions:
     
     @pytest.mark.asyncio
     async def test_client_reconnect_race_condition(
-        self, test_client, reset_state, reset_connections
+        self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test client reconnects during broadcast."""
         from src.connection_manager import manager
@@ -148,10 +151,10 @@ class TestRaceConditions:
         
         await manager.connect(client2)
         
-        # Now send broadcast
+        # Now send broadcast (line: 30 -> page 3, y 300)
         response = test_client.post(
             "/webhook/update",
-            json={"page": 3, "y": 150},
+            json={"line": 30, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
             headers={"X-API-Key": get_settings().secret}
         )
         
@@ -169,7 +172,7 @@ class TestRaceConditions:
     
     @pytest.mark.asyncio
     async def test_simultaneous_client_connections(
-        self, test_client, reset_state, reset_connections
+        self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test multiple clients connecting simultaneously."""
         from src.connection_manager import manager
@@ -184,10 +187,10 @@ class TestRaceConditions:
         connect_tasks = [manager.connect(client) for client in clients]
         await asyncio.gather(*connect_tasks)
         
-        # Send a broadcast
+        # Send a broadcast (line: 50 -> page 5, y 500)
         response = test_client.post(
             "/webhook/update",
-            json={"page": 5, "y": 100},
+            json={"line": 50, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
             headers={"X-API-Key": get_settings().secret}
         )
         
@@ -204,7 +207,7 @@ class TestRaceConditions:
     
     @pytest.mark.asyncio
     async def test_broadcast_with_failing_client(
-        self, test_client, reset_state, reset_connections
+        self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test broadcast continues even if one client fails."""
         from src.connection_manager import manager
@@ -219,10 +222,10 @@ class TestRaceConditions:
         await manager.connect(good_client)
         await manager.connect(bad_client)
         
-        # Send broadcast (should not crash)
+        # Send broadcast (should not crash) (line: 50 -> page 5, y 500)
         response = test_client.post(
             "/webhook/update",
-            json={"page": 5, "y": 100},
+            json={"line": 50, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
             headers={"X-API-Key": get_settings().secret}
         )
         
@@ -242,33 +245,33 @@ class TestRaceConditions:
     
     @pytest.mark.asyncio
     async def test_concurrent_state_reads_and_writes(
-        self, test_client, reset_state, reset_connections
+        self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test concurrent reads and writes to state."""
         from src.state import pdf_state
         
         results = []
         
-        async def writer_task(page):
+        async def writer_task(line):
             response = test_client.post(
                 "/webhook/update",
-                json={"page": page, "y": page * 50},
+                json={"line": line, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
                 headers={"X-API-Key": get_settings().secret}
             )
-            results.append(("write", response.status_code, page))
+            results.append(("write", response.status_code, line))
         
         async def reader_task():
             response = test_client.get("/state")
             data = response.json()
             results.append(("read", data["page"], data["y"]))
         
-        # Mix of reads and writes
+        # Mix of reads and writes (use lines 10-200)
         tasks = []
         for i in range(20):
             if i % 3 == 0:
                 tasks.append(reader_task())
             else:
-                tasks.append(writer_task(i + 1))
+                tasks.append(writer_task((i + 1) * 10))  # 10, 20, 30, ..., 200
         
         await asyncio.gather(*tasks)
         

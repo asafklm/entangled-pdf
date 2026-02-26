@@ -262,6 +262,31 @@ def typescript_compiled():
 
 
 @pytest.fixture(scope="function")
+def mock_synctex():
+    """Mock synctex to return predictable PDF coordinates for testing."""
+    from unittest.mock import patch
+    
+    def mock_run_synctex(line, col, tex_file, pdf_path):
+        """Return predictable coordinates based on line number."""
+        # Map line numbers to predictable page/y coordinates
+        # This allows tests to predict the outcome
+        # Page formula: lines 1-10 -> page 1, lines 11-20 -> page 2, etc.
+        page = max(1, (line - 1) // 10 + 1)  # Every 10 lines = new page
+        y = float(line * 10 + col)  # Y increases with line
+        x = float(col * 5)  # X increases with column
+        return {
+            "Page": str(page),
+            "y": str(y),
+            "x": str(x),
+            "h": "10.0",  # height
+            "v": str(y)   # vertical position
+        }
+    
+    with patch("src.routes.webhook.run_synctex_view", side_effect=mock_run_synctex):
+        yield mock_run_synctex
+
+
+@pytest.fixture(scope="function")
 def viewer_ts_content():
     """Read viewer.ts content for TypeScript interface testing."""
     viewer_ts_path = Path(__file__).parent.parent.parent / "static" / "viewer.ts"
