@@ -26,6 +26,21 @@ pip install -r requirements.txt
 npm install
 ```
 
+### Using the CLI Client
+
+The `remote_pdf` CLI tool provides Zathura-compatible integration for VimTeX:
+
+```bash
+# Open PDF (auto-starts server if needed)
+bin/remote_pdf examples/example.pdf
+
+# Open with forward search
+bin/remote_pdf --synctex-forward "42:5:chapter.tex" document.pdf
+
+# Custom port
+bin/remote_pdf --port 8080 document.pdf
+```
+
 ### Running the Server
 
 Basic usage:
@@ -119,7 +134,7 @@ PdfServer/
 
 ```bash
 # Install test dependencies
-pip install pytest pytest-asyncio httpx
+pip install pytest pytest-asyncio httpx responses
 
 # Run all tests
 python -m pytest tests/ -v
