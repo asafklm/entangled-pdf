@@ -372,22 +372,6 @@ function resetKeyBuffer(): void {
 function handleKeydown(event: KeyboardEvent): void {
   const key: string = event.key;
 
-  // Handle multi-key sequences first (gg for first page)
-  if (key === 'g') {
-    if (keyBuffer === 'g') {
-      event.preventDefault();
-      goToFirstPage();
-      resetKeyBuffer();
-      return;
-    }
-    // First 'g' press - set buffer and timeout
-    event.preventDefault();
-    keyBuffer = 'g';
-    if (keyTimeout) clearTimeout(keyTimeout);
-    keyTimeout = window.setTimeout(resetKeyBuffer, KEY_TIMEOUT_MS);
-    return;
-  }
-
   // If we get here with a key buffer, reset it (sequence broken)
   if (keyBuffer) {
     resetKeyBuffer();
@@ -438,6 +422,11 @@ function handleKeydown(event: KeyboardEvent): void {
       } else {
         scrollFullPageDown();
       }
+      break;
+
+    case 'g':
+      event.preventDefault();
+      goToFirstPage();
       break;
 
     case 'G':
