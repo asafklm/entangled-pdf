@@ -21,6 +21,9 @@ class Settings(BaseSettings):
         secret: API key for webhook authentication (default: super-secret-123)
         host: Server host address (default: 0.0.0.0)
         static_dir: Directory containing static files (default: static/)
+        use_https: Whether to use HTTPS (default: True)
+        ssl_cert: Path to SSL certificate file (optional, uses default location if not set)
+        ssl_key: Path to SSL private key file (optional, uses default location if not set)
     """
     
     model_config = SettingsConfigDict(
@@ -34,6 +37,9 @@ class Settings(BaseSettings):
     secret: str = "super-secret-123"
     host: str = "0.0.0.0"
     static_dir: Path = Path("static")
+    use_https: bool = True
+    ssl_cert: Optional[Path] = None
+    ssl_key: Optional[Path] = None
     
     def model_post_init(self, __context) -> None:
         """Validate settings after initialization."""
@@ -48,18 +54,33 @@ class Settings(BaseSettings):
         # Validate static directory exists
         if not self.static_dir.exists():
             raise ValueError(f"Static directory not found: {self.static_dir}")
+        
+        # Resolve SSL certificate paths if provided
+        if self.ssl_cert and not self.ssl_cert.is_absolute():
+            self.ssl_cert = self.ssl_cert.resolve()
+        if self.ssl_key and not self.ssl_key.is_absolute():
+            self.ssl_key = self.ssl_key.resolve()
 
 
 # Global settings instance (initialized in main.py)
 settings: Optional[Settings] = None
 
 
-def init_settings(pdf_file: Optional[Path] = None, port: Optional[int] = None) -> Settings:
+def init_settings(
+    pdf_file: Optional[Path] = None,
+    port: Optional[int] = None,
+    use_https: Optional[bool] = None,
+    ssl_cert: Optional[Path] = None,
+    ssl_key: Optional[Path] = None
+) -> Settings:
     """Initialize global settings.
     
     Args:
         pdf_file: Override PDF file path (optional)
         port: Override port number (optional)
+        use_https: Override HTTPS setting (optional)
+        ssl_cert: Override SSL certificate path (optional)
+        ssl_key: Override SSL key path (optional)
     
     Returns:
         Settings: Initialized settings instance
@@ -71,6 +92,12 @@ def init_settings(pdf_file: Optional[Path] = None, port: Optional[int] = None) -
         kwargs["pdf_file"] = Path(pdf_file)
     if port is not None:
         kwargs["port"] = port
+    if use_https is not None:
+        kwargs["use_https"] = use_https
+    if ssl_cert is not None:
+        kwargs["ssl_cert"] = Path(ssl_cert)
+    if ssl_key is not None:
+        kwargs["ssl_key"] = Path(ssl_key)
     
     settings = Settings(**kwargs)
     return settings

@@ -51,30 +51,47 @@ def parse_synctex_forward(value: str) -> Tuple[int, int, str]:
     return line, col, tex_file
 
 
-def get_server_pdf(port: int) -> Optional[str]:
+def get_server_url(port: int, use_http: bool = False) -> str:
+    """Get server base URL for given port and protocol.
+    
+    Args:
+        port: Server port number
+        use_http: Whether to use HTTP instead of HTTPS
+        
+    Returns:
+        Base URL string (e.g., "https://localhost:8431")
+    """
+    protocol = "http" if use_http else "https"
+    return f"{protocol}://localhost:{port}"
+
+
+def get_server_pdf(port: int, use_http: bool = False, verify_ssl: bool = False) -> Optional[str]:
     """Check if pdf_server is running and get current PDF path.
     
     Args:
         port: Server port number
+        use_http: Whether to use HTTP instead of HTTPS
+        verify_ssl: Whether to verify SSL certificates (disabled by default for self-signed)
         
     Returns:
         PDF file path if server is running, None otherwise
     """
     try:
-        url = f"http://localhost:{port}/state"
-        response = requests.get(url, timeout=2)
+        url = f"{get_server_url(port, use_http)}/state"
+        response = requests.get(url, timeout=2, verify=verify_ssl)
         response.raise_for_status()
         return response.json().get("pdf_file")
     except Exception:
         return None
 
 
-def start_server(pdf_file: Path, port: int) -> bool:
+def start_server(pdf_file: Path, port: int, use_http: bool = False) -> bool:
     """Start pdf_server subprocess.
     
     Args:
         pdf_file: Path to PDF file to serve
         port: Port number for the server
+        use_http: Whether to start server with HTTP instead of HTTPS
         
     Returns:
         True if server started successfully, False otherwise
@@ -100,6 +117,10 @@ def start_server(pdf_file: Path, port: int) -> bool:
         f"port={port}"
     ]
     
+    # Add --http flag if requested
+    if use_http:
+        cmd.append("--http")
+    
     try:
         # Start server detached (no output capture)
         subprocess.Popen(
@@ -122,7 +143,9 @@ def send_synctex_request(
     tex_file: str,
     pdf_file: str,
     port: int,
-    api_key: str
+    api_key: str,
+    use_http: bool = False,
+    verify_ssl: bool = False
 ) -> bool:
     """Send synctex forward search request to server.
     
@@ -133,11 +156,13 @@ def send_synctex_request(
         pdf_file: Path to PDF file
         port: Server port number
         api_key: API key for authentication
+        use_http: Whether to use HTTP instead of HTTPS
+        verify_ssl: Whether to verify SSL certificates (disabled by default for self-signed)
         
     Returns:
         True if request succeeded, False otherwise
     """
-    url = f"http://localhost:{port}/webhook/update"
+    url = f"{get_server_url(port, use_http)}/webhook/update"
     
     data = {
         "line": line,
@@ -152,7 +177,7 @@ def send_synctex_request(
     }
     
     try:
-        response = requests.post(url, json=data, headers=headers, timeout=5)
+        response = requests.post(url, json=data, headers=headers, timeout=5, verify=verify_ssl)
         response.raise_for_status()
         result = response.json()
         
@@ -178,24 +203,26 @@ def send_synctex_request(
         return False
 
 
-def shutdown_server(port: int, api_key: str) -> bool:
+def shutdown_server(port: int, api_key: str, use_http: bool = False, verify_ssl: bool = False) -> bool:
     """Shutdown pdf_server gracefully.
     
     Args:
         port: Server port number
         api_key: API key for authentication
+        use_http: Whether to use HTTP instead of HTTPS
+        verify_ssl: Whether to verify SSL certificates (disabled by default for self-signed)
         
     Returns:
         True if shutdown succeeded, False otherwise
     """
-    url = f"http://localhost:{port}/webhook/shutdown"
+    url = f"{get_server_url(port, use_http)}/webhook/shutdown"
     
     headers = {
         "X-API-Key": api_key
     }
     
     try:
-        response = requests.post(url, headers=headers, timeout=2)
+        response = requests.post(url, headers=headers, timeout=2, verify=verify_ssl)
         return response.status_code == 200
     except Exception:
         return False
@@ -242,6 +269,19 @@ def main():
     )
     
     parser.add_argument(
+        "--http",
+        action="store_true",
+        help="Use HTTP instead of HTTPS (server must be started with --http)"
+    )
+    
+    parser.add_argument(
+        "--verify-ssl",
+        action="store_true",
+        dest="verify_ssl",
+        help="Verify SSL certificates (default: skip verification for self-signed certs)"
+    )
+    
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Enable verbose output"
@@ -259,21 +299,38 @@ def main():
         logger.error(f"PDF file not found: {pdf_path}")
         sys.exit(1)
     
-    # Check if server is running and serving which PDF
-    current_server_pdf = get_server_pdf(args.port)
+    # Determine protocol to use
+    use_http = args.http
+    verify_ssl = args.verify_ssl
+    
+    # If --http not specified, try HTTPS first, then fall back to HTTP
+    if not use_http:
+        current_server_pdf = get_server_pdf(args.port, use_http=False, verify_ssl=verify_ssl)
+        if current_server_pdf:
+            use_http = False  # Server is running on HTTPS
+        else:
+            # Try HTTP as fallback
+            current_server_pdf = get_server_pdf(args.port, use_http=True, verify_ssl=False)
+            if current_server_pdf:
+                use_http = True  # Server is running on HTTP
+                logger.warning("Server running on HTTP (use --http flag to suppress this warning)")
     
     if not current_server_pdf:
-        # Server not running - start it
+        # Server not running - start it (will use HTTPS by default, or HTTP if --http)
         logger.info("Starting pdf_server...")
-        if not start_server(pdf_path, args.port):
+        if not start_server(pdf_path, args.port, use_http=use_http):
             logger.error("Failed to start pdf_server")
             sys.exit(1)
         
         # Wait for server to start
         time.sleep(1.5)
         
-        # Verify server started
-        current_server_pdf = get_server_pdf(args.port)
+        # Verify server started with correct protocol
+        current_server_pdf = get_server_pdf(
+            args.port,
+            use_http=use_http,
+            verify_ssl=verify_ssl if not use_http else False
+        )
         if not current_server_pdf:
             logger.error("Server failed to start within timeout")
             sys.exit(1)
@@ -283,10 +340,10 @@ def main():
     # Check if server is serving a different PDF
     if Path(current_server_pdf).resolve() != pdf_path:
         logger.info("Server serving different PDF, restarting...")
-        shutdown_server(args.port, args.api_key)
+        shutdown_server(args.port, args.api_key, use_http=use_http, verify_ssl=verify_ssl)
         time.sleep(1.5)  # Wait for shutdown
         
-        if not start_server(pdf_path, args.port):
+        if not start_server(pdf_path, args.port, use_http=use_http):
             logger.error("Failed to restart pdf_server")
             sys.exit(1)
         
@@ -306,7 +363,8 @@ def main():
         logger.info(f"Forward search: line {line}, col {col}, file {tex_path}")
         
         if not send_synctex_request(
-            line, col, str(tex_path), str(pdf_path), args.port, args.api_key
+            line, col, str(tex_path), str(pdf_path), args.port, args.api_key,
+            use_http=use_http, verify_ssl=verify_ssl
         ):
             sys.exit(1)
     else:
