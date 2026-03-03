@@ -97,11 +97,11 @@ class TestCreateApp:
 class TestParseArgs:
     """Test suite for parse_args function."""
     
-    def test_parse_args_pdf_file_required(self):
-        """Test that PDF file argument is required."""
+    def test_parse_args_pdf_file_optional(self):
+        """Test that PDF file argument is now optional."""
         with patch.object(sys, "argv", ["main.py"]):
-            with pytest.raises(SystemExit):
-                parse_args()
+            args = parse_args()
+            assert args.pdf_file is None
     
     def test_parse_args_pdf_file_provided(self):
         """Test parsing with PDF file argument."""

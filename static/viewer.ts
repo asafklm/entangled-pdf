@@ -13,6 +13,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.mjs';
 
 // Constants
 const ACTION_SYNCTEX: string = 'synctex';
+const ACTION_RELOAD: string = 'reload';
 const MAX_RECONNECT_DELAY: number = 30000;
 const POLLING_INTERVAL: number = 2000;
 const MARKER_DISPLAY_TIME: number = 5000;
@@ -31,6 +32,8 @@ let pollingInterval: number | null = null;
 let lastPage: number | null = null;
 let lastY: number | null = null;
 let lastUpdateTimestamp: number = 0;
+let pendingStateUpdate: StateUpdate | null = null;
+let lastPdfLoaded: boolean = false;
 
 // Keyboard navigation state
 let keyBuffer: string = '';
@@ -65,6 +68,9 @@ interface CanvasWithStyle extends HTMLCanvasElement {
  * State update data structure
  */
 interface StateUpdate {
+  pdf_loaded?: boolean;
+  pdf_file?: string;
+  pdf_mtime?: number;
   page: number;
   y?: number;
   timestamp?: number;
@@ -106,7 +112,7 @@ function pdfYToPixels(canvas: CanvasWithStyle, y: number, pdfScale: number = 1.0
  * @param source - Source of the update for logging
  * @param delay - Delay before showing marker (ms)
  */
-function applyStateUpdate(data: StateUpdate, source: string, delay: number = 0): void {
+function applyStateUpdate(data: StateUpdate, delay: number = 0): void {
   // Update tracking variables
   lastPage = data.page;
   lastY = data.y ?? null;
@@ -192,6 +198,56 @@ async function loadPDF(): Promise<void> {
     }).promise;
 
     pageElements[i] = wrapper;
+  }
+}
+
+/**
+ * Reload the PDF document (clears state and reloads)
+ */
+async function reloadPDF(): Promise<void> {
+  // Hide no-pdf message and show container
+  const noPdfMessage = document.getElementById('no-pdf-message');
+  if (noPdfMessage) {
+    noPdfMessage.style.display = 'none';
+  }
+  if (container) {
+    container.style.display = 'block';
+    container.innerHTML = '';
+  }
+  
+  // Clear existing state
+  pdfDoc = null;
+  for (const key in pageElements) {
+    delete pageElements[key];
+  }
+  for (const key in pageScales) {
+    delete pageScales[key];
+  }
+  lastPage = null;
+  lastY = null;
+  
+  // CONFIG.mtime should already be set by the caller (WebSocket handler)
+  // using the pdf_mtime from the broadcast message
+  
+  // Reload
+  try {
+    await loadPDF();
+    console.log("PDF reloaded successfully");
+    
+    // Check if there's a pending state update from WebSocket
+    if (pendingStateUpdate) {
+      console.log("Applying pending sync after PDF reload:", pendingStateUpdate);
+      applyStateUpdate(pendingStateUpdate, 150);
+      pendingStateUpdate = null;
+    } else {
+      scrollToPage(1);  // Reset to page 1 when PDF changes
+    }
+  } catch (error) {
+    console.error("Failed to reload PDF:", error);
+    pendingStateUpdate = null;  // Clear pending update on error
+    if (container) {
+      container.innerHTML = '<div style="color: white; padding: 20px; text-align: center;"><h2>Error reloading PDF</h2><p>Please check that the PDF file exists and is accessible.</p></div>';
+    }
   }
 }
 
@@ -445,13 +501,36 @@ function handleKeydown(event: KeyboardEvent): void {
  */
 async function syncState(): Promise<void> {
   try {
-    const res: Response = await fetch('/state');
+    const res: Response = await fetch("/state");
     const data: StateUpdate = await res.json();
     console.log("SyncState received:", data);
 
+    // Check if PDF became available for the first time or changed
+    const pdfBecameAvailable = data.pdf_loaded && !lastPdfLoaded;
+    const pdfFileChanged = data.pdf_file && data.pdf_file !== CONFIG.filename;
+
+    if (pdfBecameAvailable || pdfFileChanged) {
+      console.log(`PDF change detected: becameAvailable=${pdfBecameAvailable}, fileChanged=${pdfFileChanged}`);
+
+      // Update tracking variables
+      lastPdfLoaded = data.pdf_loaded || false;
+      if (data.pdf_file) {
+        CONFIG.filename = data.pdf_file;
+      }
+      if (data.pdf_mtime) {
+        CONFIG.mtime = data.pdf_mtime;
+      }
+
+      // Store as pending and reload
+      pendingStateUpdate = { ...data };
+      await reloadPDF();
+      return;
+    }
+
+    // Normal case: just scroll if there is a new update
     if ((data.last_update_time ?? 0) > lastUpdateTimestamp) {
       console.log(`New update detected since last focus: timestamp ${lastUpdateTimestamp}→${data.last_update_time}`);
-      applyStateUpdate(data, 'visibility');
+      applyStateUpdate(data);
     } else {
       console.log("No new updates since last focus, skipping scroll");
     }
@@ -491,7 +570,16 @@ function connectWebSocket(): void {
     console.log("WebSocket message received:", data);
 
     if (data.action === ACTION_SYNCTEX) {
-      applyStateUpdate(data, 'websocket', 150);
+      applyStateUpdate(data, 150);
+    } else if (data.action === ACTION_RELOAD) {
+      console.log("Reload requested");
+      // Extract pdf_mtime from reload message for cache busting
+      const reloadMtime = (data as any).pdf_mtime;
+      if (reloadMtime && reloadMtime > 0) {
+        console.log(`Reload with pdf_mtime: ${reloadMtime}`);
+        CONFIG.mtime = reloadMtime;
+      }
+      reloadPDF();
     }
   };
 
@@ -527,7 +615,7 @@ function startPolling(): void {
 
       if ((data.last_update_time ?? 0) > lastUpdateTimestamp) {
         console.log(`Polling detected new update: timestamp ${lastUpdateTimestamp}→${data.last_update_time}`);
-        applyStateUpdate(data, 'polling');
+        applyStateUpdate(data);
       }
     } catch (e) {
       console.error("Polling error:", e);
@@ -538,24 +626,37 @@ function startPolling(): void {
 // Initialize
 connectWebSocket();
 
-loadPDF()
-  .then(() => {
-    console.log("PDF loaded successfully");
-    syncState();
-    // Attach keyboard handler after PDF loads and container is ready
-    if (container) {
-      container.addEventListener('keydown', handleKeydown);
-      // Auto-focus container so user doesn't need to click
-      container.focus();
-      console.log("Keyboard navigation ready (container focused)");
-    }
-  })
-  .catch((error: Error) => {
-    console.error("Failed to load PDF:", error);
-    if (container) {
-      container.innerHTML = '<div style="color: white; padding: 20px; text-align: center;"><h2>Error loading PDF</h2><p>Please check that the PDF file exists and is accessible.</p></div>';
-    }
-  });
+// Check if a PDF is loaded (filename from server)
+if (CONFIG.filename === 'no-pdf-loaded') {
+  console.log("No PDF loaded yet");
+  const noPdfMessage = document.getElementById('no-pdf-message');
+  if (noPdfMessage) {
+    noPdfMessage.style.display = 'block';
+  }
+  if (container) {
+    container.style.display = 'none';
+  }
+} else {
+  lastPdfLoaded = true;  // Track that PDF is loaded
+  loadPDF()
+    .then(() => {
+      console.log("PDF loaded successfully");
+      syncState();
+      // Attach keyboard handler after PDF loads and container is ready
+      if (container) {
+        container.addEventListener('keydown', handleKeydown);
+        // Auto-focus container so user doesn't need to click
+        container.focus();
+        console.log("Keyboard navigation ready (container focused)");
+      }
+    })
+    .catch((error: Error) => {
+      console.error("Failed to load PDF:", error);
+      if (container) {
+        container.innerHTML = '<div style="color: white; padding: 20px; text-align: center;"><h2>Error loading PDF</h2><p>Please check that the PDF file exists and is accessible.</p></div>';
+      }
+    });
+}
 
 // Focus container when user clicks anywhere on the page (in case they unfocused it)
 document.addEventListener('click', () => {

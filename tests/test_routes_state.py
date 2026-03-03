@@ -17,163 +17,165 @@ def client():
     return TestClient(app)
 
 
-@pytest.fixture
-def mock_settings(tmp_path):
-    """Create mock settings for testing."""
-    pdf_file = tmp_path / "test.pdf"
-    pdf_file.write_text("dummy pdf content")
-    
-    mock_settings = MagicMock()
-    mock_settings.pdf_file = pdf_file
-    return mock_settings
-
-
 class TestGetState:
     """Test suite for GET /state endpoint."""
     
-    def test_get_state_returns_current_state(self, client, mock_settings):
+    def test_get_state_returns_current_state(self, client):
         """Test that endpoint returns current PDF state with file path."""
         mock_state = MagicMock()
         mock_state.to_dict.return_value = {
             "page": 5,
             "y": 150.5,
-            "last_update_time": 1234567890
+            "last_update_time": 1234567890,
+            "pdf_file": "/path/to/test.pdf",
+            "pdf_loaded": True
         }
         
         with patch("src.routes.state.pdf_state", mock_state):
-            with patch("src.routes.state.get_settings", return_value=mock_settings):
-                response = client.get("/state")
-                
-                assert response.status_code == 200
-                data = response.json()
-                assert data["pdf_file"] == str(mock_settings.pdf_file)
-                assert data["page"] == 5
-                assert data["y"] == 150.5
-                assert data["last_update_time"] == 1234567890
+            response = client.get("/state")
+            
+            assert response.status_code == 200
+            data = response.json()
+            assert data["pdf_file"] == "/path/to/test.pdf"
+            assert data["pdf_loaded"] is True
+            assert data["page"] == 5
+            assert data["y"] == 150.5
+            assert data["last_update_time"] == 1234567890
     
-    def test_get_state_json_format(self, client, mock_settings):
+    def test_get_state_json_format(self, client):
         """Test that response is valid JSON with correct structure."""
         mock_state = MagicMock()
         mock_state.to_dict.return_value = {
             "page": 1,
             "y": None,
-            "last_update_time": 1234567890
+            "last_update_time": 1234567890,
+            "pdf_file": None,
+            "pdf_loaded": False
         }
         
         with patch("src.routes.state.pdf_state", mock_state):
-            with patch("src.routes.state.get_settings", return_value=mock_settings):
-                response = client.get("/state")
-                
-                assert response.status_code == 200
-                assert response.headers["content-type"] == "application/json"
-                
-                data = response.json()
-                assert isinstance(data, dict)
-                assert "pdf_file" in data
-                assert "page" in data
-                assert "y" in data
-                assert "last_update_time" in data
+            response = client.get("/state")
+            
+            assert response.status_code == 200
+            assert response.headers["content-type"] == "application/json"
+            
+            data = response.json()
+            assert isinstance(data, dict)
+            assert "pdf_file" in data
+            assert "pdf_loaded" in data
+            assert "page" in data
+            assert "y" in data
+            assert "last_update_time" in data
     
-    def test_get_state_default_values(self, client, mock_settings):
+    def test_get_state_default_values(self, client):
         """Test that endpoint returns default state values."""
         mock_state = MagicMock()
         mock_state.to_dict.return_value = {
             "page": 1,
             "y": None,
-            "last_update_time": 1234567890
+            "last_update_time": 1234567890,
+            "pdf_file": None,
+            "pdf_loaded": False
         }
         
         with patch("src.routes.state.pdf_state", mock_state):
-            with patch("src.routes.state.get_settings", return_value=mock_settings):
-                response = client.get("/state")
-                
-                assert response.status_code == 200
-                data = response.json()
-                assert data["page"] == 1
-                assert data["y"] is None
+            response = client.get("/state")
+            
+            assert response.status_code == 200
+            data = response.json()
+            assert data["page"] == 1
+            assert data["y"] is None
+            assert data["pdf_loaded"] is False
     
-    def test_get_state_reflects_updates(self, client, mock_settings):
+    def test_get_state_reflects_updates(self, client):
         """Test that endpoint reflects state updates."""
         # First update
         mock_state1 = MagicMock()
         mock_state1.to_dict.return_value = {
             "page": 3,
             "y": 100.0,
-            "last_update_time": 1234567890
+            "last_update_time": 1234567890,
+            "pdf_file": "/path/to/doc1.pdf",
+            "pdf_loaded": True
         }
         
         with patch("src.routes.state.pdf_state", mock_state1):
-            with patch("src.routes.state.get_settings", return_value=mock_settings):
-                response = client.get("/state")
-                data = response.json()
-                assert data["page"] == 3
-                assert data["y"] == 100.0
+            response = client.get("/state")
+            data = response.json()
+            assert data["page"] == 3
+            assert data["y"] == 100.0
+            assert data["pdf_file"] == "/path/to/doc1.pdf"
         
         # Second update
         mock_state2 = MagicMock()
         mock_state2.to_dict.return_value = {
             "page": 7,
             "y": 250.5,
-            "last_update_time": 1234567891
+            "last_update_time": 1234567891,
+            "pdf_file": "/path/to/doc2.pdf",
+            "pdf_loaded": True
         }
         
         with patch("src.routes.state.pdf_state", mock_state2):
-            with patch("src.routes.state.get_settings", return_value=mock_settings):
-                response = client.get("/state")
-                data = response.json()
-                assert data["page"] == 7
-                assert data["y"] == 250.5
+            response = client.get("/state")
+            data = response.json()
+            assert data["page"] == 7
+            assert data["y"] == 250.5
+            assert data["pdf_file"] == "/path/to/doc2.pdf"
     
-    def test_get_state_with_zero_y(self, client, mock_settings):
+    def test_get_state_with_zero_y(self, client):
         """Test that y=0 is properly returned (not treated as None)."""
         mock_state = MagicMock()
         mock_state.to_dict.return_value = {
             "page": 2,
             "y": 0.0,
-            "last_update_time": 1234567890
+            "last_update_time": 1234567890,
+            "pdf_file": "/path/to/test.pdf",
+            "pdf_loaded": True
         }
         
         with patch("src.routes.state.pdf_state", mock_state):
-            with patch("src.routes.state.get_settings", return_value=mock_settings):
-                response = client.get("/state")
-                
-                assert response.status_code == 200
-                data = response.json()
-                assert data["page"] == 2
-                assert data["y"] == 0.0
+            response = client.get("/state")
+            
+            assert response.status_code == 200
+            data = response.json()
+            assert data["page"] == 2
+            assert data["y"] == 0.0
     
-    def test_get_state_large_page_number(self, client, mock_settings):
+    def test_get_state_large_page_number(self, client):
         """Test with large page numbers."""
         mock_state = MagicMock()
         mock_state.to_dict.return_value = {
             "page": 9999,
             "y": 5000.5,
-            "last_update_time": 1234567890
+            "last_update_time": 1234567890,
+            "pdf_file": "/path/to/big.pdf",
+            "pdf_loaded": True
         }
         
         with patch("src.routes.state.pdf_state", mock_state):
-            with patch("src.routes.state.get_settings", return_value=mock_settings):
-                response = client.get("/state")
-                
-                assert response.status_code == 200
-                data = response.json()
-                assert data["page"] == 9999
-                assert data["y"] == 5000.5
+            response = client.get("/state")
+            
+            assert response.status_code == 200
+            data = response.json()
+            assert data["page"] == 9999
+            assert data["y"] == 5000.5
     
-    def test_get_state_timestamp_type(self, client, mock_settings):
+    def test_get_state_timestamp_type(self, client):
         """Test that timestamp is returned as integer."""
         mock_state = MagicMock()
         mock_state.to_dict.return_value = {
             "page": 1,
             "y": None,
-            "last_update_time": 1234567890123
+            "last_update_time": 1234567890123,
+            "pdf_file": None,
+            "pdf_loaded": False
         }
         
         with patch("src.routes.state.pdf_state", mock_state):
-            with patch("src.routes.state.get_settings", return_value=mock_settings):
-                response = client.get("/state")
-                
-                assert response.status_code == 200
-                data = response.json()
-                assert isinstance(data["last_update_time"], int)
-                assert data["last_update_time"] == 1234567890123
+            response = client.get("/state")
+            
+            assert response.status_code == 200
+            data = response.json()
+            assert isinstance(data["last_update_time"], int)
+            assert data["last_update_time"] == 1234567890123

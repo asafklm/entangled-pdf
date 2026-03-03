@@ -17,13 +17,12 @@ _templates = None
 
 @router.get("/", response_class=RedirectResponse)
 async def root() -> RedirectResponse:
-    """Redirect root URL to /view with PDF filename.
+    """Redirect root URL to /view.
     
     Returns:
-        RedirectResponse: Redirect to /view?pdf=filename
+        RedirectResponse: Redirect to /view
     """
-    settings = get_settings()
-    return RedirectResponse(f"/view?pdf={settings.pdf_file.name}")
+    return RedirectResponse("/view")
 
 
 def get_templates() -> Jinja2Templates:
@@ -48,7 +47,7 @@ async def view_page(request: Request) -> HTMLResponse:
     
     Renders the viewer template with the current configuration:
     - Port number for WebSocket connection
-    - PDF filename for display
+    - PDF filename for display (or placeholder if none loaded)
     
     Args:
         request: The FastAPI request object
@@ -58,7 +57,14 @@ async def view_page(request: Request) -> HTMLResponse:
     """
     settings = get_settings()
     templates = get_templates()
-    mtime = settings.pdf_file.stat().st_mtime
+    
+    # Handle case where no PDF is loaded
+    if settings.pdf_file is not None:
+        mtime = settings.pdf_file.stat().st_mtime
+        filename = settings.pdf_file.name
+    else:
+        mtime = 0
+        filename = "no-pdf-loaded"
     
     # Get viewer.js modification time for cache-busting
     viewer_js_path = settings.static_dir / "viewer.js"
@@ -69,7 +75,7 @@ async def view_page(request: Request) -> HTMLResponse:
         "viewer.html",
         {
             "port": settings.port,
-            "filename": settings.pdf_file.name,
+            "filename": filename,
             "mtime": mtime,
             "js_mtime": js_mtime
         }

@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from src.certs import ensure_certs_exist, get_cert_paths, validate_certificate
 from src.config import init_settings
-from src.routes import pdf, state, static_files, view, webhook, websocket
+from src.routes import load_pdf, pdf, state, static_files, view, webhook, websocket
 
 
 # Configure logging
@@ -104,6 +104,7 @@ def create_app() -> FastAPI:
     app.include_router(state.router)
     app.include_router(webhook.router)
     app.include_router(websocket.router)
+    app.include_router(load_pdf.router)
     
     # Setup static files
     static_files.setup_static_files(app)
@@ -122,7 +123,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "pdf_file",
-        help="Path to the PDF file to serve"
+        nargs="?",
+        default=None,
+        help="Path to the PDF file to serve (optional - can be loaded dynamically via remote_pdf)"
     )
     parser.add_argument(
         "port_arg",
@@ -162,9 +165,16 @@ def main() -> None:
             sys.exit(1)
     
     # Initialize settings
+    pdf_file = None
+    if args.pdf_file:
+        pdf_file = Path(args.pdf_file)
+        if not pdf_file.exists():
+            logger.error(f"PDF file not found: {pdf_file}")
+            sys.exit(1)
+    
     try:
         settings = init_settings(
-            pdf_file=Path(args.pdf_file),
+            pdf_file=pdf_file,
             port=port,
             use_https=not args.http,
             ssl_cert=args.ssl_cert,
@@ -183,7 +193,12 @@ def main() -> None:
     
     protocol = "https" if ssl_config else "http"
     logger.info(f"Starting PdfServer on {settings.host}:{settings.port}")
-    logger.info(f"Serving PDF: {settings.pdf_file}")
+    
+    if settings.pdf_file:
+        logger.info(f"Serving PDF: {settings.pdf_file}")
+    else:
+        logger.info("No PDF loaded - waiting for remote_pdf to load a PDF")
+    
     logger.info(f"View at: {protocol}://{settings.host}:{settings.port}/view")
     
     if ssl_config:

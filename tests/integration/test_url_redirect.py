@@ -11,22 +11,21 @@ from pathlib import Path
 class TestUrlRedirect:
     """Test suite for URL redirect flow."""
     
-    def test_root_redirects_to_view_with_pdf_param(
+    def test_root_redirects_to_view(
         self, test_client, temp_pdf_file
     ):
-        """Test that root URL redirects to /view with pdf query param."""
+        """Test that root URL redirects to /view."""
         response = test_client.get("/", follow_redirects=False)
         
         assert response.status_code == 307
         redirect_url = response.headers["location"]
         assert "/view" in redirect_url
-        assert f"pdf={temp_pdf_file.name}" in redirect_url
     
-    def test_view_page_contains_pdf_param_in_title(
+    def test_view_page_contains_pdf_in_title(
         self, test_client, temp_pdf_file
     ):
-        """Test that /view?pdf=... shows correct title."""
-        response = test_client.get(f"/view?pdf={temp_pdf_file.name}")
+        """Test that /view shows correct PDF filename in title."""
+        response = test_client.get("/view")
         
         assert response.status_code == 200
         assert temp_pdf_file.name in response.text
@@ -35,7 +34,7 @@ class TestUrlRedirect:
         self, test_client, temp_pdf_file
     ):
         """Test that view response includes mtime in config."""
-        response = test_client.get(f"/view?pdf={temp_pdf_file.name}")
+        response = test_client.get("/view")
         
         assert response.status_code == 200
         mtime = int(temp_pdf_file.stat().st_mtime)

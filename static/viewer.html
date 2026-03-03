@@ -42,10 +42,27 @@
             background: rgba(0,0,0,0.8); color: white; border-radius: 8px;
             z-index: 100; display: none; backdrop-filter: blur(5px);
         }
+        #no-pdf-message {
+            display: none;
+            color: white;
+            padding: 40px;
+            text-align: center;
+            font-size: 18px;
+        }
+        #no-pdf-message h2 {
+            margin-bottom: 10px;
+        }
+        #no-pdf-message p {
+            color: #aaa;
+        }
     </style>
 </head>
 <body>
     <div id="status">Syncing...</div>
+    <div id="no-pdf-message">
+        <h2>No PDF Loaded</h2>
+        <p>Use <code>remote_pdf &lt;filename&gt;</code> to load a PDF file.</p>
+    </div>
     <div id="viewer-container" tabindex="0"></div>
 
     <script>

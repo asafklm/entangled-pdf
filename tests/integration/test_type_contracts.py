@@ -155,8 +155,11 @@ class TestTypeContracts:
         
         data = response.json()
         
-        # pdf_file: string (required)
-        assert isinstance(data["pdf_file"], str), "pdf_file should be string"
+        # pdf_file: string | null (optional - null when no PDF loaded)
+        assert isinstance(data["pdf_file"], (str, type(None))), f"pdf_file should be string or null, got {type(data['pdf_file'])}"
+        
+        # pdf_loaded: boolean (required - indicates if PDF is loaded)
+        assert isinstance(data["pdf_loaded"], bool), f"pdf_loaded should be bool, got {type(data['pdf_loaded'])}"
         
         # page: number (required)
         assert isinstance(data["page"], int), "page should be int"

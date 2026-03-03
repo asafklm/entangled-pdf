@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     Example: PDF_SERVER_PORT=8080
     
     Attributes:
-        pdf_file: Path to the PDF file to serve (required)
+        pdf_file: Path to the PDF file to serve (optional - can be loaded dynamically)
         port: Server port number (default: 8431)
         secret: API key for webhook authentication (default: super-secret-123)
         host: Server host address (default: 0.0.0.0)
@@ -32,7 +32,7 @@ class Settings(BaseSettings):
         extra="ignore"  # Ignore extra env vars
     )
     
-    pdf_file: Path
+    pdf_file: Optional[Path] = None
     port: int = 8431
     secret: str = "super-secret-123"
     host: str = "0.0.0.0"
@@ -43,12 +43,12 @@ class Settings(BaseSettings):
     
     def model_post_init(self, __context) -> None:
         """Validate settings after initialization."""
-        # Ensure pdf_file is absolute path
-        if not self.pdf_file.is_absolute():
+        # Ensure pdf_file is absolute path if provided
+        if self.pdf_file is not None and not self.pdf_file.is_absolute():
             self.pdf_file = self.pdf_file.resolve()
         
-        # Validate PDF file exists
-        if not self.pdf_file.exists():
+        # Validate PDF file exists only if provided
+        if self.pdf_file is not None and not self.pdf_file.exists():
             raise ValueError(f"PDF file not found: {self.pdf_file}")
         
         # Validate static directory exists

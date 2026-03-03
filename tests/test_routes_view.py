@@ -229,11 +229,11 @@ class TestRootRedirect:
         response = client.get("/", follow_redirects=False)
         assert response.status_code == 307
     
-    def test_root_redirect_location(self, client, mock_settings):
-        """Test redirect location contains pdf filename."""
+    def test_root_redirect_location(self, client):
+        """Test redirect location goes to /view without pdf query param."""
         response = client.get("/", follow_redirects=False)
         assert response.status_code == 307
-        assert f"pdf={mock_settings.pdf_file.name}" in response.headers["location"]
+        assert response.headers["location"] == "/view"
 
     def test_root_redirect_to_view(self, client):
         """Test redirect goes to /view path."""
