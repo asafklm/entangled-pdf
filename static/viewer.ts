@@ -542,8 +542,20 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
     console.log("Welcome back! Checking for updates...");
     syncState();
-    // Reconnect WebSocket if disconnected
-    if (!socket) {
+    // Reconnect WebSocket if disconnected (check both null and readyState)
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      connectWebSocket();
+    }
+  }
+});
+
+// Handle pageshow event for Android back-forward cache restoration
+window.addEventListener("pageshow", (event: PageTransitionEvent) => {
+  if (event.persisted) {
+    console.log("Page restored from back-forward cache (Android)");
+    syncState();
+    // Force WebSocket reconnection on page restoration
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
       connectWebSocket();
     }
   }
@@ -605,6 +617,9 @@ function connectWebSocket(): void {
 
   socket.onerror = (error: Event) => {
     console.error('WebSocket error:', error);
+    // Set socket to null so visibilitychange/pageshow handlers will reconnect
+    socket = null;
+    showErrorBanner('WebSocket error. Connection lost - reconnect on next focus.');
   };
 }
 
