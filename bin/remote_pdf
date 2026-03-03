@@ -65,8 +65,8 @@ def get_server_url(port: int, use_http: bool = False) -> str:
     return f"{protocol}://localhost:{port}"
 
 
-def get_server_pdf(port: int, use_http: bool = False, verify_ssl: bool = False) -> Optional[str]:
-    """Check if pdf_server is running and get current PDF path.
+def get_server_state(port: int, use_http: bool = False, verify_ssl: bool = False) -> Optional[dict]:
+    """Check if pdf_server is running and get current state.
     
     Args:
         port: Server port number
@@ -74,22 +74,21 @@ def get_server_pdf(port: int, use_http: bool = False, verify_ssl: bool = False) 
         verify_ssl: Whether to verify SSL certificates (disabled by default for self-signed)
         
     Returns:
-        PDF file path if server is running, None otherwise
+        Server state dict with pdf_file, pdf_loaded, etc. if running, None otherwise
     """
     try:
         url = f"{get_server_url(port, use_http)}/state"
         response = requests.get(url, timeout=2, verify=verify_ssl)
         response.raise_for_status()
-        return response.json().get("pdf_file")
+        return response.json()
     except Exception:
         return None
 
 
-def start_server(pdf_file: Path, port: int, use_http: bool = False) -> bool:
-    """Start pdf_server subprocess.
+def start_server(port: int, use_http: bool = False) -> bool:
+    """Start pdf_server subprocess without a PDF.
     
     Args:
-        pdf_file: Path to PDF file to serve
         port: Port number for the server
         use_http: Whether to start server with HTTP instead of HTTPS
         
@@ -113,7 +112,6 @@ def start_server(pdf_file: Path, port: int, use_http: bool = False) -> bool:
     cmd = [
         python_cmd,
         str(main_py),
-        str(pdf_file),
         f"port={port}"
     ]
     
@@ -134,6 +132,64 @@ def start_server(pdf_file: Path, port: int, use_http: bool = False) -> bool:
         return True
     except Exception as e:
         logger.error(f"Failed to start server: {e}")
+        return False
+
+
+def load_pdf(
+    pdf_path: Path,
+    port: int,
+    api_key: str,
+    use_http: bool = False,
+    verify_ssl: bool = False
+) -> bool:
+    """Load a PDF file on the server via API.
+    
+    Args:
+        pdf_path: Path to PDF file to load
+        port: Server port number
+        api_key: API key for authentication
+        use_http: Whether to use HTTP instead of HTTPS
+        verify_ssl: Whether to verify SSL certificates
+        
+    Returns:
+        True if PDF loaded successfully, False otherwise
+    """
+    url = f"{get_server_url(port, use_http)}/api/load-pdf"
+    
+    data = {
+        "pdf_path": str(pdf_path)
+    }
+    
+    headers = {
+        "Content-Type": "application/json",
+        "X-API-Key": api_key
+    }
+    
+    try:
+        response = requests.post(url, json=data, headers=headers, timeout=5, verify=verify_ssl)
+        response.raise_for_status()
+        result = response.json()
+        
+        if result.get("status") == "success":
+            if result.get("changed"):
+                logger.info(f"PDF loaded: {result.get('filename')}")
+            else:
+                logger.info("PDF unchanged, no reload needed")
+            return True
+        else:
+            logger.warning(f"Failed to load PDF: {result}")
+            return False
+            
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 403:
+            logger.error("Authentication failed: Invalid API key")
+        elif e.response.status_code == 400:
+            logger.error(f"Invalid request: {e.response.text}")
+        else:
+            logger.error(f"Server error: {e.response.status_code}")
+        return False
+    except Exception as e:
+        logger.error(f"Request failed: {e}")
         return False
 
 
@@ -200,31 +256,6 @@ def send_synctex_request(
         return False
     except Exception as e:
         logger.error(f"Request failed: {e}")
-        return False
-
-
-def shutdown_server(port: int, api_key: str, use_http: bool = False, verify_ssl: bool = False) -> bool:
-    """Shutdown pdf_server gracefully.
-    
-    Args:
-        port: Server port number
-        api_key: API key for authentication
-        use_http: Whether to use HTTP instead of HTTPS
-        verify_ssl: Whether to verify SSL certificates (disabled by default for self-signed)
-        
-    Returns:
-        True if shutdown succeeded, False otherwise
-    """
-    url = f"{get_server_url(port, use_http)}/webhook/shutdown"
-    
-    headers = {
-        "X-API-Key": api_key
-    }
-    
-    try:
-        response = requests.post(url, headers=headers, timeout=2, verify=verify_ssl)
-        return response.status_code == 200
-    except Exception:
         return False
 
 
@@ -299,55 +330,61 @@ def main():
         logger.error(f"PDF file not found: {pdf_path}")
         sys.exit(1)
     
-    # Determine protocol to use
+    # Determine protocol to use (strict: HTTPS unless --http flag given)
     use_http = args.http
     verify_ssl = args.verify_ssl
     
-    # If --http not specified, try HTTPS first, then fall back to HTTP
-    if not use_http:
-        current_server_pdf = get_server_pdf(args.port, use_http=False, verify_ssl=verify_ssl)
-        if current_server_pdf:
-            use_http = False  # Server is running on HTTPS
-        else:
-            # Try HTTP as fallback
-            current_server_pdf = get_server_pdf(args.port, use_http=True, verify_ssl=False)
-            if current_server_pdf:
-                use_http = True  # Server is running on HTTP
-                logger.warning("Server running on HTTP (use --http flag to suppress this warning)")
+    # Check if server is running
+    state = get_server_state(args.port, use_http=use_http, verify_ssl=verify_ssl)
     
-    if not current_server_pdf:
-        # Server not running - start it (will use HTTPS by default, or HTTP if --http)
+    if state is None:
+        # Server not running - try to start it
         logger.info("Starting pdf_server...")
-        if not start_server(pdf_path, args.port, use_http=use_http):
+        if not start_server(args.port, use_http=use_http):
             logger.error("Failed to start pdf_server")
+            if not use_http:
+                logger.error("HTTPS may require certificates. Run: python -m src.certs generate")
+                logger.error("Or use --http flag to bypass HTTPS (not recommended)")
             sys.exit(1)
         
         # Wait for server to start
         time.sleep(1.5)
         
-        # Verify server started with correct protocol
-        current_server_pdf = get_server_pdf(
-            args.port,
-            use_http=use_http,
-            verify_ssl=verify_ssl if not use_http else False
-        )
-        if not current_server_pdf:
+        # Verify server started with specified protocol
+        state = get_server_state(args.port, use_http=use_http, verify_ssl=verify_ssl)
+        if state is None:
             logger.error("Server failed to start within timeout")
+            if not use_http:
+                logger.error("Check that SSL certificates exist: python -m src.certs status")
             sys.exit(1)
         
-        logger.info(f"Server started, serving: {current_server_pdf}")
+        logger.info("Server started successfully")
     
-    # Check if server is serving a different PDF
-    if Path(current_server_pdf).resolve() != pdf_path:
-        logger.info("Server serving different PDF, restarting...")
-        shutdown_server(args.port, args.api_key, use_http=use_http, verify_ssl=verify_ssl)
-        time.sleep(1.5)  # Wait for shutdown
-        
-        if not start_server(pdf_path, args.port, use_http=use_http):
-            logger.error("Failed to restart pdf_server")
+    # Check if we need to load the PDF
+    current_pdf = state.get("pdf_file")
+    pdf_loaded = state.get("pdf_loaded", False)
+    
+    # Get PDF modification time to detect file changes
+    pdf_mtime = pdf_path.stat().st_mtime
+    server_mtime = state.get("pdf_mtime")
+    
+    # Load PDF if:
+    # 1. No PDF is currently loaded, OR
+    # 2. A different PDF is loaded, OR
+    # 3. Same PDF but file has been modified (mtime changed)
+    needs_reload = (
+        not pdf_loaded or
+        (current_pdf and Path(current_pdf).resolve() != pdf_path) or
+        (server_mtime and pdf_mtime > server_mtime)
+    )
+    
+    if needs_reload:
+        logger.info(f"Loading PDF: {pdf_path.name}")
+        if not load_pdf(pdf_path, args.port, args.api_key, use_http=use_http, verify_ssl=verify_ssl):
+            logger.error("Failed to load PDF")
             sys.exit(1)
-        
-        time.sleep(1.5)  # Wait for startup
+    else:
+        logger.info("PDF already loaded and up to date")
     
     # Handle forward search if requested
     if args.synctex_forward:

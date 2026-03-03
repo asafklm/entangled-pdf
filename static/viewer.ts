@@ -14,13 +14,12 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.mjs';
 // Constants
 const ACTION_SYNCTEX: string = 'synctex';
 const ACTION_RELOAD: string = 'reload';
-const MAX_RECONNECT_DELAY: number = 30000;
-const POLLING_INTERVAL: number = 2000;
 const MARKER_DISPLAY_TIME: number = 5000;
 const MARKER_OFFSET: number = 5; // Center the 10px dot
 
 // DOM Elements
 const container: HTMLElement | null = document.getElementById('viewer-container');
+const errorBanner: HTMLElement | null = document.getElementById('error-banner');
 
 // State
 let pdfDoc: PDFDocumentProxy | null = null;
@@ -28,7 +27,6 @@ const pageElements: { [key: number]: HTMLElement } = {};
 const pageScales: { [key: number]: number } = {};
 let socket: WebSocket | null = null;
 let reconnectAttempts: number = 0;
-let pollingInterval: number | null = null;
 let lastPage: number | null = null;
 let lastY: number | null = null;
 let lastUpdateTimestamp: number = 0;
@@ -544,35 +542,51 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
     console.log("Welcome back! Checking for updates...");
     syncState();
+    // Reconnect WebSocket if disconnected
+    if (!socket) {
+      connectWebSocket();
+    }
   }
 });
+
+/**
+ * Show/hide error banner
+ */
+function showErrorBanner(message: string): void {
+  if (errorBanner) {
+    errorBanner.textContent = message;
+    errorBanner.style.display = 'block';
+  }
+}
+
+function hideErrorBanner(): void {
+  if (errorBanner) {
+    errorBanner.style.display = 'none';
+  }
+}
 
 /**
  * Connect to WebSocket server
  */
 function connectWebSocket(): void {
-  console.log(`Connecting to WebSocket (attempt ${reconnectAttempts + 1})...`);
+  console.log('Connecting to WebSocket...');
 
-  socket = new WebSocket(`ws://${window.location.hostname}:${CONFIG.port}/ws`);
+  // Always use wss:// (secure WebSocket)
+  socket = new WebSocket(`wss://${window.location.hostname}:${CONFIG.port}/ws`);
 
   socket.onopen = () => {
-    console.log("WebSocket connected");
-    reconnectAttempts = 0;
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-      pollingInterval = null;
-      console.log("Stopped polling (WebSocket connected)");
-    }
+    console.log('WebSocket connected');
+    hideErrorBanner();
   };
 
   socket.onmessage = (event: MessageEvent) => {
     const data: StateUpdate = JSON.parse(event.data);
-    console.log("WebSocket message received:", data);
+    console.log('WebSocket message received:', data);
 
     if (data.action === ACTION_SYNCTEX) {
       applyStateUpdate(data, 150);
     } else if (data.action === ACTION_RELOAD) {
-      console.log("Reload requested");
+      console.log('Reload requested');
       // Extract pdf_mtime from reload message for cache busting
       const reloadMtime = (data as any).pdf_mtime;
       if (reloadMtime && reloadMtime > 0) {
@@ -584,43 +598,14 @@ function connectWebSocket(): void {
   };
 
   socket.onclose = (event: CloseEvent) => {
-    console.log(`WebSocket closed (code: ${event.code}, reason: ${event.reason})`);
+    console.log(`WebSocket closed (code: ${event.code})`);
     socket = null;
-
-    const delay: number = Math.min(1000 * Math.pow(2, reconnectAttempts), MAX_RECONNECT_DELAY);
-    reconnectAttempts++;
-
-    console.log(`Reconnecting in ${delay}ms...`);
-    setTimeout(connectWebSocket, delay);
-
-    startPolling();
+    showErrorBanner('WebSocket disconnected. Refresh page to reconnect.');
   };
 
   socket.onerror = (error: Event) => {
-    console.error("WebSocket error:", error);
+    console.error('WebSocket error:', error);
   };
-}
-
-/**
- * Start fallback HTTP polling
- */
-function startPolling(): void {
-  if (pollingInterval) return;
-
-  console.log("Starting fallback polling...");
-  pollingInterval = window.setInterval(async () => {
-    try {
-      const res: Response = await fetch('/state');
-      const data: StateUpdate = await res.json();
-
-      if ((data.last_update_time ?? 0) > lastUpdateTimestamp) {
-        console.log(`Polling detected new update: timestamp ${lastUpdateTimestamp}→${data.last_update_time}`);
-        applyStateUpdate(data);
-      }
-    } catch (e) {
-      console.error("Polling error:", e);
-    }
-  }, POLLING_INTERVAL);
 }
 
 // Initialize

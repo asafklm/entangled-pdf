@@ -42,6 +42,13 @@
             background: rgba(0,0,0,0.8); color: white; border-radius: 8px;
             z-index: 100; display: none; backdrop-filter: blur(5px);
         }
+        #error-banner {
+            position: fixed; top: 0; left: 0; right: 0; padding: 12px;
+            background: rgba(200, 50, 50, 0.9); color: white;
+            z-index: 1000; display: none; text-align: center;
+            font-family: sans-serif; font-size: 14px;
+            backdrop-filter: blur(5px);
+        }
         #no-pdf-message {
             display: none;
             color: white;
@@ -58,6 +65,7 @@
     </style>
 </head>
 <body>
+    <div id="error-banner">WebSocket disconnected. Refresh page to reconnect.</div>
     <div id="status">Syncing...</div>
     <div id="no-pdf-message">
         <h2>No PDF Loaded</h2>
