@@ -41,6 +41,17 @@ const KEY_TIMEOUT_MS: number = 500;
 const LINE_SCROLL_AMOUNT: number = 40;
 const HORIZONTAL_SCROLL_AMOUNT: number = 40;
 
+// Long press detection state
+let longPressTimer: number | null = null;
+let longPressStartPos: { x: number; y: number } | null = null;
+const LONG_PRESS_DURATION_MS: number = 500;
+const LONG_PRESS_MOVE_THRESHOLD: number = 10; // pixels
+let activeTooltip: HTMLElement | null = null;
+
+// Mouse long press state (separate from touch)
+let mouseLongPressTimer: number | null = null;
+let mouseLongPressStartPos: { x: number; y: number } | null = null;
+
 // Configuration from server
 interface PDFConfig {
   port: number;
@@ -496,6 +507,12 @@ function handleKeydown(event: KeyboardEvent): void {
       event.preventDefault();
       goToLastPage();
       break;
+    
+    case 'i':
+    case 'I':
+      event.preventDefault();
+      performKeyboardInverseSearch();
+      break;
 
     default:
       // Don't prevent default for unhandled keys
@@ -550,6 +567,13 @@ async function syncState(): Promise<void> {
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
     console.log("Welcome back! Checking for updates...");
+    
+    // Auto-focus container for keyboard navigation when returning to tab
+    if (container) {
+      container.focus();
+      console.log("Container auto-focused after tab visibility restored");
+    }
+    
     syncState();
     // Reconnect WebSocket if disconnected with a small delay to prevent race conditions
     setTimeout(() => {
@@ -752,28 +776,63 @@ function sendInverseSearch(page: number, x: number, y: number): void {
 }
 
 /**
- * Handle shift+click for inverse search
+ * Handle mouse down for long-press detection (desktop alternative to touch long-press)
  * @param event - Mouse event
  */
-function handleShiftClick(event: MouseEvent): void {
-  // Only trigger on shift+click
-  if (!event.shiftKey) {
+function handleMouseDown(event: MouseEvent): void {
+  if (!CONFIG.inverse_search_enabled) {
     return;
   }
-
+  
   // Don't trigger if clicking on interactive elements
   const target = event.target as HTMLElement;
   if (target.tagName === 'A' || target.tagName === 'BUTTON' || target.isContentEditable) {
     return;
   }
+  
+  // Store starting position
+  mouseLongPressStartPos = { x: event.clientX, y: event.clientY };
+  
+  // Start long-press timer
+  mouseLongPressTimer = window.setTimeout(() => {
+    // Long press triggered
+    const coords = calculatePdfCoordinatesFromPoint(event.clientX, event.clientY);
+    if (coords) {
+      showInverseSearchTooltip(event.clientX, event.clientY, coords.page, coords.x, coords.y);
+    }
+    mouseLongPressTimer = null;
+  }, LONG_PRESS_DURATION_MS);
+}
 
-  const coords = calculatePdfCoordinates(event);
-  if (coords) {
-    sendInverseSearch(coords.page, coords.x, coords.y);
-    
-    // Show visual feedback
-    showInverseSearchFeedback(event.clientX, event.clientY);
+/**
+ * Handle mouse move for long-press detection (cancel if moved too far)
+ * @param event - Mouse event
+ */
+function handleMouseMove(event: MouseEvent): void {
+  if (!mouseLongPressTimer || !mouseLongPressStartPos) {
+    return;
   }
+  
+  const dx = Math.abs(event.clientX - mouseLongPressStartPos.x);
+  const dy = Math.abs(event.clientY - mouseLongPressStartPos.y);
+  
+  // Cancel long press if mouse moved too far
+  if (dx > LONG_PRESS_MOVE_THRESHOLD || dy > LONG_PRESS_MOVE_THRESHOLD) {
+    clearTimeout(mouseLongPressTimer);
+    mouseLongPressTimer = null;
+    mouseLongPressStartPos = null;
+  }
+}
+
+/**
+ * Handle mouse up for long-press detection
+ */
+function handleMouseUp(): void {
+  if (mouseLongPressTimer) {
+    clearTimeout(mouseLongPressTimer);
+    mouseLongPressTimer = null;
+  }
+  mouseLongPressStartPos = null;
 }
 
 /**
@@ -805,6 +864,339 @@ function showInverseSearchFeedback(x: number, y: number): void {
   setTimeout(() => {
     feedback.remove();
   }, 1000);
+}
+
+/**
+ * Calculate PDF coordinates from a viewport position
+ * @param clientX - X coordinate relative to viewport
+ * @param clientY - Y coordinate relative to viewport
+ * @returns Object with page number, x, y coordinates in PDF points, or null if calculation fails
+ */
+function calculatePdfCoordinatesFromPoint(clientX: number, clientY: number): { page: number; x: number; y: number } | null {
+  if (!container || !pdfDoc) {
+    return null;
+  }
+
+  // Find which page contains this point
+  let targetPage: number | null = null;
+  let targetWrapper: HTMLElement | null = null;
+
+  for (let i = 1; i <= pdfDoc.numPages; i++) {
+    const wrapper = pageElements[i];
+    if (wrapper) {
+      const rect = wrapper.getBoundingClientRect();
+      if (clientY >= rect.top && clientY <= rect.bottom) {
+        targetPage = i;
+        targetWrapper = wrapper;
+        break;
+      }
+    }
+  }
+
+  if (!targetPage || !targetWrapper) {
+    return null;
+  }
+
+  // Get the canvas for this page
+  const canvas = targetWrapper.querySelector('canvas') as CanvasWithStyle | null;
+  if (!canvas) {
+    return null;
+  }
+
+  // Calculate position relative to the wrapper
+  const wrapperRect = targetWrapper.getBoundingClientRect();
+  const relativeX = clientX - wrapperRect.left;
+  const relativeY = clientY - wrapperRect.top;
+
+  // Get the PDF scale used for this page
+  const pdfScale: number = pageScales[targetPage] || 1.0;
+
+  // Convert CSS pixels to PDF points
+  const x: number = relativeX / pdfScale;
+  const y: number = relativeY / pdfScale;
+
+  return { page: targetPage, x, y };
+}
+
+/**
+ * Get the "upper" viewport position (25% down from top) for keyboard inverse search
+ * @returns Object with clientX, clientY coordinates, or null if calculation fails
+ */
+function getUpperViewportPosition(): { clientX: number; clientY: number } | null {
+  if (!container) {
+    return null;
+  }
+
+  const containerRect = container.getBoundingClientRect();
+  const viewportHeight = container.clientHeight;
+  
+  // Calculate "upper" position: 25% down from top of visible area
+  let offsetFromTop = Math.max(100, viewportHeight / 4); // Minimum 100px for small screens
+  
+  // Get the center X position
+  const clientX = containerRect.left + (containerRect.width / 2);
+  // clientY is relative to viewport (screen position), not document
+  const clientY = containerRect.top + offsetFromTop;
+  
+  return { clientX, clientY };
+}
+
+/**
+ * Create and show the inverse search confirmation tooltip
+ * @param clientX - X position for tooltip
+ * @param clientY - Y position for tooltip
+ * @param page - Page number
+ * @param x - X coordinate in PDF points
+ * @param y - Y coordinate in PDF points
+ */
+function showInverseSearchTooltip(clientX: number, clientY: number, page: number, x: number, y: number): void {
+  // Remove any existing tooltip
+  hideInverseSearchTooltip();
+  
+  // Create tooltip element
+  const tooltip = document.createElement('div');
+  tooltip.className = 'inverse-search-tooltip';
+  tooltip.style.cssText = `
+    position: fixed;
+    left: ${clientX}px;
+    top: ${clientY - 60}px;
+    transform: translateX(-50%);
+    background: rgba(30, 30, 30, 0.95);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: sans-serif;
+    z-index: 10000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 200px;
+    user-select: none;
+    -webkit-user-select: none;
+  `;
+  
+  // Header
+  const header = document.createElement('div');
+  header.style.cssText = 'font-weight: bold; margin-bottom: 4px;';
+  header.textContent = 'Go to Source?';
+  tooltip.appendChild(header);
+  
+  // Info text
+  const info = document.createElement('div');
+  info.style.cssText = 'font-size: 12px; opacity: 0.8; margin-bottom: 4px;';
+  info.textContent = `Page ${page}, coordinates (${Math.round(x)}, ${Math.round(y)})`;
+  tooltip.appendChild(info);
+  
+  // Single Confirm button (Enter to confirm, any other key to cancel)
+  const confirmButton = document.createElement('button');
+  confirmButton.textContent = 'Confirm (Enter)';
+  confirmButton.style.cssText = `
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    width: 100%;
+    margin-top: 4px;
+  `;
+  
+  // Store reference for keyboard handler
+  activeTooltip = tooltip;
+  
+  // Handle confirm action
+  const confirmAction = () => {
+    sendInverseSearch(page, x, y);
+    hideInverseSearchTooltip();
+    // Show the red dot at the location as visual feedback
+    showRedDotAtPosition(page, x, y);
+  };
+  
+  confirmButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    confirmAction();
+  });
+  
+  tooltip.appendChild(confirmButton);
+  
+  // Add to document
+  document.body.appendChild(tooltip);
+  
+  // Focus the button for keyboard navigation
+  confirmButton.focus();
+  
+  // Add temporary keyboard handler for this tooltip
+  const tooltipKeyHandler = (e: KeyboardEvent) => {
+    if (!activeTooltip) {
+      document.removeEventListener('keydown', tooltipKeyHandler);
+      return;
+    }
+    
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      confirmAction();
+    } else {
+      // Any other key cancels
+      e.preventDefault();
+      e.stopPropagation();
+      hideInverseSearchTooltip();
+    }
+    document.removeEventListener('keydown', tooltipKeyHandler);
+  };
+  
+  // Use capture phase to intercept keys before they reach other handlers
+  document.addEventListener('keydown', tooltipKeyHandler, true);
+}
+
+/**
+ * Hide the long-press confirmation tooltip
+ */
+function hideInverseSearchTooltip(): void {
+  if (activeTooltip) {
+    activeTooltip.remove();
+    activeTooltip = null;
+  }
+}
+
+/**
+ * Show red dot at specific PDF coordinates
+ * @param page - Page number
+ * @param x - X coordinate in PDF points (optional, centered if not provided)
+ * @param y - Y coordinate in PDF points
+ */
+function showRedDotAtPosition(page: number, x?: number, y: number = 0): void {
+  const target: HTMLElement | undefined = pageElements[page];
+  if (!target) return;
+  
+  // Remove existing markers
+  document.querySelectorAll('.synctex-marker').forEach(m => m.remove());
+  
+  const canvas: HTMLCanvasElement | null = target.querySelector('canvas');
+  if (!canvas) return;
+  
+  const pdfScale: number = pageScales[page] || 1.0;
+  const pixelY: number = pdfYToPixels(canvas as CanvasWithStyle, y, pdfScale);
+  
+  // If x is provided, calculate pixelX, otherwise center horizontally
+  let pixelX: number;
+  if (x != null) {
+    pixelX = (x * pdfScale) * getRenderScale(canvas as CanvasWithStyle);
+  } else {
+    pixelX = parseFloat(canvas.style.width) / 2;
+  }
+  
+  const marker: HTMLElement = document.createElement('div');
+  marker.className = 'synctex-marker';
+  marker.style.cssText = `
+    position: absolute;
+    left: ${pixelX - MARKER_OFFSET}px;
+    top: ${pixelY - MARKER_OFFSET}px;
+    width: 10px;
+    height: 10px;
+    background: rgba(255, 0, 0, 0.7);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 1000;
+  `;
+  
+  target.style.position = 'relative';
+  target.appendChild(marker);
+  
+  // Remove after display time
+  setTimeout(() => marker.remove(), MARKER_DISPLAY_TIME);
+}
+
+/**
+ * Handle touch start for long-press detection
+ * @param event - Touch event
+ */
+function handleTouchStart(event: TouchEvent): void {
+  if (!CONFIG.inverse_search_enabled) {
+    return;
+  }
+  
+  // Only handle single touch
+  if (event.touches.length !== 1) {
+    return;
+  }
+  
+  const touch = event.touches[0];
+  longPressStartPos = { x: touch.clientX, y: touch.clientY };
+  
+  // Start long-press timer
+  longPressTimer = window.setTimeout(() => {
+    // Long press triggered
+    const coords = calculatePdfCoordinatesFromPoint(touch.clientX, touch.clientY);
+    if (coords) {
+      showInverseSearchTooltip(touch.clientX, touch.clientY, coords.page, coords.x, coords.y);
+    }
+    longPressTimer = null;
+  }, LONG_PRESS_DURATION_MS);
+}
+
+/**
+ * Handle touch move for long-press detection (cancel if moved too far)
+ * @param event - Touch event
+ */
+function handleTouchMove(event: TouchEvent): void {
+  if (!longPressTimer || !longPressStartPos) {
+    return;
+  }
+  
+  const touch = event.touches[0];
+  const dx = Math.abs(touch.clientX - longPressStartPos.x);
+  const dy = Math.abs(touch.clientY - longPressStartPos.y);
+  
+  // Cancel long press if finger moved too far
+  if (dx > LONG_PRESS_MOVE_THRESHOLD || dy > LONG_PRESS_MOVE_THRESHOLD) {
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+    longPressStartPos = null;
+  }
+}
+
+/**
+ * Handle touch end/cancel for long-press detection
+ */
+function handleTouchEnd(): void {
+  if (longPressTimer) {
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+  }
+  longPressStartPos = null;
+}
+
+/**
+ * Perform inverse search at the "upper" viewport position (for keyboard shortcut)
+ */
+function performKeyboardInverseSearch(): void {
+  if (!CONFIG.inverse_search_enabled) {
+    console.warn('Inverse search not enabled');
+    return;
+  }
+  
+  const position = getUpperViewportPosition();
+  if (!position) {
+    console.warn('Could not calculate viewport position');
+    return;
+  }
+  
+  const coords = calculatePdfCoordinatesFromPoint(position.clientX, position.clientY);
+  if (!coords) {
+    console.warn('Could not calculate PDF coordinates');
+    return;
+  }
+  
+  // Show red dot first (visual feedback before confirmation)
+  showRedDotAtPosition(coords.page, coords.x, coords.y);
+  
+  // Show tooltip for confirmation
+  showInverseSearchTooltip(position.clientX, position.clientY, coords.page, coords.x, coords.y);
 }
 
 // Initialize
@@ -843,14 +1235,35 @@ if (CONFIG.filename === 'no-pdf-loaded') {
 }
 
 // Focus container when user clicks anywhere on the page (in case they unfocused it)
-// Also handle shift+click for inverse search
 document.addEventListener('click', (event: MouseEvent) => {
   if (container && document.activeElement !== container) {
     container.focus();
   }
   
-  // Handle shift+click for inverse search
-  if (CONFIG.inverse_search_enabled && event.shiftKey) {
-    handleShiftClick(event);
+  // Hide tooltip if clicking outside of it
+  if (activeTooltip) {
+    const tooltip = activeTooltip;
+    const rect = tooltip.getBoundingClientRect();
+    const x = event.clientX;
+    const y = event.clientY;
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      hideInverseSearchTooltip();
+    }
   }
 });
+
+// Attach mouse event listeners for long-press detection (desktop)
+if (container) {
+  container.addEventListener('mousedown', handleMouseDown);
+  container.addEventListener('mousemove', handleMouseMove);
+  container.addEventListener('mouseup', handleMouseUp);
+  container.addEventListener('mouseleave', handleMouseUp);
+}
+
+// Attach touch event listeners for long-press detection (mobile/tablet)
+if (container) {
+  container.addEventListener('touchstart', handleTouchStart, { passive: true });
+  container.addEventListener('touchmove', handleTouchMove, { passive: true });
+  container.addEventListener('touchend', handleTouchEnd);
+  container.addEventListener('touchcancel', handleTouchEnd);
+}
