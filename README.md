@@ -27,9 +27,60 @@ pip install -r requirements.txt
 npm install
 ```
 
+### Prerequisites for Inverse Search
+
+To use **inverse search** (Shift+Click in PDF → jump to editor), you need:
+
+**For Neovim:**
+```bash
+pip install neovim-remote
+```
+
+**For Vim:** No additional packages needed (uses built-in `+clientserver` feature).
+
+### Shell Setup (One-Time Configuration)
+
+For seamless inverse search, configure your shell to use a fixed editor socket. Add the appropriate configuration to your `~/.bashrc` or `~/.zshrc`:
+
+**For Neovim Users:**
+```bash
+# PDF Server + Neovim Integration
+export NVIM_LISTEN_ADDRESS="/tmp/nvim-${USER}.sock"
+
+# Wrapper function ensures nvim always uses the socket
+nvim() {
+    command nvim --listen "$NVIM_LISTEN_ADDRESS" "$@"
+}
+
+**For Vim Users:**
+```bash
+# PDF Server + Vim Integration  
+export VIM_SERVERNAME="VIM-${USER}"
+
+# Wrapper function ensures vim always uses the servername
+vim() {
+    command vim --servername "$VIM_SERVERNAME" "$@"
+}
+
+**Using UUID-Based Socket (Unique per machine and user):**
+```bash
+# Generate a unique socket for this machine and user (run once)
+echo "export NVIM_LISTEN_ADDRESS=\"/tmp/nvim-$(uuidgen)-${USER}.sock\"" >> ~/.bashrc
+# Then reload: source ~/.bashrc
+```
+
+> **Note on Multiple Editor Instances:** The fixed socket approach above only supports **one editor instance at a time** for inverse search. If you run multiple nvim/vim instances with the same socket, inverse search may jump to the wrong editor. Experienced users who need multiple instances should devise their own solution (e.g., project-specific sockets or dynamic socket selection).
+
+**Reload your shell:**
+```bash
+source ~/.bashrc  # or ~/.zshrc
+```
+
 ### Starting the Server
 
 PdfServer uses two separate tools: `pdf-server` for server management and `sync-remote-pdf` for LaTeX synchronization.
+
+> **Prerequisites**: If using inverse search, ensure you've completed the [Prerequisites](#prerequisites-for-inverse-search) and [Shell Setup](#shell-setup-one-time-configuration) sections above.
 
 **Step 1: Start the server**
 
@@ -38,7 +89,11 @@ PdfServer uses two separate tools: `pdf-server` for server management and `sync-
 pdf-server start
 
 # Start with inverse search for Neovim (Shift+Click → editor)
+# Requires: pip install neovim-remote
 pdf-server start --inverse-search-nvim
+
+# Start with inverse search for Vim
+pdf-server start --inverse-search-vim
 
 # Start with custom inverse search command
 pdf-server start --inverse-search-command "nvr --remote-silent +%{line} %{file}"
@@ -220,7 +275,11 @@ PdfServer integrates seamlessly with Neovim and VimTeX using the `sync-remote-pd
 
 ### Quick Setup (Recommended)
 
-**Step 1: Configure VimTeX**
+**Step 1: Configure Shell and VimTeX**
+
+First, complete the [Prerequisites](#prerequisites-for-inverse-search) and [Shell Setup](#shell-setup-one-time-configuration) sections above to configure your editor socket.
+
+Then configure VimTeX:
 
 **Neovim** (Lua configuration, e.g., `~/.config/nvim/init.lua`):
 ```lua
@@ -334,13 +393,24 @@ pdflatex -synctex=1 document.tex
 When enabled, you can click anywhere in the PDF while holding Shift, and your editor will open the corresponding source file at that location.
 
 #### Requirements
+
+**Prerequisites** (must complete before using):
+1. **Install nvr** (Neovim only): `pip install neovim-remote`
+2. **Configure shell**: Follow the [Shell Setup](#shell-setup-one-time-configuration) section above
+
+**Security requirements**:
 - **HTTPS/WSS only**: Inverse search requires secure connections (security feature)
 - **Token authentication**: Browser must authenticate with a token from terminal
-- **Editor support**: Neovim (via `nvr`) or Vim (via `--remote`)
+
+**Editor support**:
+- **Neovim**: Uses `nvr` (via `pip install neovim-remote`)
+- **Vim**: Uses built-in `--remote` feature (requires `+clientserver`)
 
 #### Setup
 
-1. Start `pdf-server` with inverse search command:
+1. Ensure prerequisites are met (see above)
+
+2. Start `pdf-server` with inverse search:
 ```bash
 # For Neovim
 pdf-server start --inverse-search-nvim
@@ -417,6 +487,61 @@ vim.env.PDF_SERVER_SECRET = 'my-secret-key'
 ```vim
 let $PDF_SERVER_PORT = '8080'
 let $PDF_SERVER_SECRET = 'my-secret-key'
+```
+
+## Troubleshooting
+
+### "nvr: no server found" / Inverse search not working
+
+**Problem**: Shift+Click in PDF doesn't open your editor, or you see "no server found" errors.
+
+**Check these items:**
+
+1. **Verify shell configuration**:
+   ```bash
+   echo $NVIM_LISTEN_ADDRESS  # For Neovim
+   # or
+   echo $VIM_SERVERNAME       # For Vim
+   ```
+   If empty, you haven't completed the [Shell Setup](#shell-setup-one-time-configuration).
+
+2. **Check that nvr is installed** (Neovim only):
+   ```bash
+   which nvr
+   # If not found: pip install neovim-remote
+   ```
+
+3. **Verify editor is running with the socket**:
+   ```bash
+   nvr --serverlist  # For Neovim
+   # Should show your $NVIM_LISTEN_ADDRESS value
+   ```
+
+4. **Reload your shell**:
+   ```bash
+   source ~/.bashrc  # or ~/.zshrc
+   ```
+
+### Multiple Editor Instances
+
+**Problem**: Inverse search jumps to the wrong editor instance.
+
+**Cause**: The fixed socket approach (e.g., `/tmp/nvim-${USER}.sock`) only supports one editor instance at a time for inverse search.
+
+**Solutions**:
+- Close other editor instances
+- Use separate terminals for different projects
+- Advanced users: Implement project-specific sockets (see [Shell Setup](#shell-setup-one-time-configuration))
+
+### Ghost Neovim Processes
+
+**Problem**: You see unexpected `nvim` processes running after using inverse search.
+
+**Cause**: Old versions of pdf-server used `nvr` without `--nostart`, which would spawn new nvim processes if no server was found.
+
+**Solution**: This is fixed in the current version. Update to the latest version, or clean up manually:
+```bash
+killall nvim  # Warning: closes ALL nvim instances
 ```
 
 ## Features

@@ -167,7 +167,7 @@ def parse_args() -> argparse.Namespace:
     inverse_group.add_argument(
         "--inverse-search-nvim",
         action="store_true",
-        help="Enable inverse search for Neovim (uses nvr --remote-silent)"
+        help="Enable inverse search for Neovim (uses nvr --nostart --remote-silent)"
     )
     
     inverse_group.add_argument(
@@ -198,7 +198,7 @@ def get_inverse_search_command(args) -> str | None:
         # User provided custom command - unescape %% to %
         return args.inverse_search_command.replace("%%", "%")
     elif args.inverse_search_nvim:
-        return "nvr --remote-silent +%{line} %{file}"
+        return "nvr --nostart --remote-silent +%{line} %{file}"
     elif args.inverse_search_vim:
         return "vim --servername VIM --remote-silent +%{line} %{file}"
     else:
