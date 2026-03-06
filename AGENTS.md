@@ -183,6 +183,10 @@ class ConnectionManager:
 │   ├── viewer.html             # Jinja2 template with token support
 │   ├── token_form.html         # Authentication form
 │   └── ...
+├── examples/                   # Test PDF and LaTeX files
+│   ├── example.pdf             # Sample PDF for testing
+│   ├── example.tex             # Sample LaTeX source
+│   └── example.synctex.gz      # SyncTeX data for testing
 ├── tests/
 │   ├── test_inverse_search.py  # Inverse search tests
 │   └── ...
