@@ -14,7 +14,7 @@ Python-based PDF server using FastAPI, WebSockets, and TypeScript for real-time 
 # Start server on custom port
 /home/asaf/programming/PdfServer/bin/pdf-server start --port 9000
 
-# Check server status
+# Check server status (also shows authentication token)
 /home/asaf/programming/PdfServer/bin/pdf-server status
 
 # View logs
@@ -43,6 +43,20 @@ npm test -- --watch # Watch mode
 # Webhook testing
 http POST localhost:8001/webhook/update X-API-Key:super-secret-123 page:=2 y:=221.19
 ```
+
+## IMPORTANT: Authentication Token Display
+
+**When starting the server with `--inverse-search-nvim` or similar flags, ALWAYS show the authentication token at the end of your reply.** The token is required for accessing the PDF viewer when inverse search is enabled. Example:
+
+```
+Server running on port 8431
+  Status: Ready
+  PDF: /path/to/document.pdf
+  Authentication Token: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+  URL: https://localhost:8431/view
+```
+
+The token is displayed by the server on startup and can also be retrieved via `pdf-server status`.
 
 ## Python Code Style
 

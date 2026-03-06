@@ -62,6 +62,100 @@
         #no-pdf-message p {
             color: #aaa;
         }
+        
+        /* Tooltip styles */
+        .inverse-search-tooltip {
+            position: fixed;
+            background: rgba(30, 30, 30, 0.95);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: sans-serif;
+            z-index: 10000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 200px;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        .tooltip-confirm-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            width: 100%;
+            margin-top: 4px;
+        }
+        
+        .tooltip-confirm-btn:hover {
+            background: #5a6fd6;
+        }
+        
+        /* Notification styles */
+        .notification {
+            position: fixed;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: sans-serif;
+            z-index: 10001;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 400px;
+            user-select: none;
+            -webkit-user-select: none;
+            cursor: pointer;
+        }
+        
+        .notification-error {
+            background: rgba(239, 68, 68, 0.95);
+            color: white;
+        }
+        
+        .notification-warning {
+            background: rgba(234, 179, 8, 0.95);
+            color: rgb(66, 32, 6);
+        }
+        
+        .notification-info {
+            background: rgba(59, 130, 246, 0.95);
+            color: white;
+        }
+        
+        .notification-success {
+            background: rgba(34, 197, 94, 0.95);
+            color: white;
+        }
+        
+        .sync-error-tooltip {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(234, 179, 8, 0.95);
+            color: rgb(66, 32, 6);
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: sans-serif;
+            z-index: 10001;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 400px;
+            user-select: none;
+            -webkit-user-select: none;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>

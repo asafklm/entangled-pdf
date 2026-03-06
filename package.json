@@ -1,1 +1,20 @@
-{"name":"pdfserver","version":"1.0.0","private":true,"scripts":{"build":"tsc","typecheck":"tsc --noEmit","test":"vitest"},"devDependencies":{"@types/node":"^25.3.0","happy-dom":"^20.6.3","typescript":"^5.9.3","vitest":"^4.0.18"},"dependencies":{"pdfjs-dist":"^5.4.624"}}
+{
+  "name": "pdfserver",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc && npm run bundle",
+    "bundle": "esbuild static/viewer.ts --bundle --outfile=static/viewer.js --format=esm --target=es2020 --platform=browser --external:/pdfjs/* --external:/pdfjs/pdf.worker.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.0",
+    "happy-dom": "^20.6.3",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "dependencies": {
+    "pdfjs-dist": "^5.4.624"
+  }
+}
