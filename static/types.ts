@@ -111,7 +111,8 @@ export type WebSocketAction =
   | 'reload'
   | 'inverse_search'
   | 'ping'
-  | 'pong';
+  | 'pong'
+  | 'log';
 
 /**
  * WebSocket message structure
@@ -124,6 +125,7 @@ export interface WebSocketMessage {
   timestamp?: number;
   last_update_time?: number;
   pdf_mtime?: number;
+  message?: string;
 }
 
 /**

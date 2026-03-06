@@ -15,6 +15,20 @@ import {
 } from './constants';
 
 /**
+ * Position information for scroll logging
+ */
+export interface ScrollPosition {
+  page: number;
+  y: number;
+  pixels: number;
+}
+
+/**
+ * Callback type for before/after scroll hooks
+ */
+export type ScrollCallback = (from: ScrollPosition, to: ScrollPosition) => void;
+
+/**
  * Calculate scroll position for a target page element
  * @param container - The scroll container
  * @param target - The target page element
@@ -31,6 +45,73 @@ export function calculateScrollTop(
   const viewportHeight = container.clientHeight;
   const targetScrollTop = target.offsetTop + pixelY - (viewportHeight / 2) + paddingTop;
   return Math.max(0, Math.round(targetScrollTop));
+}
+
+/**
+ * Get current scroll position from container
+ */
+export function getCurrentScrollPosition(
+  container: HTMLElement,
+  pageElements: { [key: number]: HTMLElement }
+): ScrollPosition | null {
+  const scrollTop = container.scrollTop;
+  
+  // Find which page we're on
+  let currentPage = 1;
+  for (const [pageNum, element] of Object.entries(pageElements)) {
+    const page = parseInt(pageNum);
+    if (element.offsetTop <= scrollTop) {
+      currentPage = page;
+    }
+  }
+  
+  const target = pageElements[currentPage];
+  if (!target) {
+    return null;
+  }
+  
+  // Calculate offset within page
+  const offsetInPage = scrollTop - target.offsetTop;
+  
+  return {
+    page: currentPage,
+    y: offsetInPage,
+    pixels: scrollTop,
+  };
+}
+
+/**
+ * Calculate target position for scroll
+ */
+export function getTargetScrollPosition(
+  container: HTMLElement,
+  pageElements: { [key: number]: HTMLElement },
+  pageNum: number,
+  pixelY?: number
+): ScrollPosition | null {
+  const target = pageElements[pageNum];
+  if (!target) {
+    return null;
+  }
+  
+  let targetScrollTop: number;
+  let finalY: number;
+  
+  if (pixelY == null) {
+    // Scroll to page start
+    targetScrollTop = target.offsetTop;
+    finalY = 0;
+  } else {
+    // Scroll to specific position
+    targetScrollTop = calculateScrollTop(container, target, pixelY);
+    finalY = pixelY;
+  }
+  
+  return {
+    page: pageNum,
+    y: finalY,
+    pixels: targetScrollTop,
+  };
 }
 
 /**
@@ -67,6 +148,7 @@ export function performScroll(
  * @param pixelY - Y position in pixels (optional, page start if not provided)
  * @param attempt - Current retry attempt
  * @param behavior - Scroll behavior
+ * @param onBeforeScroll - Optional callback before scroll (for logging)
  * @returns true if scroll was performed, false if retry scheduled
  */
 export function scrollToPageWithRetry(
@@ -75,7 +157,8 @@ export function scrollToPageWithRetry(
   pageNum: number,
   pixelY?: number,
   attempt = 0,
-  behavior: ScrollBehavior = 'auto'
+  behavior: ScrollBehavior = 'auto',
+  onBeforeScroll?: ScrollCallback
 ): boolean {
   const target = pageElements[pageNum];
   
@@ -84,7 +167,7 @@ export function scrollToPageWithRetry(
     if (attempt < MAX_SCROLL_ATTEMPTS) {
       console.log(`Page ${pageNum} not found, retrying... (${attempt + 1}/${MAX_SCROLL_ATTEMPTS})`);
       setTimeout(() => {
-        scrollToPageWithRetry(container, pageElements, pageNum, pixelY, attempt + 1, behavior);
+        scrollToPageWithRetry(container, pageElements, pageNum, pixelY, attempt + 1, behavior, onBeforeScroll);
       }, SCROLL_RETRY_DELAY);
       return false;
     }
@@ -92,15 +175,39 @@ export function scrollToPageWithRetry(
     return false;
   }
 
+  // Get "from" position before scrolling
+  const fromPosition = onBeforeScroll ? getCurrentScrollPosition(container, pageElements) : null;
+
   if (pixelY == null) {
     // Just scroll to the page start
     target.scrollIntoView({ block: 'start', behavior });
+    
+    // Log if callback provided
+    if (onBeforeScroll && fromPosition) {
+      const toPosition: ScrollPosition = {
+        page: pageNum,
+        y: 0,
+        pixels: target.offsetTop,
+      };
+      onBeforeScroll(fromPosition, toPosition);
+    }
+    
     return true;
   }
 
   // Calculate and perform scroll to specific position
   const scrollTop = calculateScrollTop(container, target, pixelY);
   performScroll(container, scrollTop, behavior);
+  
+  // Log if callback provided
+  if (onBeforeScroll && fromPosition) {
+    const toPosition: ScrollPosition = {
+      page: pageNum,
+      y: pixelY,
+      pixels: scrollTop,
+    };
+    onBeforeScroll(fromPosition, toPosition);
+  }
   
   return true;
 }

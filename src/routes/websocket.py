@@ -14,6 +14,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from src.connection_manager import manager
 from src.state import pdf_state
+from src.websocket_monitor import monitor as ws_monitor
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -150,7 +151,7 @@ async def execute_inverse_search(page: int, x: float, y: float) -> bool:
         
         # Wait briefly and check for immediate errors
         try:
-            stdout, stderr = process.communicate(timeout=2.0)
+            _, stderr = process.communicate(timeout=2.0)
             if stderr:
                 logger.warning(f"Inverse search stderr: {stderr.decode().strip()}")
             if process.returncode != 0:
@@ -211,9 +212,22 @@ async def websocket_endpoint(
             
             # Handle ping/pong for connection keepalive
             if message.get("action") == "ping":
+                ws_monitor.log_receive(message)
                 await websocket.send_json({"action": "pong"})
+                ws_monitor.log_sent({"action": "pong"})
                 continue
             elif message.get("action") == "pong":
+                ws_monitor.log_receive(message)
+                continue
+            
+            # Log other received messages
+            ws_monitor.log_receive(message)
+            
+            # Handle client log messages
+            if message.get("action") == "log":
+                log_msg = message.get("message", "")
+                if log_msg:
+                    logger.debug(f"[CLIENT] {log_msg}")
                 continue
             
             # Handle inverse search requests

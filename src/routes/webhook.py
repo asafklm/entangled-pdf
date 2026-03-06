@@ -7,7 +7,6 @@ Receives SyncTeX forward search coordinates and broadcasts them
 import asyncio
 import logging
 import subprocess
-import time
 from pathlib import Path
 from typing import Optional, Dict, Any
 
@@ -116,7 +115,7 @@ async def receive_webhook(
         col = int(data["col"])
         tex_file = data["tex_file"]
         pdf_file = data["pdf_file"]
-    except (ValueError, TypeError, KeyError) as e:
+    except (ValueError, TypeError, KeyError):
         # Missing or invalid synctex parameters - don't scroll, just return success
         return JSONResponse(content={
             "status": "success",

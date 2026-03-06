@@ -33,6 +33,7 @@ import {
   navigateToPreviousPage,
   navigateToPage,
   getUpperViewportY,
+  type ScrollPosition,
 } from './scroll-manager.js';
 import { 
   showMarkerAtPdfCoordinates,
@@ -49,6 +50,7 @@ import {
 import { LongPressDetector } from './long-press-handler.js';
 import type { PdfPosition, ViewportPosition, StateUpdate, WebSocketMessage } from './types.js';
 import { MARKER_DELAY_AFTER_RELOAD } from './constants.js';
+import { clientLogger } from './client-logger.js';
 
 // Configuration from server
 const CONFIG = window.PDF_CONFIG || { 
@@ -80,6 +82,9 @@ const pdfRenderer = new PDFRenderer(viewerContainer);
 const stateManager = createStateManager(CONFIG);
 const notificationManager = new NotificationManager();
 const wsManager = new WebSocketManager(window.location.hostname, CONFIG.port, CONFIG.token);
+
+// Attach logger to WebSocket
+clientLogger.attachWebSocket(wsManager);
 
 // Setup WebSocket message handlers
 wsManager.on('synctex', handleSyncTeXMessage as MessageHandler);
@@ -244,7 +249,9 @@ function applyStateUpdate(data: StateUpdate, delay = 0, attempt = 0, isForwardSy
       const pixelY = pdfYToPixels(canvas, y, scale);
       
       const pageElements = pdfRenderer.getPageElements();
-      scrollToPageWithRetry(viewerContainer, pageElements, pageNum, pixelY, 0);
+      scrollToPageWithRetry(viewerContainer, pageElements, pageNum, pixelY, 0, 'auto', (from: ScrollPosition, to: ScrollPosition) => {
+        clientLogger.logScroll(from, to);
+      });
       
       setTimeout(() => {
         // Pass x coordinate to position marker horizontally (left margin if undefined)
@@ -264,7 +271,9 @@ function applyStateUpdate(data: StateUpdate, delay = 0, attempt = 0, isForwardSy
     }
   } else if (isForwardSync) {
     // Only scroll to page without position if this is a forward sync
-    scrollToPageWithRetry(viewerContainer, pdfRenderer.getPageElements(), pageNum);
+    scrollToPageWithRetry(viewerContainer, pdfRenderer.getPageElements(), pageNum, undefined, 0, 'auto', (from: ScrollPosition, to: ScrollPosition) => {
+      clientLogger.logScroll(from, to);
+    });
   }
 }
 
@@ -297,6 +306,9 @@ async function reloadPDF(): Promise<void> {
   try {
     const url = createPDFUrl('/get-pdf', CONFIG.mtime);
     await pdfRenderer.load(url);
+    
+    // Log PDF load
+    clientLogger.logPdfLoad(CONFIG.filename, CONFIG.mtime);
     
     // Apply pending state update if exists
     const pending = stateManager.pendingUpdate;
@@ -452,6 +464,9 @@ if (CONFIG.filename === 'no-pdf-loaded') {
   const url = createPDFUrl('/get-pdf', CONFIG.mtime);
   pdfRenderer.load(url)
     .then(() => {
+      // Log initial PDF load
+      clientLogger.logPdfLoad(CONFIG.filename, CONFIG.mtime);
+      
       syncState();
       viewerContainer.focus();
     })

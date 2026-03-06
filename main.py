@@ -17,10 +17,11 @@ from fastapi import FastAPI
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.certs import ensure_certs_exist, get_cert_paths, validate_certificate
+from src.certs import get_cert_paths, validate_certificate
 from src.config import init_settings
 from src.routes import auth, load_pdf, pdf, state, static_files, view, webhook, websocket
 from src.state import pdf_state
+from src.websocket_monitor import monitor as ws_monitor
 
 
 # Configure logging for foreground mode
@@ -179,7 +180,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "-v", "--verbose",
         action="store_true",
-        help="Enable verbose (debug) logging"
+        help="Enable verbose (debug) logging and WebSocket monitoring"
+    )
+    
+    parser.add_argument(
+        "--log-file",
+        metavar="FILE",
+        type=Path,
+        default=None,
+        help="Write logs to file in addition to stdout"
     )
     
     return parser.parse_args()
@@ -231,6 +240,25 @@ def main() -> None:
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
     
+    # Add file handler if log file specified
+    if args.log_file:
+        try:
+            file_handler = logging.FileHandler(args.log_file, mode='a')
+            file_handler.setLevel(logging.DEBUG if args.verbose else logging.INFO)
+            formatter = logging.Formatter(
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            )
+            file_handler.setFormatter(formatter)
+            logging.getLogger().addHandler(file_handler)
+            logger.info(f"Logging to file: {args.log_file}")
+        except Exception as e:
+            logger.warning(f"Failed to open log file {args.log_file}: {e}")
+    
+    # Enable WebSocket monitoring when verbose
+    if args.verbose:
+        ws_monitor.enable()
+        logger.info("WebSocket monitoring enabled")
+    
     # Validate SSL configuration
     try:
         ssl_config = validate_ssl_config(settings)
@@ -252,7 +280,6 @@ def main() -> None:
     else:
         pdf_state.inverse_search_enabled = False
     
-    protocol = "https" if ssl_config else "http"
     logger.info(f"Starting PdfServer on {settings.host}:{settings.port}")
     logger.info("No PDF loaded - waiting for sync-remote-pdf to load a PDF")
     

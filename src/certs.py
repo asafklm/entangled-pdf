@@ -12,7 +12,7 @@ import logging
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +155,6 @@ def validate_certificate(cert_path: Path) -> dict:
     try:
         from cryptography import x509
         from cryptography.x509.oid import NameOID
-        from cryptography.hazmat.primitives import serialization
     except ImportError:
         result["error"] = "cryptography library not installed"
         return result
@@ -185,43 +184,6 @@ def validate_certificate(cert_path: Path) -> dict:
         result["error"] = f"Failed to parse certificate: {e}"
     
     return result
-
-
-def ensure_certs_exist() -> Tuple[Path, Path]:
-    """Ensure certificates exist and are valid.
-    
-    Returns:
-        Tuple of (cert_path, key_path)
-        
-    Raises:
-        RuntimeError: If certificates don't exist or are expired
-    """
-    cert_path, key_path = get_cert_paths()
-    
-    if not cert_path.exists() or not key_path.exists():
-        raise RuntimeError(
-            f"SSL certificates not found.\n\n"
-            f"Expected at:\n"
-            f"  Certificate: {cert_path}\n"
-            f"  Key: {key_path}\n\n"
-            f"To generate certificates, run:\n"
-            f"  python -m src.certs generate\n\n"
-            f"To use custom certificates:\n"
-            f"  python -m src.certs generate --cert /path/to/cert.pem --key /path/to/key.pem"
-        )
-    
-    # Validate certificate
-    info = validate_certificate(cert_path)
-    if info["error"]:
-        raise RuntimeError(
-            f"Certificate validation failed: {info['error']}\n\n"
-            f"To regenerate:\n"
-            f"  python -m src.certs generate --force\n\n"
-            f"To bypass HTTPS (not recommended):\n"
-            f"  python main.py --http"
-        )
-    
-    return cert_path, key_path
 
 
 def copy_existing_cert(cert_path: Path, key_path: Path) -> None:
@@ -408,7 +370,7 @@ def main() -> int:
     )
     
     # status subcommand
-    status_parser = subparsers.add_parser("status", help="Check certificate status")
+    subparsers.add_parser("status", help="Check certificate status")
     
     args = parser.parse_args()
     

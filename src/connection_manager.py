@@ -7,7 +7,9 @@ broadcasting messages, and connection lifecycle management.
 import logging
 from typing import Set
 
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket
+
+from src.websocket_monitor import monitor as ws_monitor
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -70,6 +72,9 @@ class ConnectionManager:
             Failed sends are logged but don't stop broadcasting to other clients.
             This ensures one bad connection doesn't affect others.
         """
+        # Log the outgoing message
+        ws_monitor.log_sent(message)
+        
         disconnected = set()
         
         for connection in self.active_connections:

@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 
 from src.config import get_settings
 from src.connection_manager import manager
-from src.state import generate_websocket_token, pdf_state
+from src.state import pdf_state
 
 router = APIRouter()
 
