@@ -446,6 +446,12 @@ function resetKeyBuffer(): void {
 function handleKeydown(event: KeyboardEvent): void {
   const key: string = event.key;
 
+  // Ignore if user is typing in an input, textarea, or contenteditable element
+  const target = event.target as HTMLElement;
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+    return;
+  }
+
   // If we get here with a key buffer, reset it (sequence broken)
   if (keyBuffer) {
     resetKeyBuffer();
@@ -511,7 +517,7 @@ function handleKeydown(event: KeyboardEvent): void {
     case 'i':
     case 'I':
       event.preventDefault();
-      performKeyboardInverseSearch();
+      performKeyboardInverseSearch().catch(e => console.error('Keyboard inverse search failed:', e));
       break;
 
     default:
@@ -748,20 +754,62 @@ function calculatePdfCoordinates(event: MouseEvent): { page: number; x: number; 
 }
 
 /**
+ * Ensure WebSocket is connected, attempting reconnection if necessary
+ * @param timeoutMs - Maximum time to wait for connection (default 3000ms)
+ * @returns Promise that resolves to true if connected, false otherwise
+ */
+function ensureWebSocketConnected(timeoutMs: number = 3000): Promise<boolean> {
+  // Already connected
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    return Promise.resolve(true);
+  }
+  
+  // Try to connect
+  connectWebSocket();
+  
+  // Wait for connection with timeout
+  return new Promise((resolve) => {
+    const checkInterval = 100; // Check every 100ms
+    let elapsed = 0;
+    
+    const checkConnection = () => {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        resolve(true);
+        return;
+      }
+      
+      elapsed += checkInterval;
+      if (elapsed >= timeoutMs) {
+        resolve(false);
+        return;
+      }
+      
+      setTimeout(checkConnection, checkInterval);
+    };
+    
+    setTimeout(checkConnection, checkInterval);
+  });
+}
+
+/**
  * Send inverse search request to server
  * @param page - Page number
  * @param x - X coordinate in PDF points
  * @param y - Y coordinate in PDF points
+ * @returns True if message sent successfully, false otherwise
  */
-function sendInverseSearch(page: number, x: number, y: number): void {
-  if (!socket || socket.readyState !== WebSocket.OPEN) {
-    console.warn('WebSocket not connected, cannot send inverse search');
-    return;
-  }
-
+async function sendInverseSearch(page: number, x: number, y: number): Promise<boolean> {
   if (!CONFIG.inverse_search_enabled) {
     console.warn('Inverse search not enabled');
-    return;
+    return false;
+  }
+
+  // Ensure WebSocket is connected (with reconnection attempt)
+  const isConnected = await ensureWebSocketConnected(3000);
+  
+  if (!isConnected || !socket || socket.readyState !== WebSocket.OPEN) {
+    console.warn('WebSocket not connected, cannot send inverse search');
+    return false;
   }
 
   const message = {
@@ -773,6 +821,7 @@ function sendInverseSearch(page: number, x: number, y: number): void {
 
   console.log('Sending inverse search:', message);
   socket.send(JSON.stringify(message));
+  return true;
 }
 
 /**
@@ -1009,16 +1058,24 @@ function showInverseSearchTooltip(clientX: number, clientY: number, page: number
   activeTooltip = tooltip;
   
   // Handle confirm action
-  const confirmAction = () => {
-    sendInverseSearch(page, x, y);
+  const confirmAction = async () => {
     hideInverseSearchTooltip();
-    // Show the red dot at the location as visual feedback
-    showRedDotAtPosition(page, x, y);
+    
+    // Attempt to send inverse search (with auto-reconnect)
+    const success = await sendInverseSearch(page, x, y);
+    
+    if (success) {
+      // Show the red dot at the location as visual feedback
+      showRedDotAtPosition(page, x, y);
+    } else {
+      // Show error message
+      showSyncError('⚠️ Sync Failed — Connection lost. Refresh page or wait for auto-reconnect.');
+    }
   };
   
   confirmButton.addEventListener('click', (e) => {
     e.stopPropagation();
-    confirmAction();
+    confirmAction().catch(err => console.error('Confirm action failed:', err));
   });
   
   tooltip.appendChild(confirmButton);
@@ -1032,21 +1089,29 @@ function showInverseSearchTooltip(clientX: number, clientY: number, page: number
   // Add temporary keyboard handler for this tooltip
   const tooltipKeyHandler = (e: KeyboardEvent) => {
     if (!activeTooltip) {
-      document.removeEventListener('keydown', tooltipKeyHandler);
+      document.removeEventListener('keydown', tooltipKeyHandler, true);
       return;
     }
     
+    // Only handle Enter (confirm) and Escape (cancel)
+    // Let all other keys pass through to the main keyboard handler
     if (e.key === 'Enter') {
       e.preventDefault();
       e.stopPropagation();
-      confirmAction();
-    } else {
-      // Any other key cancels
+      confirmAction().catch(err => console.error('Confirm action failed:', err));
+      document.removeEventListener('keydown', tooltipKeyHandler, true);
+    } else if (e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
       hideInverseSearchTooltip();
+      document.removeEventListener('keydown', tooltipKeyHandler, true);
+    } else {
+      // For any other key (including 'i', 'j', 'k', etc.), 
+      // hide the tooltip and let the key pass through to the main handler
+      hideInverseSearchTooltip();
+      document.removeEventListener('keydown', tooltipKeyHandler, true);
+      // Don't call preventDefault() or stopPropagation() - let the key event continue
     }
-    document.removeEventListener('keydown', tooltipKeyHandler);
   };
   
   // Use capture phase to intercept keys before they reach other handlers
@@ -1061,6 +1126,49 @@ function hideInverseSearchTooltip(): void {
     activeTooltip.remove();
     activeTooltip = null;
   }
+}
+
+/**
+ * Show a non-obtrusive error message when sync fails
+ * @param message - Error message to display
+ */
+function showSyncError(message: string): void {
+  // Create error tooltip element
+  const tooltip = document.createElement('div');
+  tooltip.className = 'sync-error-tooltip';
+  tooltip.style.cssText = `
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(234, 179, 8, 0.95);
+    color: rgb(66, 32, 6);
+    padding: 12px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: sans-serif;
+    z-index: 10001;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    text-align: center;
+    max-width: 400px;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: pointer;
+  `;
+  tooltip.textContent = message;
+  
+  // Add to document
+  document.body.appendChild(tooltip);
+  
+  // Remove on click
+  tooltip.addEventListener('click', () => {
+    tooltip.remove();
+  });
+  
+  // Auto-remove after 3 seconds
+  setTimeout(() => {
+    tooltip.remove();
+  }, 3000);
 }
 
 /**
@@ -1174,7 +1282,7 @@ function handleTouchEnd(): void {
 /**
  * Perform inverse search at the "upper" viewport position (for keyboard shortcut)
  */
-function performKeyboardInverseSearch(): void {
+async function performKeyboardInverseSearch(): Promise<void> {
   if (!CONFIG.inverse_search_enabled) {
     console.warn('Inverse search not enabled');
     return;
@@ -1192,15 +1300,16 @@ function performKeyboardInverseSearch(): void {
     return;
   }
   
-  // Show red dot first (visual feedback before confirmation)
-  showRedDotAtPosition(coords.page, coords.x, coords.y);
-  
-  // Show tooltip for confirmation
+  // Show tooltip for confirmation (red dot will be shown after successful send)
   showInverseSearchTooltip(position.clientX, position.clientY, coords.page, coords.x, coords.y);
 }
 
 // Initialize
 connectWebSocket();
+
+// Attach keyboard handler to document with capture phase to intercept keys before browser extensions
+// This ensures j/k scrolling works even with Vimium or similar extensions
+document.addEventListener('keydown', handleKeydown, true);
 
 // Check if a PDF is loaded (filename from server)
 if (CONFIG.filename === 'no-pdf-loaded') {
