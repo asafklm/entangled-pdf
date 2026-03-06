@@ -7,6 +7,7 @@ from unittest.mock import patch, AsyncMock, MagicMock
 
 from src.routes import websocket as websocket_route
 from src.connection_manager import ConnectionManager
+from src.state import pdf_state
 
 
 @pytest.fixture
@@ -15,6 +16,14 @@ def app():
     app = FastAPI()
     app.include_router(websocket_route.router)
     return app
+
+
+@pytest.fixture(autouse=True)
+def reset_state():
+    """Reset pdf_state before each test."""
+    pdf_state.inverse_search_enabled = False
+    pdf_state.websocket_token = None
+    yield
 
 
 class TestWebSocketConnection:
@@ -29,11 +38,11 @@ class TestWebSocketConnection:
             # Create a mock websocket
             mock_ws = AsyncMock()
             mock_ws.accept = AsyncMock()
-            mock_ws.receive_text = AsyncMock(side_effect=Exception("Stop loop"))
+            mock_ws.receive_json = AsyncMock(side_effect=Exception("Stop loop"))
             
-            # Call the endpoint directly
+            # Call the endpoint directly (inverse search disabled, no token needed)
             try:
-                await websocket_route.websocket_endpoint(mock_ws)
+                await websocket_route.websocket_endpoint(mock_ws, token=None)
             except Exception:
                 pass
             
@@ -51,10 +60,10 @@ class TestWebSocketConnection:
             
             # Simulate disconnect by raising WebSocketDisconnect
             from fastapi import WebSocketDisconnect
-            mock_ws.receive_text = AsyncMock(side_effect=WebSocketDisconnect())
+            mock_ws.receive_json = AsyncMock(side_effect=WebSocketDisconnect())
             
-            # Call the endpoint
-            await websocket_route.websocket_endpoint(mock_ws)
+            # Call the endpoint (inverse search disabled)
+            await websocket_route.websocket_endpoint(mock_ws, token=None)
             
             # Should complete without error
             assert test_manager.get_connection_count() == 0
@@ -75,12 +84,12 @@ class TestWebSocketConnection:
                 if call_count[0] >= 3:
                     from fastapi import WebSocketDisconnect
                     raise WebSocketDisconnect()
-                return "test message"
+                return {"action": "test"}
             
-            mock_ws.receive_text = AsyncMock(side_effect=side_effect)
+            mock_ws.receive_json = AsyncMock(side_effect=side_effect)
             
-            # Call the endpoint
-            await websocket_route.websocket_endpoint(mock_ws)
+            # Call the endpoint (inverse search disabled)
+            await websocket_route.websocket_endpoint(mock_ws, token=None)
             
             # Should have received multiple messages
             assert call_count[0] == 3
@@ -95,16 +104,16 @@ class TestWebSocketConnection:
             mock_ws1 = AsyncMock()
             mock_ws1.accept = AsyncMock()
             from fastapi import WebSocketDisconnect
-            mock_ws1.receive_text = AsyncMock(side_effect=WebSocketDisconnect())
+            mock_ws1.receive_json = AsyncMock(side_effect=WebSocketDisconnect())
             
-            await websocket_route.websocket_endpoint(mock_ws1)
+            await websocket_route.websocket_endpoint(mock_ws1, token=None)
             
             # Second client
             mock_ws2 = AsyncMock()
             mock_ws2.accept = AsyncMock()
-            mock_ws2.receive_text = AsyncMock(side_effect=WebSocketDisconnect())
+            mock_ws2.receive_json = AsyncMock(side_effect=WebSocketDisconnect())
             
-            await websocket_route.websocket_endpoint(mock_ws2)
+            await websocket_route.websocket_endpoint(mock_ws2, token=None)
             
             # Both should complete without error
             assert test_manager.get_connection_count() == 0
@@ -122,11 +131,11 @@ class TestWebSocketIntegration:
             mock_ws = AsyncMock()
             mock_ws.accept = AsyncMock()
             from fastapi import WebSocketDisconnect
-            mock_ws.receive_text = AsyncMock(side_effect=WebSocketDisconnect())
+            mock_ws.receive_json = AsyncMock(side_effect=WebSocketDisconnect())
             
             assert test_manager.get_connection_count() == 0
             
-            await websocket_route.websocket_endpoint(mock_ws)
+            await websocket_route.websocket_endpoint(mock_ws, token=None)
             
             # After disconnect
             assert test_manager.get_connection_count() == 0
@@ -152,12 +161,12 @@ class TestWebSocketIntegration:
                         "page": 3,
                         "y": 100.5
                     })
-                    return "message"
+                    return {"action": "test"}
                 else:
                     from fastapi import WebSocketDisconnect
                     raise WebSocketDisconnect()
             
-            mock_ws.receive_text = AsyncMock(side_effect=side_effect)
+            mock_ws.receive_json = AsyncMock(side_effect=side_effect)
             
             # Connect the websocket manually first
             await test_manager.connect(mock_ws)

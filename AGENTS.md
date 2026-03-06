@@ -2,13 +2,32 @@
 
 ## Project Overview
 
-Python-based PDF server using FastAPI, WebSockets, and TypeScript for real-time PDF synchronization with SyncTeX support for LaTeX forward search.
+Python-based PDF server using FastAPI, WebSockets, and TypeScript for real-time PDF synchronization with SyncTeX support for LaTeX **forward search** (Editor → PDF) and **inverse search** (PDF → Editor via Shift+Click).
 
 ## Build / Test / Run Commands
 
 ```bash
 # Python (using project venv)
-/home/asaf/programming/PdfServer/bin/python main.py examples/example.pdf port=8001
+# Start server with inverse search for Neovim
+/home/asaf/programming/PdfServer/bin/pdf-server start --inverse-search-nvim
+
+# Start server on custom port
+/home/asaf/programming/PdfServer/bin/pdf-server start --port 9000
+
+# Check server status
+/home/asaf/programming/PdfServer/bin/pdf-server status
+
+# View logs
+/home/asaf/programming/PdfServer/bin/pdf-server logs --follow
+
+# Stop server
+/home/asaf/programming/PdfServer/bin/pdf-server stop
+
+# Load PDF with forward search
+/home/asaf/programming/PdfServer/bin/sync-remote-pdf --synctex-forward "42:5:chapter.tex" document.pdf
+
+# Run server directly (foreground mode for debugging)
+/home/asaf/programming/PdfServer/bin/python main.py --inverse-search-nvim --foreground
 /home/asaf/programming/PdfServer/bin/uvicorn main:app --reload --port 8001
 
 # Python tests
@@ -23,10 +42,6 @@ npm test -- --watch # Watch mode
 
 # Webhook testing
 http POST localhost:8001/webhook/update X-API-Key:super-secret-123 page:=2 y:=221.19
-
-# CLI Client (remote_pdf)
-/home/asaf/programming/PdfServer/bin/remote_pdf examples/example.pdf
-/home/asaf/programming/PdfServer/bin/remote_pdf --synctex-forward "42:5:chapter.tex" document.pdf
 ```
 
 ## Python Code Style
@@ -148,22 +163,29 @@ class ConnectionManager:
 
 ```
 /home/asaf/programming/PdfServer/
-├── main.py                    # Entry point
+├── main.py                    # Server entry point
 ├── bin/
-│   └── remote_pdf             # CLI client for VimTeX integration
+│   ├── pdf-server            # Server lifecycle management (start/stop/status/logs)
+│   └── sync-remote-pdf       # LaTeX sync client (forward search only)
 ├── src/
 │   ├── config.py              # Pydantic settings
-│   ├── connection_manager.py    # WebSocket connections
-│   ├── state.py                 # PDF state tracking
-│   └── routes/                  # API endpoints
-├── static/                      # Frontend TypeScript
-│   ├── viewer.ts               # Main viewer
-│   ├── viewer-utils.ts         # Testable utilities
-│   └── viewer.js               # Compiled output
+│   ├── connection_manager.py   # WebSocket connections
+│   ├── logging_config.py       # XDG-compliant logging setup
+│   ├── state.py                # PDF state tracking (includes token generation)
+│   └── routes/                 # API endpoints
+│       ├── auth.py             # Token authentication endpoint
+│       ├── load_pdf.py         # PDF loading API
+│       ├── view.py             # HTML viewer with auth check
+│       ├── websocket.py        # WebSocket with token validation
+│       └── ...
+├── static/                     # Frontend TypeScript
+│   ├── viewer.ts               # Main viewer (includes shift+click handler)
+│   ├── viewer.html             # Jinja2 template with token support
+│   ├── token_form.html         # Authentication form
+│   └── ...
 ├── tests/
-│   ├── test_*.py               # Python tests (pytest)
-│   └── js/                     # JS tests (Vitest)
-└── types/                       # TypeScript declarations
+│   ├── test_inverse_search.py  # Inverse search tests
+│   └── ...
 ```
 
 ## Security
@@ -172,6 +194,12 @@ class ConnectionManager:
 - Validate all input data
 - Use X-API-Key pattern for authentication
 - Escape HTML template variables
+- **Inverse Search Security**: 
+  - Only enabled with HTTPS/WSS (HTTP mode disables it)
+  - Token-based auth (Jupyter-style) required for WebSocket connections
+  - Secure cookies: httpOnly, secure, sameSite=strict
+  - Template interpolation: only `%{line}` and `%{file}` allowed
+  - Token regeneration on each PDF load
 
 ## Git Workflow
 

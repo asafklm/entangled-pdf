@@ -5,10 +5,16 @@ and file modification time to detect changes and provide
 timestamp-based update tracking to prevent unnecessary scrolling.
 """
 
+import secrets
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
+
+
+def generate_websocket_token() -> str:
+    """Generate a cryptographically secure random token for WebSocket authentication."""
+    return secrets.token_urlsafe(32)
 
 
 @dataclass
@@ -31,6 +37,9 @@ class PDFState:
     last_update_time: int = field(default_factory=lambda: int(time.time() * 1000))
     pdf_file: Optional[Path] = None
     pdf_mtime: Optional[float] = None
+    websocket_token: Optional[str] = field(default_factory=generate_websocket_token)
+    inverse_search_enabled: bool = False
+    inverse_search_command: Optional[str] = None
     
     def update(self, page: int, y: Optional[float] = None) -> None:
         """Update the current state with new position.

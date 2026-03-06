@@ -1,6 +1,8 @@
 """Main entry point for PdfServer.
 
 Initializes the FastAPI application, configures settings, and starts the server.
+Server can be started without a PDF file (PDF is loaded dynamically via API).
+Server runs in foreground mode (use Ctrl+C to stop).
 """
 
 import argparse
@@ -17,10 +19,11 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from src.certs import ensure_certs_exist, get_cert_paths, validate_certificate
 from src.config import init_settings
-from src.routes import load_pdf, pdf, state, static_files, view, webhook, websocket
+from src.routes import auth, load_pdf, pdf, state, static_files, view, webhook, websocket
+from src.state import pdf_state
 
 
-# Configure logging
+# Configure logging for foreground mode
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -99,6 +102,7 @@ def create_app() -> FastAPI:
     )
     
     # Include all routes
+    app.include_router(auth.router)
     app.include_router(view.router)
     app.include_router(pdf.router)
     app.include_router(state.router)
@@ -119,91 +123,169 @@ def parse_args() -> argparse.Namespace:
         argparse.Namespace: Parsed arguments
     """
     parser = argparse.ArgumentParser(
-        description="PdfServer - Real-time PDF synchronization server"
+        description="PdfServer - Real-time PDF synchronization server",
+        epilog="PDF files are loaded dynamically via the sync-remote-pdf tool. "
+               "Server can be started without a PDF file."
     )
+    
     parser.add_argument(
-        "pdf_file",
-        nargs="?",
+        "--port",
+        type=int,
         default=None,
-        help="Path to the PDF file to serve (optional - can be loaded dynamically via remote_pdf)"
+        help="Server port (default: 8431 or PDF_SERVER_PORT env var)"
     )
-    parser.add_argument(
-        "port_arg",
-        nargs="?",
-        help="Port in format port=8001 (optional, defaults to PDF_SERVER_PORT env var or 8431)"
-    )
+    
     parser.add_argument(
         "--http",
         action="store_true",
         help="Use HTTP instead of HTTPS (not recommended)"
     )
+    
     parser.add_argument(
         "--ssl-cert",
         type=Path,
         help="Path to SSL certificate file (PEM format)"
     )
+    
     parser.add_argument(
         "--ssl-key",
         type=Path,
         help="Path to SSL private key file (PEM format)"
     )
+    
+    # Inverse search configuration (can only be set at startup)
+    inverse_group = parser.add_mutually_exclusive_group()
+    
+    inverse_group.add_argument(
+        "--inverse-search-command",
+        type=str,
+        metavar="CMD",
+        help="Inverse search command template with %%{line} and %%{file} placeholders "
+             "(e.g., 'nvr --remote-silent +%%{line} %%{file}')"
+    )
+    
+    inverse_group.add_argument(
+        "--inverse-search-nvim",
+        action="store_true",
+        help="Enable inverse search for Neovim (uses nvr --remote-silent)"
+    )
+    
+    inverse_group.add_argument(
+        "--inverse-search-vim",
+        action="store_true",
+        help="Enable inverse search for Vim (uses vim --remote-silent)"
+    )
+    
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Enable verbose (debug) logging"
+    )
+    
     return parser.parse_args()
+
+
+def get_inverse_search_command(args) -> str | None:
+    """Determine inverse search command from arguments.
+    
+    Args:
+        args: Parsed command line arguments
+    
+    Returns:
+        Command template string or None if inverse search not enabled
+    """
+    if args.inverse_search_command:
+        # User provided custom command - unescape %% to %
+        return args.inverse_search_command.replace("%%", "%")
+    elif args.inverse_search_nvim:
+        return "nvr --remote-silent +%{line} %{file}"
+    elif args.inverse_search_vim:
+        return "vim --servername VIM --remote-silent +%{line} %{file}"
+    else:
+        return None
 
 
 def main() -> None:
     """Main entry point."""
     args = parse_args()
     
-    # Parse port from argument if provided
-    port = None
-    if args.port_arg:
-        try:
-            port = int(args.port_arg.split("=")[1])
-        except (IndexError, ValueError):
-            logger.error(f"Invalid port argument: {args.port_arg}")
-            logger.error("Expected format: port=8001")
-            sys.exit(1)
+    # Parse port
+    port = args.port
     
-    # Initialize settings
-    pdf_file = None
-    if args.pdf_file:
-        pdf_file = Path(args.pdf_file)
-        if not pdf_file.exists():
-            logger.error(f"PDF file not found: {pdf_file}")
-            sys.exit(1)
+    # Get inverse search command
+    inverse_command = get_inverse_search_command(args)
     
     try:
         settings = init_settings(
-            pdf_file=pdf_file,
+            pdf_file=None,  # PDF is loaded dynamically
             port=port,
             use_https=not args.http,
             ssl_cert=args.ssl_cert,
             ssl_key=args.ssl_key
         )
     except ValueError as e:
-        logger.error(f"Configuration error: {e}")
+        print(f"Configuration error: {e}", file=sys.stderr)
         sys.exit(1)
+    
+    # Set log level based on verbose flag
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
     
     # Validate SSL configuration
     try:
         ssl_config = validate_ssl_config(settings)
     except RuntimeError as e:
-        logger.error(str(e))
+        print(str(e), file=sys.stderr)
         sys.exit(1)
+    
+    # Configure inverse search
+    if inverse_command:
+        if ssl_config:
+            # Only enable inverse search with HTTPS/WSS
+            pdf_state.inverse_search_command = inverse_command
+            pdf_state.inverse_search_enabled = True
+            logger.info(f"Inverse search enabled: {inverse_command}")
+        else:
+            # HTTP mode - can't enable inverse search
+            logger.warning("Inverse search requires HTTPS. Command ignored.")
+            pdf_state.inverse_search_enabled = False
+    else:
+        pdf_state.inverse_search_enabled = False
     
     protocol = "https" if ssl_config else "http"
     logger.info(f"Starting PdfServer on {settings.host}:{settings.port}")
+    logger.info("No PDF loaded - waiting for sync-remote-pdf to load a PDF")
     
-    if settings.pdf_file:
-        logger.info(f"Serving PDF: {settings.pdf_file}")
+    # Print startup banner to stdout (visible before daemonization)
+    if ssl_config and pdf_state.inverse_search_enabled:
+        # HTTPS with inverse search
+        print(f"\n{'='*60}")
+        print(f"PDF Server Ready")
+        print(f"Inverse search: {inverse_command}")
+        print(f"{'='*60}")
+        print(f"URL:    https://localhost:{settings.port}/view")
+        print(f"Token:  {pdf_state.websocket_token}")
+        print(f"{'='*60}")
+        print("Copy the token to your browser to enable inverse search")
+        print(f"{'='*60}\n")
+    elif ssl_config:
+        # HTTPS without inverse search
+        print(f"\n{'='*60}")
+        print(f"PDF Server Ready (HTTPS)")
+        print(f"{'='*60}")
+        print(f"URL:    https://localhost:{settings.port}/view")
+        print(f"Token:  {pdf_state.websocket_token}")
+        print(f"{'='*60}")
+        print("Copy the token to your browser")
+        print(f"{'='*60}\n")
     else:
-        logger.info("No PDF loaded - waiting for remote_pdf to load a PDF")
-    
-    logger.info(f"View at: {protocol}://{settings.host}:{settings.port}/view")
-    
-    if ssl_config:
-        logger.info("Note: First-time browser access will show a certificate warning")
-        logger.info("      Click 'Advanced' → 'Accept' or 'Proceed' to continue")
+        # HTTP mode
+        print(f"\n{'='*60}")
+        print(f"PDF Server Ready (HTTP)")
+        print(f"{'='*60}")
+        print(f"URL:    http://localhost:{settings.port}/view")
+        print(f"{'='*60}\n")
+        logger.warning("Running in HTTP mode - inverse search is disabled for security")
     
     # Create app and start server
     app = create_app()
@@ -211,7 +293,8 @@ def main() -> None:
         app,
         host=settings.host,
         port=settings.port,
-        log_level="info",
+        log_level="info" if args.verbose else "warning",
+        timeout_keep_alive=30,  # Send TCP keepalive every 30 seconds
         **ssl_config if ssl_config else {}
     )
 

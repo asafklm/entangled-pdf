@@ -126,7 +126,7 @@ class TestLoadPdfEndpoint:
 
         try:
             # Create a relative path from CWD to the temp file
-            # This simulates what remote_pdf would do
+            # This simulates what sync-remote-pdf would do
             import os
             rel_path = os.path.relpath(temp_pdf_file, os.getcwd())
 

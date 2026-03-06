@@ -78,7 +78,9 @@
         window.PDF_CONFIG = {
             port: {{ port }},
             filename: "{{ filename }}",
-            mtime: {{ mtime }}
+            mtime: {{ mtime }},
+            token: {% if token %}"{{ token }}"{% else %}null{% endif %},
+            inverse_search_enabled: {{ inverse_search_enabled | tojson }}
         };
     </script>
     <script type="module" src="/static/viewer.js?v={{ js_mtime }}"></script>

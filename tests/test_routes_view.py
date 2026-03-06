@@ -8,6 +8,15 @@ from pathlib import Path
 
 from src.routes import view as view_route
 from src.config import Settings
+from src.state import pdf_state
+
+
+@pytest.fixture(autouse=True)
+def reset_state():
+    """Reset pdf_state before each test to disable inverse search."""
+    pdf_state.inverse_search_enabled = False
+    pdf_state.websocket_token = None
+    yield
 
 
 @pytest.fixture
@@ -31,9 +40,25 @@ def mock_settings(tmp_path):
         window.PDF_CONFIG = {
             port: {{ port }},
             filename: "{{ filename }}",
-            mtime: {{ mtime }}
+            mtime: {{ mtime }},
+            token: {% if token %}"{{ token }}"{% else %}null{% endif %},
+            inverse_search_enabled: {{ inverse_search_enabled | tojson }}
         };
     </script>
+</body>
+</html>""")
+    
+    # Create token_form.html template
+    token_form_html = static_dir / "token_form.html"
+    token_form_html.write_text("""<!DOCTYPE html>
+<html>
+<head><title>Authentication</title></head>
+<body>
+    <h1>PDF Server - Authentication</h1>
+    <form method="post" action="/auth">
+        <input type="text" name="token" placeholder="Enter token" required>
+        <button type="submit">Connect</button>
+    </form>
 </body>
 </html>""")
     
@@ -100,6 +125,10 @@ class TestViewPage:
         viewer_html = static_dir / "viewer.html"
         viewer_html.write_text("<html><body>{{ filename }}</body></html>")
         
+        # Create token_form.html template
+        token_form_html = static_dir / "token_form.html"
+        token_form_html.write_text("<html><body>Auth Form</body></html>")
+        
         settings = Settings(
             pdf_file=pdf_file,
             port=9000,
@@ -113,6 +142,8 @@ class TestViewPage:
         
         with patch("src.routes.view.get_settings", return_value=settings):
             with patch.object(view_route, "_templates", None):
+                # Disable inverse search for this test
+                pdf_state.inverse_search_enabled = False
                 client = TestClient(app)
                 response = client.get("/view")
                 
@@ -129,6 +160,10 @@ class TestViewPage:
         viewer_html = static_dir / "viewer.html"
         viewer_html.write_text("<html><body>{{ port }}</body></html>")
         
+        # Create token_form.html template
+        token_form_html = static_dir / "token_form.html"
+        token_form_html.write_text("<html><body>Auth Form</body></html>")
+        
         settings = Settings(
             pdf_file=pdf_file,
             port=3000,
@@ -142,6 +177,8 @@ class TestViewPage:
         
         with patch("src.routes.view.get_settings", return_value=settings):
             with patch.object(view_route, "_templates", None):
+                # Disable inverse search for this test
+                pdf_state.inverse_search_enabled = False
                 client = TestClient(app)
                 response = client.get("/view")
                 
@@ -156,6 +193,10 @@ class TestViewPage:
         static_dir.mkdir()
         # Don't create viewer.html
         
+        # Create token_form.html template
+        token_form_html = static_dir / "token_form.html"
+        token_form_html.write_text("<html><body>Auth Form</body></html>")
+        
         settings = Settings(
             pdf_file=pdf_file,
             port=8080,
@@ -169,6 +210,8 @@ class TestViewPage:
         
         with patch("src.routes.view.get_settings", return_value=settings):
             with patch.object(view_route, "_templates", None):
+                # Disable inverse search for this test
+                pdf_state.inverse_search_enabled = False
                 client = TestClient(app)
                 # TemplateNotFound exception is raised and converted to 500 error
                 with pytest.raises(Exception):
@@ -199,6 +242,10 @@ class TestViewPage:
 </body>
 </html>""")
         
+        # Create token_form.html template
+        token_form_html = static_dir / "token_form.html"
+        token_form_html.write_text("<html><body>Auth Form</body></html>")
+        
         settings = Settings(
             pdf_file=pdf_file,
             port=7777,
@@ -212,6 +259,8 @@ class TestViewPage:
         
         with patch("src.routes.view.get_settings", return_value=settings):
             with patch.object(view_route, "_templates", None):
+                # Disable inverse search for this test
+                pdf_state.inverse_search_enabled = False
                 client = TestClient(app)
                 response = client.get("/view")
                 

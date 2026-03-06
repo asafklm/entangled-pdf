@@ -14,6 +14,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.mjs';
 // Constants
 const ACTION_SYNCTEX: string = 'synctex';
 const ACTION_RELOAD: string = 'reload';
+const ACTION_INVERSE_SEARCH: string = 'inverse_search';
 const MARKER_DISPLAY_TIME: number = 5000;
 const MARKER_OFFSET: number = 5; // Center the 10px dot
 
@@ -45,6 +46,8 @@ interface PDFConfig {
   port: number;
   filename: string;
   mtime: number;
+  token: string | null;
+  inverse_search_enabled: boolean;
 }
 
 declare global {
@@ -53,7 +56,7 @@ declare global {
   }
 }
 
-const CONFIG: PDFConfig = window.PDF_CONFIG || { port: 8431, filename: 'document.pdf', mtime: 0 };
+const CONFIG: PDFConfig = window.PDF_CONFIG || { port: 8431, filename: 'document.pdf', mtime: 0, token: null, inverse_search_enabled: false };
 
 /**
  * Canvas element with required style property
@@ -107,7 +110,6 @@ function pdfYToPixels(canvas: CanvasWithStyle, y: number, pdfScale: number = 1.0
 /**
  * Apply state update from any source (WebSocket, polling, or visibility change)
  * @param data - State data with page, y, and timestamp
- * @param source - Source of the update for logging
  * @param delay - Delay before showing marker (ms)
  */
 function applyStateUpdate(data: StateUpdate, delay: number = 0): void {
@@ -118,17 +120,9 @@ function applyStateUpdate(data: StateUpdate, delay: number = 0): void {
     lastUpdateTimestamp = data.timestamp || data.last_update_time || 0;
   }
 
-  // Scroll to position
-  scrollToPage(data.page, data.y);
-
-  // Show marker if y coordinate exists
-  if (data.y != null) {
-    if (delay > 0) {
-      setTimeout(() => showRedDot(data.page, data.y), delay);
-    } else {
-      showRedDot(data.page, data.y);
-    }
-  }
+  // Scroll to position and show red dot if y coordinate exists
+  // Both scroll and marker are handled together to ensure page is ready
+  scrollToPage(data.page, data.y, 0, data.y != null, delay);
 }
 
 /**
@@ -254,7 +248,7 @@ async function reloadPDF(): Promise<void> {
  * @param pageNum - Page number to scroll to
  * @param y - Y coordinate in PDF points (optional)
  */
-function scrollToPage(pageNum: number, y?: number): void {
+function scrollToPage(pageNum: number, y?: number, attempt: number = 0, showMarker: boolean = false, markerDelay: number = 0): void {
   if (!container) {
     console.error('Container not found');
     return;
@@ -262,7 +256,13 @@ function scrollToPage(pageNum: number, y?: number): void {
 
   const target: HTMLElement | undefined = pageElements[pageNum];
   if (!target) {
-    console.error(`Page ${pageNum} not found in pageElements`);
+    // Retry up to 10 times with 100ms delay - page may still be rendering
+    if (attempt < 10) {
+      console.log(`Page ${pageNum} not found, retrying... (${attempt + 1}/10)`);
+      setTimeout(() => scrollToPage(pageNum, y, attempt + 1, showMarker, markerDelay), 100);
+      return;
+    }
+    console.error(`Page ${pageNum} not found in pageElements after ${attempt} retries`);
     return;
   }
 
@@ -304,6 +304,15 @@ function scrollToPage(pageNum: number, y?: number): void {
       container.scrollTop = finalScrollTop;
     }
   }, 50);
+
+  // Show red dot marker if requested
+  if (showMarker && y != null) {
+    if (markerDelay > 0) {
+      setTimeout(() => showRedDot(pageNum, y), markerDelay);
+    } else {
+      showRedDot(pageNum, y);
+    }
+  }
 }
 
 /**
@@ -542,10 +551,13 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
     console.log("Welcome back! Checking for updates...");
     syncState();
-    // Reconnect WebSocket if disconnected (check both null and readyState)
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-      connectWebSocket();
-    }
+    // Reconnect WebSocket if disconnected with a small delay to prevent race conditions
+    setTimeout(() => {
+      if (!socket || socket.readyState === WebSocket.CLOSED || socket.readyState === WebSocket.CLOSING) {
+        console.log("Reconnecting WebSocket after tab focus...");
+        connectWebSocket();
+      }
+    }, 100);
   }
 });
 
@@ -554,10 +566,12 @@ window.addEventListener("pageshow", (event: PageTransitionEvent) => {
   if (event.persisted) {
     console.log("Page restored from back-forward cache (Android)");
     syncState();
-    // Force WebSocket reconnection on page restoration
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-      connectWebSocket();
-    }
+    // Force WebSocket reconnection on page restoration with delay
+    setTimeout(() => {
+      if (!socket || socket.readyState === WebSocket.CLOSED || socket.readyState === WebSocket.CLOSING) {
+        connectWebSocket();
+      }
+    }, 100);
   }
 });
 
@@ -581,10 +595,31 @@ function hideErrorBanner(): void {
  * Connect to WebSocket server
  */
 function connectWebSocket(): void {
+  // Prevent duplicate connections - check if already connecting or connected
+  if (socket && (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN)) {
+    console.log('WebSocket already connecting or connected, skipping');
+    return;
+  }
+  
+  // If socket exists but is closing/closed, clean it up first
+  if (socket) {
+    try {
+      socket.close();
+    } catch (e) {
+      // Ignore errors on close
+    }
+    socket = null;
+  }
+  
   console.log('Connecting to WebSocket...');
 
-  // Always use wss:// (secure WebSocket)
-  socket = new WebSocket(`wss://${window.location.hostname}:${CONFIG.port}/ws`);
+  // Build WebSocket URL with token if available
+  let wsUrl = `wss://${window.location.hostname}:${CONFIG.port}/ws`;
+  if (CONFIG.token) {
+    wsUrl += `?token=${encodeURIComponent(CONFIG.token)}`;
+  }
+
+  socket = new WebSocket(wsUrl);
 
   socket.onopen = () => {
     console.log('WebSocket connected');
@@ -594,6 +629,15 @@ function connectWebSocket(): void {
   socket.onmessage = (event: MessageEvent) => {
     const data: StateUpdate = JSON.parse(event.data);
     console.log('WebSocket message received:', data);
+    
+    // Handle ping/pong for connection keepalive
+    if (data.action === 'ping') {
+      socket?.send(JSON.stringify({ action: 'pong' }));
+      return;
+    } else if (data.action === 'pong') {
+      // Server responded to our ping, connection is alive
+      return;
+    }
 
     if (data.action === ACTION_SYNCTEX) {
       applyStateUpdate(data, 150);
@@ -612,15 +656,155 @@ function connectWebSocket(): void {
   socket.onclose = (event: CloseEvent) => {
     console.log(`WebSocket closed (code: ${event.code})`);
     socket = null;
-    showErrorBanner('WebSocket disconnected. Refresh page to reconnect.');
+    
+    // Don't show error for clean closures (1000) or going away (1001)
+    if (event.code !== 1000 && event.code !== 1001) {
+      showErrorBanner(`WebSocket disconnected (code: ${event.code}). Tab refocus or refresh to reconnect.`);
+    }
   };
 
   socket.onerror = (error: Event) => {
     console.error('WebSocket error:', error);
     // Set socket to null so visibilitychange/pageshow handlers will reconnect
     socket = null;
-    showErrorBanner('WebSocket error. Connection lost - reconnect on next focus.');
+    showErrorBanner('WebSocket connection error. Tab refocus or refresh to reconnect.');
   };
+}
+
+/**
+ * Calculate PDF coordinates from click position
+ * @param event - Mouse click event
+ * @returns Object with page number, x, y coordinates in PDF points, or null if calculation fails
+ */
+function calculatePdfCoordinates(event: MouseEvent): { page: number; x: number; y: number } | null {
+  if (!container || !pdfDoc) {
+    return null;
+  }
+
+  // Find which page was clicked
+  let targetPage: number | null = null;
+  let targetWrapper: HTMLElement | null = null;
+
+  for (let i = 1; i <= pdfDoc.numPages; i++) {
+    const wrapper = pageElements[i];
+    if (wrapper) {
+      const rect = wrapper.getBoundingClientRect();
+      if (event.clientY >= rect.top && event.clientY <= rect.bottom) {
+        targetPage = i;
+        targetWrapper = wrapper;
+        break;
+      }
+    }
+  }
+
+  if (!targetPage || !targetWrapper) {
+    return null;
+  }
+
+  // Get the canvas for this page
+  const canvas = targetWrapper.querySelector('canvas') as CanvasWithStyle | null;
+  if (!canvas) {
+    return null;
+  }
+
+  // Calculate click position relative to the canvas
+  const wrapperRect = targetWrapper.getBoundingClientRect();
+  const relativeX = event.clientX - wrapperRect.left;
+  const relativeY = event.clientY - wrapperRect.top;
+
+  // Get the PDF scale used for this page
+  const pdfScale: number = pageScales[targetPage] || 1.0;
+
+  // Convert CSS pixels to PDF points
+  // At PDF scale 1.0, 1 PDF point = 1 CSS pixel (approximately)
+  const x: number = relativeX / pdfScale;
+  const y: number = relativeY / pdfScale;
+
+  return { page: targetPage, x, y };
+}
+
+/**
+ * Send inverse search request to server
+ * @param page - Page number
+ * @param x - X coordinate in PDF points
+ * @param y - Y coordinate in PDF points
+ */
+function sendInverseSearch(page: number, x: number, y: number): void {
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    console.warn('WebSocket not connected, cannot send inverse search');
+    return;
+  }
+
+  if (!CONFIG.inverse_search_enabled) {
+    console.warn('Inverse search not enabled');
+    return;
+  }
+
+  const message = {
+    action: ACTION_INVERSE_SEARCH,
+    page: page,
+    x: x,
+    y: y
+  };
+
+  console.log('Sending inverse search:', message);
+  socket.send(JSON.stringify(message));
+}
+
+/**
+ * Handle shift+click for inverse search
+ * @param event - Mouse event
+ */
+function handleShiftClick(event: MouseEvent): void {
+  // Only trigger on shift+click
+  if (!event.shiftKey) {
+    return;
+  }
+
+  // Don't trigger if clicking on interactive elements
+  const target = event.target as HTMLElement;
+  if (target.tagName === 'A' || target.tagName === 'BUTTON' || target.isContentEditable) {
+    return;
+  }
+
+  const coords = calculatePdfCoordinates(event);
+  if (coords) {
+    sendInverseSearch(coords.page, coords.x, coords.y);
+    
+    // Show visual feedback
+    showInverseSearchFeedback(event.clientX, event.clientY);
+  }
+}
+
+/**
+ * Show visual feedback for inverse search
+ * @param x - Screen X coordinate
+ * @param y - Screen Y coordinate
+ */
+function showInverseSearchFeedback(x: number, y: number): void {
+  const feedback = document.createElement('div');
+  feedback.style.cssText = `
+    position: fixed;
+    left: ${x}px;
+    top: ${y}px;
+    transform: translate(-50%, -50%);
+    background: rgba(102, 126, 234, 0.9);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: sans-serif;
+    pointer-events: none;
+    z-index: 10000;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  `;
+  feedback.textContent = 'Inverse search...';
+  document.body.appendChild(feedback);
+
+  // Remove after 1 second
+  setTimeout(() => {
+    feedback.remove();
+  }, 1000);
 }
 
 // Initialize
@@ -659,8 +843,14 @@ if (CONFIG.filename === 'no-pdf-loaded') {
 }
 
 // Focus container when user clicks anywhere on the page (in case they unfocused it)
-document.addEventListener('click', () => {
+// Also handle shift+click for inverse search
+document.addEventListener('click', (event: MouseEvent) => {
   if (container && document.activeElement !== container) {
     container.focus();
+  }
+  
+  // Handle shift+click for inverse search
+  if (CONFIG.inverse_search_enabled && event.shiftKey) {
+    handleShiftClick(event);
   }
 });
