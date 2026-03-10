@@ -177,7 +177,7 @@ class TestWebSocketLifecycle:
         assert msg["page"] == 3
         assert msg["y"] == 305.0
         assert msg["x"] == 25.0
-        assert msg["timestamp"] == pdf_state.last_update_time
+        assert msg["timestamp"] == pdf_state.last_sync_time
         
         # Cleanup
         manager.disconnect(client)

@@ -84,7 +84,7 @@ def test_app(test_settings):
     # Reset global state
     pdf_state.current_page = 1
     pdf_state.current_y = None
-    pdf_state.last_update_time = int(time.time() * 1000)
+    pdf_state.last_sync_time = int(time.time() * 1000)
     
     # Reset connection manager
     manager.active_connections.clear()
@@ -115,19 +115,19 @@ def reset_state():
     # Save original values
     original_page = pdf_state.current_page
     original_y = pdf_state.current_y
-    original_time = pdf_state.last_update_time
+    original_time = pdf_state.last_sync_time
     
     # Reset to defaults
     pdf_state.current_page = 1
     pdf_state.current_y = None
-    pdf_state.last_update_time = int(time.time() * 1000)
+    pdf_state.last_sync_time = int(time.time() * 1000)
     
     yield
     
     # Restore original values (or keep reset based on test needs)
     pdf_state.current_page = original_page
     pdf_state.current_y = original_y
-    pdf_state.last_update_time = original_time
+    pdf_state.last_sync_time = original_time
 
 
 @pytest.fixture(scope="function")
@@ -229,7 +229,7 @@ def typescript_interfaces():
             "page": "number",
             "y": "number | undefined",
             "timestamp": "number | undefined",
-            "last_update_time": "number | undefined",
+            "last_sync_time": "number | undefined",
             "action": "string | undefined"
         }
     

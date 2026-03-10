@@ -60,7 +60,7 @@ class TestInterfaceDefinitions:
         
         # Check optional fields
         assert "timestamp?: number" in content or "timestamp: number | undefined" in content, "timestamp field not found"
-        assert "last_update_time?: number" in content or "last_update_time: number | undefined" in content, "last_update_time field not found"
+        assert "last_sync_time?: number" in content or "last_sync_time: number | undefined" in content, "last_sync_time field not found"
         assert "action?: string" in content or "action: string | undefined" in content, "action field not found"
     
     def test_pdf_config_interface_structure(self, types_ts_content):
@@ -192,9 +192,9 @@ class TestTypeContracts:
         # y: number | null
         assert isinstance(data["y"], (float, int, type(None))), "y should be number or null"
         
-        # last_update_time: number (required)
-        assert isinstance(data["last_update_time"], int), "last_update_time should be int"
-        assert data["last_update_time"] > 0, "last_update_time should be positive"
+        # last_sync_time: number (required)
+        assert isinstance(data["last_sync_time"], int), "last_sync_time should be int"
+        assert data["last_sync_time"] > 0, "last_sync_time should be positive"
 
 
 class TestTypeScriptNullHandling:

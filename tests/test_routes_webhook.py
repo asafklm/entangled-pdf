@@ -55,7 +55,7 @@ class TestWebhookAuthentication:
                 
                 with patch("src.routes.webhook.pdf_state") as mock_state:
                     mock_state.update = MagicMock()
-                    mock_state.last_update_time = 1234567890
+                    mock_state.last_sync_time = 1234567890
                     
                     response = client.post(
                         "/webhook/update",
@@ -178,7 +178,7 @@ class TestWebhookBroadcasting:
                 
                 with patch("src.routes.webhook.pdf_state") as mock_state:
                     mock_state.update = MagicMock()
-                    mock_state.last_update_time = 1234567890
+                    mock_state.last_sync_time = 1234567890
                     
                     response = client.post(
                         "/webhook/update",
@@ -217,7 +217,7 @@ class TestWebhookBroadcasting:
                 
                 with patch("src.routes.webhook.pdf_state") as mock_state:
                     mock_state.update = MagicMock()
-                    mock_state.last_update_time = 1234567890
+                    mock_state.last_sync_time = 1234567890
                     
                     response = client.post(
                         "/webhook/update",

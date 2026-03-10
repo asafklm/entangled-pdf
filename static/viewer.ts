@@ -83,6 +83,9 @@ const stateManager = createStateManager(CONFIG);
 const notificationManager = new NotificationManager();
 const wsManager = new WebSocketManager(window.location.hostname, CONFIG.port, CONFIG.token);
 
+// Track PDF loading state to prevent concurrent reloads
+let isLoadingPDF = false;
+
 // Attach logger to WebSocket
 clientLogger.attachWebSocket(wsManager);
 
@@ -224,8 +227,7 @@ function handleSyncTeXMessage(data: WebSocketMessage): void {
     page: data.page,
     x: data.x,
     y: data.y,
-    timestamp: data.timestamp,
-    last_update_time: data.last_update_time,
+    last_sync_time: data.timestamp,
     action: data.action,
   }, MARKER_DELAY_AFTER_RELOAD, 0, true);
 }
@@ -284,6 +286,9 @@ function handleReloadMessage(data: WebSocketMessage): void {
   const reloadMtime = data.pdf_mtime;
   if (reloadMtime && reloadMtime > 0) {
     CONFIG.mtime = reloadMtime;
+    // Update state manager immediately to prevent race condition with syncState
+    // This ensures syncState() won't trigger another reload for the same mtime
+    stateManager.updatePdfMtime(reloadMtime);
   }
   reloadPDF();
 }
@@ -292,25 +297,33 @@ function handleReloadMessage(data: WebSocketMessage): void {
  * Reload the PDF document
  */
 async function reloadPDF(): Promise<void> {
-  // Hide no-pdf message and show container
-  if (noPdfMessage) {
-    noPdfMessage.style.display = 'none';
+  // Prevent concurrent reloads - Safari iPad fires multiple events that can trigger reload
+  if (isLoadingPDF) {
+    console.log("[reloadPDF] PDF reload already in progress, skipping duplicate request");
+    return;
   }
-  viewerContainer.style.display = 'block';
   
-  // Clear existing state
-  pdfRenderer.clear();
-  stateManager.reset();
-  clearAllMarkers();
+  isLoadingPDF = true;
   
   try {
+    // Hide no-pdf message and show container
+    if (noPdfMessage) {
+      noPdfMessage.style.display = 'none';
+    }
+    viewerContainer.style.display = 'block';
+    
+    // Clear existing state
+    pdfRenderer.clear();
+    stateManager.reset();
+    clearAllMarkers();
+    
     const url = createPDFUrl('/get-pdf', CONFIG.mtime);
     await pdfRenderer.load(url);
     
     // Log PDF load
     clientLogger.logPdfLoad(CONFIG.filename, CONFIG.mtime);
     
-    // Apply pending state update if exists
+    // Apply pending state update if exists (from syncState during reload)
     const pending = stateManager.pendingUpdate;
     if (pending) {
       applyStateUpdate(pending, MARKER_DELAY_AFTER_RELOAD);
@@ -321,41 +334,67 @@ async function reloadPDF(): Promise<void> {
     console.error('Failed to reload PDF:', error);
     stateManager.setPendingUpdate(null);
     notificationManager.error('Failed to reload PDF. Please check that the file exists.');
+  } finally {
+    isLoadingPDF = false;
   }
 }
 
 /**
- * Synchronize state when tab regains focus
+ * Synchronize state when tab regains focus or reconnects.
+ * 
+ * Tracks two separate timestamps:
+ * - pdf_mtime: when the PDF file was last modified (requires reload)
+ * - last_sync_time: when last forward sync occurred (requires scroll)
  */
 async function syncState(): Promise<void> {
   try {
     const res = await fetch('/state');
     const data: StateUpdate = await res.json();
     
-    // Check if PDF became available or changed
-    const pdfBecameAvailable = data.pdf_loaded && !stateManager.isPdfLoaded;
-    const pdfFileChanged = data.pdf_file && data.pdf_file !== CONFIG.filename;
+    // Check if PDF file has changed
+    const pdfChanged = stateManager.isPdfChanged(data);
     
-    if (pdfBecameAvailable || pdfFileChanged) {
-      // Update tracking
-      stateManager.setPdfLoaded(true);
-      if (data.pdf_file) {
-        CONFIG.filename = data.pdf_file;
-      }
-      if (data.pdf_mtime) {
-        CONFIG.mtime = data.pdf_mtime;
-      }
-      
-      // Store as pending and reload
-      stateManager.setPendingUpdate(data);
-      await reloadPDF();
-      return;
+    // Check if there's a newer forward sync (scroll) to apply
+    const newSync = stateManager.isNewerSync(data);
+    
+    // Update file tracking info if changed
+    if (data.pdf_file && data.pdf_file !== CONFIG.filename) {
+      CONFIG.filename = data.pdf_file;
     }
     
-    // Only update timestamp tracking, don't scroll
-    // Scrolling only happens via WebSocket forward sync messages
-    if (stateManager.isNewerUpdate(data)) {
-      stateManager.updateTimestamp(data);
+    if (pdfChanged && data.pdf_mtime) {
+      CONFIG.mtime = data.pdf_mtime;
+    }
+    
+    if (pdfChanged) {
+      // PDF has changed - need to reload
+      if (isLoadingPDF) {
+        // PDF is already loading, just store pending scroll for when it completes
+        if (newSync) {
+          stateManager.setPendingUpdate(data);
+        }
+        // Still update timestamps so we don't check again
+      } else {
+        // Not currently loading, proceed with reload
+        if (newSync) {
+          // Both PDF changed AND new sync exists: store scroll info for after reload
+          stateManager.setPendingUpdate(data);
+        }
+        stateManager.setPdfLoaded(true);
+        await reloadPDF();
+      }
+    } else if (newSync) {
+      // Only scroll changed, PDF is same: just scroll to new position
+      stateManager.setPdfLoaded(true);
+      applyStateUpdate(data, 0, 0, true);
+    }
+    
+    // Update our tracked timestamps
+    if (data.pdf_mtime) {
+      stateManager.updatePdfMtime(data.pdf_mtime);
+    }
+    if (data.last_sync_time || data.timestamp) {
+      stateManager.updateSyncTime(data);
     }
   } catch (e) {
     console.error('Sync error', e);
@@ -467,7 +506,8 @@ if (CONFIG.filename === 'no-pdf-loaded') {
       // Log initial PDF load
       clientLogger.logPdfLoad(CONFIG.filename, CONFIG.mtime);
       
-      syncState();
+      // Note: syncState() not needed here - initial load already has the correct PDF
+      // syncState() is only called on visibilitychange/pageshow for reconnection scenarios
       viewerContainer.focus();
     })
     .catch((error: Error) => {

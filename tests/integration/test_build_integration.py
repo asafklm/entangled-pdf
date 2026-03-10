@@ -155,14 +155,14 @@ class TestTypeScriptInterfaceContracts:
         assert "pdf_loaded" in api_data, "API missing 'pdf_loaded' field"
         assert "page" in api_data, "API missing 'page' field"
         assert "y" in api_data, "API missing 'y' field"
-        assert "last_update_time" in api_data, "API missing 'last_update_time' field"
+        assert "last_sync_time" in api_data, "API missing 'last_sync_time' field"
         
         # Type checks
         assert isinstance(api_data["pdf_file"], (str, type(None))), f"pdf_file should be string or null, got {type(api_data['pdf_file'])}"
         assert isinstance(api_data["pdf_loaded"], bool), f"pdf_loaded should be bool, got {type(api_data['pdf_loaded'])}"
         assert isinstance(api_data["page"], int), "page should be number (int)"
         assert isinstance(api_data["y"], (float, type(None))), "y should be number or null"
-        assert isinstance(api_data["last_update_time"], int), "last_update_time should be number"
+        assert isinstance(api_data["last_sync_time"], int), "last_sync_time should be number"
     
     def test_pdf_config_interface_matches_backend(self, viewer_ts_content, test_client, test_settings):
         """Test that PDFConfig interface matches window.PDF_CONFIG from backend."""

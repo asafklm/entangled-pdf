@@ -147,7 +147,7 @@ async def receive_webhook(
                 "page": page,
                 "y": y,
                 "x": x,
-                "timestamp": pdf_state.last_update_time
+                "timestamp": pdf_state.last_sync_time
             })
             
             return JSONResponse(content={

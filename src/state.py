@@ -28,13 +28,13 @@ class PDFState:
     Attributes:
         current_page: The currently viewed page number (1-indexed)
         current_y: The vertical position in PDF points (optional)
-        last_update_time: Timestamp of last update in milliseconds
+        last_sync_time: Timestamp of last forward sync (synctex) in milliseconds
         pdf_file: Path to the currently loaded PDF file (optional)
         pdf_mtime: Last modification time of the PDF file (optional)
     """
     current_page: int = 1
     current_y: Optional[float] = None
-    last_update_time: int = field(default_factory=lambda: int(time.time() * 1000))
+    last_sync_time: int = field(default_factory=lambda: int(time.time() * 1000))
     pdf_file: Optional[Path] = None
     pdf_mtime: Optional[float] = None
     websocket_token: Optional[str] = field(default_factory=generate_websocket_token)
@@ -50,7 +50,7 @@ class PDFState:
         """
         self.current_page = page
         self.current_y = y
-        self.last_update_time = int(time.time() * 1000)
+        self.last_sync_time = int(time.time() * 1000)
     
     def update_pdf(self, pdf_path: Path) -> bool:
         """Update the PDF file path and check if file changed.
@@ -85,7 +85,7 @@ class PDFState:
         return {
             "page": self.current_page,
             "y": self.current_y,
-            "last_update_time": self.last_update_time,
+            "last_sync_time": self.last_sync_time,
             "pdf_file": str(self.pdf_file) if self.pdf_file else None,
             "pdf_mtime": self.pdf_mtime,
             "pdf_loaded": self.pdf_file is not None

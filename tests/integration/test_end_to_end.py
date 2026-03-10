@@ -101,7 +101,7 @@ class TestEndToEndSyncTeX:
         # Browser syncs to current position
         assert current_state["page"] == 15
         assert current_state["y"] == 1500.0
-        assert current_state["last_update_time"] == pdf_state.last_update_time
+        assert current_state["last_sync_time"] == pdf_state.last_sync_time
         
         # New updates go to reconnected browser (line: 200 -> page 20, y 2000)
         response = test_client.post(
@@ -247,7 +247,7 @@ class TestEndToEndSyncTeX:
         # Initial state check via polling
         response = test_client.get("/state")
         initial_data = response.json()
-        initial_timestamp = initial_data["last_update_time"]
+        initial_timestamp = initial_data["last_sync_time"]
         
         # Update happens via webhook (line: 42 -> page 5, y 420)
         response = test_client.post(
@@ -262,6 +262,6 @@ class TestEndToEndSyncTeX:
         polled_data = response.json()
         
         # Browser detects update via polling
-        assert polled_data["last_update_time"] > initial_timestamp
+        assert polled_data["last_sync_time"] > initial_timestamp
         assert polled_data["page"] == 5
         assert polled_data["y"] == 420.0

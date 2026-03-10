@@ -22,7 +22,8 @@ export class StateManager {
     this.state = {
       page: initialState?.page ?? null,
       y: initialState?.y ?? null,
-      timestamp: initialState?.timestamp ?? 0,
+      pdfMtime: initialState?.pdfMtime ?? 0,
+      lastSyncTime: initialState?.lastSyncTime ?? 0,
       pdfLoaded: initialState?.pdfLoaded ?? false,
       pendingUpdate: initialState?.pendingUpdate ?? null,
     };
@@ -50,10 +51,17 @@ export class StateManager {
   }
 
   /**
-   * Get last update timestamp
+   * Get last PDF modification time
    */
-  get lastTimestamp(): number {
-    return this.state.timestamp;
+  get pdfMtime(): number {
+    return this.state.pdfMtime;
+  }
+
+  /**
+   * Get last sync (forward search) time
+   */
+  get lastSyncTime(): number {
+    return this.state.lastSyncTime;
   }
 
   /**
@@ -80,26 +88,52 @@ export class StateManager {
   }
 
   /**
-   * Update position and timestamp
+   * Update position and timestamps
    */
   updatePosition(page: number, y?: number, timestamp?: number): void {
     this.state.page = page;
     this.state.y = y ?? null;
     if (timestamp !== undefined) {
-      this.state.timestamp = timestamp;
+      this.state.lastSyncTime = timestamp;
     }
     this.notifyListeners();
   }
 
   /**
-   * Update timestamp from state update
+   * Update sync timestamp from state update
    */
-  updateTimestamp(data: StateUpdate): void {
-    const newTimestamp = data.timestamp ?? data.last_update_time ?? 0;
-    if (newTimestamp > this.state.timestamp) {
-      this.state.timestamp = newTimestamp;
+  updateSyncTime(data: StateUpdate): void {
+    const newSyncTime = data.last_sync_time ?? data.timestamp ?? 0;
+    if (newSyncTime > this.state.lastSyncTime) {
+      this.state.lastSyncTime = newSyncTime;
       this.notifyListeners();
     }
+  }
+
+  /**
+   * Update PDF modification time
+   */
+  updatePdfMtime(mtime: number): void {
+    if (mtime > this.state.pdfMtime) {
+      this.state.pdfMtime = mtime;
+      this.notifyListeners();
+    }
+  }
+
+  /**
+   * Check if a sync (forward search) is newer than current
+   */
+  isNewerSync(data: StateUpdate): boolean {
+    const newSyncTime = data.last_sync_time ?? data.timestamp ?? 0;
+    return newSyncTime > this.state.lastSyncTime;
+  }
+
+  /**
+   * Check if PDF has changed based on mtime
+   */
+  isPdfChanged(data: StateUpdate): boolean {
+    const newMtime = data.pdf_mtime ?? 0;
+    return newMtime > this.state.pdfMtime;
   }
 
   /**
@@ -125,9 +159,13 @@ export class StateManager {
     this.state.page = data.page;
     this.state.y = data.y ?? null;
     
-    const newTimestamp = data.timestamp ?? data.last_update_time ?? 0;
-    if (newTimestamp > 0) {
-      this.state.timestamp = newTimestamp;
+    const newSyncTime = data.last_sync_time ?? data.timestamp ?? 0;
+    if (newSyncTime > 0) {
+      this.state.lastSyncTime = newSyncTime;
+    }
+
+    if (data.pdf_mtime !== undefined && data.pdf_mtime > 0) {
+      this.state.pdfMtime = data.pdf_mtime;
     }
 
     if (data.pdf_loaded !== undefined) {
@@ -138,11 +176,11 @@ export class StateManager {
   }
 
   /**
-   * Check if a state update is newer than current
+   * Check if a state update has newer sync time than current
    */
   isNewerUpdate(data: StateUpdate): boolean {
-    const newTimestamp = data.timestamp ?? data.last_update_time ?? 0;
-    return newTimestamp > this.state.timestamp;
+    const newSyncTime = data.last_sync_time ?? data.timestamp ?? 0;
+    return newSyncTime > this.state.lastSyncTime;
   }
 
   /**
@@ -152,7 +190,8 @@ export class StateManager {
     this.state = {
       page: null,
       y: null,
-      timestamp: 0,
+      pdfMtime: 0,
+      lastSyncTime: 0,
       pdfLoaded: false,
       pendingUpdate: null,
     };
@@ -180,6 +219,7 @@ export class StateManager {
 export function createStateManager(config: PDFConfig): StateManager {
   return new StateManager({
     pdfLoaded: config.filename !== 'no-pdf-loaded',
-    timestamp: config.mtime,
+    pdfMtime: config.mtime,
+    lastSyncTime: config.mtime,
   });
 }

@@ -26,7 +26,7 @@ class TestGetState:
         mock_state.to_dict.return_value = {
             "page": 5,
             "y": 150.5,
-            "last_update_time": 1234567890,
+            "last_sync_time": 1234567890,
             "pdf_file": "/path/to/test.pdf",
             "pdf_loaded": True
         }
@@ -40,7 +40,7 @@ class TestGetState:
             assert data["pdf_loaded"] is True
             assert data["page"] == 5
             assert data["y"] == 150.5
-            assert data["last_update_time"] == 1234567890
+            assert data["last_sync_time"] == 1234567890
     
     def test_get_state_json_format(self, client):
         """Test that response is valid JSON with correct structure."""
@@ -48,7 +48,7 @@ class TestGetState:
         mock_state.to_dict.return_value = {
             "page": 1,
             "y": None,
-            "last_update_time": 1234567890,
+            "last_sync_time": 1234567890,
             "pdf_file": None,
             "pdf_loaded": False
         }
@@ -65,7 +65,7 @@ class TestGetState:
             assert "pdf_loaded" in data
             assert "page" in data
             assert "y" in data
-            assert "last_update_time" in data
+            assert "last_sync_time" in data
     
     def test_get_state_default_values(self, client):
         """Test that endpoint returns default state values."""
@@ -73,7 +73,7 @@ class TestGetState:
         mock_state.to_dict.return_value = {
             "page": 1,
             "y": None,
-            "last_update_time": 1234567890,
+            "last_sync_time": 1234567890,
             "pdf_file": None,
             "pdf_loaded": False
         }
@@ -94,7 +94,7 @@ class TestGetState:
         mock_state1.to_dict.return_value = {
             "page": 3,
             "y": 100.0,
-            "last_update_time": 1234567890,
+            "last_sync_time": 1234567890,
             "pdf_file": "/path/to/doc1.pdf",
             "pdf_loaded": True
         }
@@ -111,7 +111,7 @@ class TestGetState:
         mock_state2.to_dict.return_value = {
             "page": 7,
             "y": 250.5,
-            "last_update_time": 1234567891,
+            "last_sync_time": 1234567891,
             "pdf_file": "/path/to/doc2.pdf",
             "pdf_loaded": True
         }
@@ -129,7 +129,7 @@ class TestGetState:
         mock_state.to_dict.return_value = {
             "page": 2,
             "y": 0.0,
-            "last_update_time": 1234567890,
+            "last_sync_time": 1234567890,
             "pdf_file": "/path/to/test.pdf",
             "pdf_loaded": True
         }
@@ -148,7 +148,7 @@ class TestGetState:
         mock_state.to_dict.return_value = {
             "page": 9999,
             "y": 5000.5,
-            "last_update_time": 1234567890,
+            "last_sync_time": 1234567890,
             "pdf_file": "/path/to/big.pdf",
             "pdf_loaded": True
         }
@@ -167,7 +167,7 @@ class TestGetState:
         mock_state.to_dict.return_value = {
             "page": 1,
             "y": None,
-            "last_update_time": 1234567890123,
+            "last_sync_time": 1234567890123,
             "pdf_file": None,
             "pdf_loaded": False
         }
@@ -177,5 +177,5 @@ class TestGetState:
             
             assert response.status_code == 200
             data = response.json()
-            assert isinstance(data["last_update_time"], int)
-            assert data["last_update_time"] == 1234567890123
+            assert isinstance(data["last_sync_time"], int)
+            assert data["last_sync_time"] == 1234567890123

@@ -27,7 +27,7 @@ class TestStateConsistency:
         # Initial state
         response = test_client.get("/state")
         initial_data = response.json()
-        initial_timestamp = initial_data["last_update_time"]
+        initial_timestamp = initial_data["last_sync_time"]
         
         # Send webhook with synctex params (line: 50 -> page 5, y 500)
         response = test_client.post(
@@ -44,7 +44,7 @@ class TestStateConsistency:
         # Verify consistency (line 50 -> page 5, y 500)
         assert polled_data["page"] == 5
         assert polled_data["y"] == 500.0
-        assert polled_data["last_update_time"] > initial_timestamp
+        assert polled_data["last_sync_time"] > initial_timestamp
         assert pdf_state.current_page == 5
         assert pdf_state.current_y == 500.0
     
@@ -70,7 +70,7 @@ class TestStateConsistency:
             )
             assert response.status_code == 200
             
-            timestamps.append(pdf_state.last_update_time)
+            timestamps.append(pdf_state.last_sync_time)
         
         # Verify timestamps are increasing
         assert timestamps[0] < timestamps[1] < timestamps[2]
@@ -222,4 +222,4 @@ class TestStateConsistency:
         # Verify types
         assert isinstance(data["page"], int)
         assert isinstance(data["y"], float)
-        assert isinstance(data["last_update_time"], int)
+        assert isinstance(data["last_sync_time"], int)

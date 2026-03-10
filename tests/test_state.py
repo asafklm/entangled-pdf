@@ -15,14 +15,14 @@ class TestPDFState:
         
         assert state.current_page == 1
         assert state.current_y is None
-        assert state.last_update_time > 0
+        assert state.last_sync_time > 0
     
     def test_update_changes_values(self):
         """Test that update changes state values."""
         import time
         
         state = PDFState()
-        old_timestamp = state.last_update_time
+        old_timestamp = state.last_sync_time
         
         # Small delay to ensure timestamp changes
         time.sleep(0.01)
@@ -31,7 +31,7 @@ class TestPDFState:
         
         assert state.current_page == 5
         assert state.current_y == 100.5
-        assert state.last_update_time >= old_timestamp
+        assert state.last_sync_time >= old_timestamp
     
     def test_update_without_y(self):
         """Test update with only page number."""
@@ -51,7 +51,7 @@ class TestPDFState:
         
         assert result["page"] == 2
         assert result["y"] == 50.0
-        assert "last_update_time" in result
+        assert "last_sync_time" in result
 
     def test_to_dict_includes_pdf_mtime(self):
         """Test that to_dict includes pdf_mtime field."""

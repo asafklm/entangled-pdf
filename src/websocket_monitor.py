@@ -26,7 +26,7 @@ BLOCKED_PATTERNS = [
     re.compile(r"eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+"),
 ]
 
-ALLOWED_FIELDS: Set[str] = {"action", "page", "x", "y", "timestamp", "pdf_loaded", "pdf_file", "pdf_mtime", "last_update_time", "message"}
+ALLOWED_FIELDS: Set[str] = {"action", "page", "x", "y", "timestamp", "pdf_loaded", "pdf_file", "pdf_mtime", "last_sync_time", "message"}
 
 
 class WebSocketMonitor:

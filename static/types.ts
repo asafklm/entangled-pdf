@@ -48,7 +48,7 @@ export interface StateUpdate {
   x?: number;
   y?: number;
   timestamp?: number;
-  last_update_time?: number;
+  last_sync_time?: number;
   action?: string;
 }
 
@@ -78,7 +78,8 @@ declare global {
 export interface ViewerState {
   page: number | null;
   y: number | null;
-  timestamp: number;
+  pdfMtime: number;
+  lastSyncTime: number;
   pdfLoaded: boolean;
   pendingUpdate: StateUpdate | null;
 }
@@ -123,7 +124,7 @@ export interface WebSocketMessage {
   x?: number;
   y?: number;
   timestamp?: number;
-  last_update_time?: number;
+  last_sync_time?: number;
   pdf_mtime?: number;
   message?: string;
 }
