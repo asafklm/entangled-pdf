@@ -163,8 +163,8 @@ def parse_args() -> argparse.Namespace:
         "--inverse-search-command",
         type=str,
         metavar="CMD",
-        help="Inverse search command template with %%{line} and %%{file} placeholders "
-             "(e.g., 'nvr --remote-silent +%%{line} %%{file}')"
+        help="Inverse search command template with %%{line}, %%{column}, and %%{file} placeholders "
+             "(e.g., 'nvr --remote-silent -c \"call cursor(%%{line}, %%{column})\" %%{file}')"
     )
     
     inverse_group.add_argument(
@@ -209,9 +209,9 @@ def get_inverse_search_command(args) -> str | None:
         # User provided custom command - unescape %% to %
         return args.inverse_search_command.replace("%%", "%")
     elif args.inverse_search_nvim:
-        return "nvr --nostart --remote-silent +%{line} %{file}"
+        return "nvr --nostart --remote-silent %{file} -c 'call cursor(%{line}, %{column})'"
     elif args.inverse_search_vim:
-        return "vim --servername VIM --remote-silent +%{line} %{file}"
+        return "vim --servername VIM --remote-silent %{file} '+call cursor(%{line}, %{column})'"
     else:
         return None
 

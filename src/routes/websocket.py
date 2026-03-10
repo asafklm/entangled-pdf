@@ -125,6 +125,15 @@ async def execute_inverse_search(page: int, x: float, y: float) -> bool:
     # Extract source file information
     tex_file = synctex_result.get("Input")
     line = synctex_result.get("Line")
+    column = synctex_result.get("Column", "1")
+    
+    # Handle invalid column values (synctex often returns -1 when column data unavailable)
+    try:
+        col_num = int(column)
+        if col_num < 1:
+            column = "1"
+    except (ValueError, TypeError):
+        column = "1"
     
     if not tex_file or not line:
         logger.warning(f"Invalid synctex result: {synctex_result}")
@@ -135,7 +144,7 @@ async def execute_inverse_search(page: int, x: float, y: float) -> bool:
     
     # Interpolate command template
     template = pdf_state.inverse_search_command
-    command = template.replace("%{line}", line).replace("%{file}", tex_file)
+    command = template.replace("%{line}", line).replace("%{file}", tex_file).replace("%{column}", column)
     
     logger.info(f"Executing inverse search: {command}")
     
