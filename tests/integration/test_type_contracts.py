@@ -17,12 +17,28 @@ class TestInterfaceDefinitions:
     
     @pytest.fixture
     def viewer_ts_content(self):
-        """Read viewer.ts and extract interfaces."""
+        """Read viewer.ts and extract functions."""
         viewer_ts = Path(__file__).parent.parent.parent / "static" / "viewer.ts"
         if not viewer_ts.exists():
             pytest.skip("viewer.ts not found")
         return viewer_ts.read_text()
     
+    @pytest.fixture
+    def types_ts_content(self):
+        """Read types.ts and extract interfaces."""
+        types_ts = Path(__file__).parent.parent.parent / "static" / "types.ts"
+        if not types_ts.exists():
+            pytest.skip("types.ts not found")
+        return types_ts.read_text()
+
+    @pytest.fixture
+    def coordinate_utils_ts_content(self):
+        """Read coordinate-utils.ts and extract functions."""
+        utils_ts = Path(__file__).parent.parent.parent / "static" / "coordinate-utils.ts"
+        if not utils_ts.exists():
+            pytest.skip("coordinate-utils.ts not found")
+        return utils_ts.read_text()
+
     @pytest.fixture
     def pdfjs_types_content(self):
         """Read PDF.js type definitions."""
@@ -31,9 +47,9 @@ class TestInterfaceDefinitions:
             pytest.skip("pdfjs.d.ts not found")
         return types_file.read_text()
     
-    def test_state_update_interface_structure(self, viewer_ts_content):
+    def test_state_update_interface_structure(self, types_ts_content):
         """Test StateUpdate interface has correct structure."""
-        content = viewer_ts_content
+        content = types_ts_content
         
         # Check interface definition exists
         assert "interface StateUpdate" in content, "StateUpdate interface not found"
@@ -47,48 +63,49 @@ class TestInterfaceDefinitions:
         assert "last_update_time?: number" in content or "last_update_time: number | undefined" in content, "last_update_time field not found"
         assert "action?: string" in content or "action: string | undefined" in content, "action field not found"
     
-    def test_pdf_config_interface_structure(self, viewer_ts_content):
+    def test_pdf_config_interface_structure(self, types_ts_content):
         """Test PDFConfig interface has correct structure."""
-        content = viewer_ts_content
+        content = types_ts_content
         
         assert "interface PDFConfig" in content, "PDFConfig interface not found"
         assert "port: number" in content, "port field not found or wrong type"
         assert "filename: string" in content, "filename field not found or wrong type"
     
-    def test_canvas_with_style_interface(self, viewer_ts_content):
+    def test_canvas_with_style_interface(self, types_ts_content):
         """Test CanvasWithStyle interface exists."""
-        content = viewer_ts_content
+        content = types_ts_content
         
         assert "interface CanvasWithStyle" in content, "CanvasWithStyle interface not found"
         assert "extends HTMLCanvasElement" in content or "HTMLCanvasElement" in content, "Should extend HTMLCanvasElement"
     
-    def test_global_window_declaration(self, viewer_ts_content):
+    def test_global_window_declaration(self, types_ts_content):
         """Test global Window interface extension."""
-        content = viewer_ts_content
+        content = types_ts_content
         
         assert "declare global" in content, "No global declarations found"
         assert "interface Window" in content, "Window interface not extended"
         assert "PDF_CONFIG: PDFConfig" in content, "PDF_CONFIG not declared on Window"
     
-    def test_function_type_annotations(self, viewer_ts_content):
+    def test_function_type_annotations(self, coordinate_utils_ts_content, viewer_ts_content):
         """Test key functions have proper type annotations."""
-        content = viewer_ts_content
+        utils_content = coordinate_utils_ts_content
+        viewer_content = viewer_ts_content
         
         # Check function signatures
-        assert "function getRenderScale(canvas: CanvasWithStyle): number" in content or \
-               "function getRenderScale(canvas:" in content, "getRenderScale not properly typed"
+        assert "function getRenderScale(canvas: MockCanvas): number" in utils_content or \
+               "function getRenderScale(canvas:" in utils_content, "getRenderScale not properly typed"
         
-        assert "function pdfYToPixels(canvas: CanvasWithStyle, y: number): number" in content or \
-               "function pdfYToPixels(canvas:" in content, "pdfYToPixels not properly typed"
+        assert "function pdfYToPixels(canvas: MockCanvas, y: number" in utils_content or \
+               "function pdfYToPixels(canvas:" in utils_content, "pdfYToPixels not properly typed"
         
-        assert "function applyStateUpdate(data: StateUpdate" in content, "applyStateUpdate not properly typed"
+        assert "function applyStateUpdate(data: StateUpdate" in viewer_content, "applyStateUpdate not properly typed"
     
     def test_async_function_declarations(self, viewer_ts_content):
         """Test async functions are properly declared."""
         content = viewer_ts_content
         
-        assert "async function loadPDF(): Promise<void>" in content or \
-               "async function loadPDF()" in content, "loadPDF not declared as async"
+        assert "async function reloadPDF(): Promise<void>" in content or \
+               "async function reloadPDF()" in content, "reloadPDF not declared as async"
         
         assert "async function syncState(): Promise<void>" in content or \
                "async function syncState()" in content, "syncState not declared as async"
@@ -97,6 +114,14 @@ class TestInterfaceDefinitions:
 class TestPDFJSIntegration:
     """Test PDF.js TypeScript integration."""
     
+    @pytest.fixture
+    def pdf_renderer_ts_content(self):
+        """Read pdf-renderer.ts and extract functions."""
+        renderer_ts = Path(__file__).parent.parent.parent / "static" / "pdf-renderer.ts"
+        if not renderer_ts.exists():
+            pytest.skip("pdf-renderer.ts not found")
+        return renderer_ts.read_text()
+
     @pytest.fixture
     def pdfjs_types_content(self):
         """Read PDF.js type definitions."""
@@ -113,9 +138,9 @@ class TestPDFJSIntegration:
         """Test PDFDocumentProxy type is defined."""
         assert "PDFDocumentProxy" in pdfjs_types_content, "PDFDocumentProxy type not found"
     
-    def test_pdfjs_import_in_viewer(self, viewer_ts_content):
-        """Test PDF.js types are imported in viewer.ts."""
-        assert "from '../types/pdfjs'" in viewer_ts_content, "PDF.js types not imported"
+    def test_pdfjs_import_in_viewer(self, pdf_renderer_ts_content):
+        """Test PDF.js types are imported in pdf-renderer.ts."""
+        assert "from '../types/pdfjs'" in pdf_renderer_ts_content, "PDF.js types not imported"
 
 
 class TestTypeContracts:

@@ -129,18 +129,18 @@ class TestESModuleValidation:
             "Use ES module import instead to ensure proper loading order."
         )
     
-    def test_viewer_ts_uses_module_import(self, project_root):
-        """Verify viewer.ts source uses module import pattern."""
-        viewer_ts = project_root / "static" / "viewer.ts"
+    def test_pdf_renderer_ts_uses_module_import(self, project_root):
+        """Verify pdf-renderer.ts source uses module import pattern."""
+        renderer_ts = project_root / "static" / "pdf-renderer.ts"
         
-        if not viewer_ts.exists():
-            pytest.skip("viewer.ts not found")
+        if not renderer_ts.exists():
+            pytest.skip("pdf-renderer.ts not found")
         
-        content = viewer_ts.read_text()
+        content = renderer_ts.read_text()
         
         # Must import pdfjsLib as module
         assert "import * as pdfjsLib from" in content, (
-            "viewer.ts must use ES module import. "
+            "pdf-renderer.ts must use ES module import. "
             "Pattern: import * as pdfjsLib from '/pdfjs/pdf.mjs'"
         )
         
@@ -163,7 +163,7 @@ class TestESModuleValidation:
                     # Check if pdfjsLib is declared inside the global block
                     if "pdfjsLib" in line and "interface" in line:
                         pytest.fail(
-                            f"viewer.ts line {i}: Should not declare pdfjsLib as global. "
+                            f"pdf-renderer.ts line {i}: Should not declare pdfjsLib as global. "
                             "Import it as ES module instead.\n"
                             f"Found: {line.strip()}"
                         )

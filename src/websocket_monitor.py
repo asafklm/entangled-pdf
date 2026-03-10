@@ -13,9 +13,20 @@ Output format:
     [2024-01-15 14:23:05.789] [SENT] action=synctex page=3 x=100.5 y=200.0
 """
 
+import re
 import sys
 from datetime import datetime
-from typing import Optional, TextIO
+from typing import Any, Optional, Set, TextIO
+
+
+SANITIZED_KEYS: Set[str] = {"token", "password", "secret", "api_key", "x-api-key", "authorization", "credentials"}
+
+BLOCKED_PATTERNS = [
+    re.compile(r"://[^:]+:[^@]+@"),
+    re.compile(r"eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+"),
+]
+
+ALLOWED_FIELDS: Set[str] = {"action", "page", "x", "y", "timestamp", "pdf_loaded", "pdf_file", "pdf_mtime", "last_update_time", "message"}
 
 
 class WebSocketMonitor:
@@ -56,7 +67,29 @@ class WebSocketMonitor:
     def disable(self) -> None:
         """Disable WebSocket monitoring."""
         self._enabled = False
-    
+
+    def _sanitize(self, message: dict[str, Any]) -> dict[str, Any]:
+        """Sanitize message by removing sensitive data and limiting to allowed fields."""
+        sanitized: dict[str, Any] = {}
+        for key, value in message.items():
+            key_lower = key.lower()
+
+            if key_lower in SANITIZED_KEYS:
+                sanitized[key] = "[REDACTED]"
+                continue
+
+            if isinstance(value, str):
+                for pattern in BLOCKED_PATTERNS:
+                    if pattern.search(value):
+                        sanitized[key] = "[REDACTED]"
+                        break
+                else:
+                    sanitized[key] = value
+            else:
+                sanitized[key] = value
+
+        return {k: v for k, v in sanitized.items() if k in ALLOWED_FIELDS}
+
     def _format_message(self, message: dict) -> str:
         """Format message dict as concise key=value pairs.
         
@@ -77,16 +110,17 @@ class WebSocketMonitor:
     
     def _log(self, direction: str, message: dict) -> None:
         """Internal method to log a message.
-        
+
         Args:
             direction: Either "RECV" or "SENT"
             message: The message dictionary to log
         """
         if not self._enabled:
             return
-        
+
+        sanitized = self._sanitize(message)
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-        formatted = self._format_message(message)
+        formatted = self._format_message(sanitized)
         
         try:
             self.output.write(f"[{timestamp}] [{direction}] {formatted}\n")

@@ -104,9 +104,9 @@ class TestTypeScriptCompilation:
         
         # Check for key functions
         required_functions = [
-            "loadPDF",
-            "connectWebSocket",
-            "scrollToPage",
+            "reloadPDF",
+            "WebSocketManager",
+            "scrollToPageWithRetry",
             "applyStateUpdate",
             "syncState"
         ]

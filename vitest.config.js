@@ -8,7 +8,7 @@ export default {
     coverage: {
       reporter: ['text', 'json', 'html'],
       include: ['static/*.ts'],
-      exclude: ['static/viewer.ts'] // Exclude main file until refactored
+      exclude: ['static/viewer.ts'] // Exclude main file - requires complex pdfjs mock
     }
   },
   resolve: {

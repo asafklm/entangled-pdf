@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from src.certs import get_cert_paths, validate_certificate
 from src.config import init_settings
+from src.logging_sanitizer import SensitiveDataFilter
 from src.routes import auth, load_pdf, pdf, state, static_files, view, webhook, websocket
 from src.state import pdf_state
 from src.websocket_monitor import monitor as ws_monitor
@@ -29,6 +30,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
+logging.getLogger().addFilter(SensitiveDataFilter())
 logger = logging.getLogger(__name__)
 
 
