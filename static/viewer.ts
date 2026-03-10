@@ -10,9 +10,7 @@
  *    user performed forward sync. This appears to be a Safari/iOS browser behavior that 
  *    is difficult to prevent.
  * 
- * 2. Red dot position: The red dot marker should appear on the left margin, not on the 
- *    text at the sync position. Currently it may appear at the X coordinate of the sync 
- *    point rather than the left margin.
+ * 2. Red dot position: Fixed - marker now appears on the left margin.
  * 
  * 3. Sync back lag: The inverse search confirmation button is lagging or unresponsive. 
  *    This needs investigation into the tooltip event handling and WebSocket message 
@@ -256,13 +254,14 @@ function applyStateUpdate(data: StateUpdate, delay = 0, attempt = 0, isForwardSy
       });
       
       setTimeout(() => {
-        // Pass x coordinate to position marker horizontally (left margin if undefined)
+        // Show marker at Y position only - red dot should appear on left margin
+        // Don't pass x coordinate to keep marker on left margin (not at text position)
         showMarkerAtPage(
           pdfRenderer.getPageElements(),
           pdfRenderer.getPageScales(),
           pageNum,
-          y,
-          x
+          y
+          // x is intentionally omitted - marker stays on left margin per CSS default
         );
       }, delay);
     } else if (attempt < 10) {
