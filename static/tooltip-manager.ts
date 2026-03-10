@@ -109,6 +109,7 @@ export function createInverseSearchTooltip(
   confirmButton.addEventListener('click', (e) => {
     e.stopPropagation();
     onConfirm();
+    hideActiveTooltip();
   });
 
   tooltip.appendChild(confirmButton);
