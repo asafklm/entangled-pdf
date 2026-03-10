@@ -33,6 +33,7 @@ export enum ConnectionState {
 export class WebSocketManager {
   private socket: WebSocket | null = null;
   private state: ConnectionState = ConnectionState.DISCONNECTED;
+  private currentConnectionId: number = 0;
   private handlers: Map<WebSocketAction, MessageHandler[]> = new Map();
   private reconnectAttempts = 0;
   private onErrorCallback: ((message: string) => void) | null = null;
@@ -131,6 +132,11 @@ export class WebSocketManager {
       this.socket = null;
     }
 
+    // Increment connection ID to track current connection
+    // This prevents race conditions where old socket close overwrites new connection state
+    this.currentConnectionId++;
+    const connectionId = this.currentConnectionId;
+
     this.state = ConnectionState.CONNECTING;
     console.log('Connecting to WebSocket...');
 
@@ -160,6 +166,11 @@ export class WebSocketManager {
     };
 
     this.socket.onclose = (event: CloseEvent) => {
+      // Only update state if this is still the current connection
+      // Prevents race condition where old socket close overwrites new connection
+      if (this.currentConnectionId !== connectionId) {
+        return;
+      }
       this.state = ConnectionState.DISCONNECTED;
       this.socket = null;
       console.log(`WebSocket closed (code: ${event.code})`);
@@ -171,6 +182,10 @@ export class WebSocketManager {
     };
 
     this.socket.onerror = (error: Event) => {
+      // Only update state if this is still the current connection
+      if (this.currentConnectionId !== connectionId) {
+        return;
+      }
       console.error('WebSocket error:', error);
       this.socket = null;
       this.state = ConnectionState.DISCONNECTED;
