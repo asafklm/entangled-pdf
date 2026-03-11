@@ -30,14 +30,11 @@ async def get_pdf() -> FileResponse:
     if settings.pdf_file is None:
         raise HTTPException(status_code=404, detail="No PDF loaded")
     
-    mtime = settings.pdf_file.stat().st_mtime
-    
     return FileResponse(
         settings.pdf_file,
         media_type="application/pdf",
         filename=settings.pdf_file.name,
         headers={
-            "Cache-Control": "public, max-age=31536000",
-            "ETag": f'"{int(mtime)}"'
+            "Cache-Control": "public, max-age=31536000"
         }
     )
