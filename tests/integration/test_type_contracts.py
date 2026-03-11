@@ -59,7 +59,6 @@ class TestInterfaceDefinitions:
         assert "y?: number" in content or "y: number | undefined" in content, "y field not optional"
         
         # Check optional fields
-        assert "timestamp?: number" in content or "timestamp: number | undefined" in content, "timestamp field not found"
         assert "last_sync_time?: number" in content or "last_sync_time: number | undefined" in content, "last_sync_time field not found"
         assert "action?: string" in content or "action: string | undefined" in content, "action field not found"
     

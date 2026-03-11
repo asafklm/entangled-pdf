@@ -163,21 +163,21 @@ class TestWebSocketLifecycle:
         assert "page" in msg
         assert "y" in msg
         assert "x" in msg
-        assert "timestamp" in msg
+        assert "last_sync_time" in msg
         
         # Types
         assert isinstance(msg["action"], str)
         assert isinstance(msg["page"], int)
         assert isinstance(msg["y"], float)
         assert isinstance(msg["x"], float)
-        assert isinstance(msg["timestamp"], int)
+        assert isinstance(msg["last_sync_time"], int)
         
         # Values (line 30, col 5 -> page 3, y 305, x 25)
         assert msg["action"] == "synctex"
         assert msg["page"] == 3
         assert msg["y"] == 305.0
         assert msg["x"] == 25.0
-        assert msg["timestamp"] == pdf_state.last_sync_time
+        assert msg["last_sync_time"] == pdf_state.last_sync_time
         
         # Cleanup
         manager.disconnect(client)

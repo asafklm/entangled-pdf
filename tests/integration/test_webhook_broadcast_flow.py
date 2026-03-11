@@ -52,7 +52,7 @@ class TestWebhookBroadcastFlow:
         assert broadcast["action"] == "synctex"
         assert broadcast["page"] == 5
         assert broadcast["y"] == 505.0
-        assert "timestamp" in broadcast
+        assert "last_sync_time" in broadcast
         
         # Cleanup
         manager.disconnect(mock_ws)

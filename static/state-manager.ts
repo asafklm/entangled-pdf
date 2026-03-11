@@ -103,7 +103,7 @@ export class StateManager {
    * Update sync timestamp from state update
    */
   updateSyncTime(data: StateUpdate): void {
-    const newSyncTime = data.last_sync_time ?? data.timestamp ?? 0;
+    const newSyncTime = data.last_sync_time ?? 0;
     if (newSyncTime > this.state.lastSyncTime) {
       this.state.lastSyncTime = newSyncTime;
       this.notifyListeners();
@@ -124,7 +124,7 @@ export class StateManager {
    * Check if a sync (forward search) is newer than current
    */
   isNewerSync(data: StateUpdate): boolean {
-    const newSyncTime = data.last_sync_time ?? data.timestamp ?? 0;
+    const newSyncTime = data.last_sync_time ?? 0;
     return newSyncTime > this.state.lastSyncTime;
   }
 
@@ -159,7 +159,7 @@ export class StateManager {
     this.state.page = data.page;
     this.state.y = data.y ?? null;
     
-    const newSyncTime = data.last_sync_time ?? data.timestamp ?? 0;
+    const newSyncTime = data.last_sync_time ?? 0;
     if (newSyncTime > 0) {
       this.state.lastSyncTime = newSyncTime;
     }
@@ -179,7 +179,7 @@ export class StateManager {
    * Check if a state update has newer sync time than current
    */
   isNewerUpdate(data: StateUpdate): boolean {
-    const newSyncTime = data.last_sync_time ?? data.timestamp ?? 0;
+    const newSyncTime = data.last_sync_time ?? 0;
     return newSyncTime > this.state.lastSyncTime;
   }
 

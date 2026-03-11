@@ -200,7 +200,7 @@ class TestWebhookBroadcasting:
                     assert call_args["page"] == 3
                     assert call_args["y"] == 150.0
                     assert call_args["x"] == 50.0
-                    assert "timestamp" in call_args
+                    assert "last_sync_time" in call_args
     
     def test_webhook_updates_global_state(self, client, mock_settings):
         """Test that webhook updates the global PDF state."""

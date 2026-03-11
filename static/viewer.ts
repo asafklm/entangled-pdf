@@ -225,7 +225,7 @@ function handleSyncTeXMessage(data: WebSocketMessage): void {
     page: data.page,
     x: data.x,
     y: data.y,
-    last_sync_time: data.timestamp,
+    last_sync_time: data.last_sync_time,
     action: data.action,
   }, MARKER_DELAY_AFTER_RELOAD, 0, true);
 }
@@ -392,7 +392,7 @@ async function syncState(): Promise<void> {
     if (data.pdf_mtime) {
       stateManager.updatePdfMtime(data.pdf_mtime);
     }
-    if (data.last_sync_time || data.timestamp) {
+    if (data.last_sync_time) {
       stateManager.updateSyncTime(data);
     }
   } catch (e) {

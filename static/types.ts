@@ -47,7 +47,6 @@ export interface StateUpdate {
   page: number;
   x?: number;
   y?: number;
-  timestamp?: number;
   last_sync_time?: number;
   action?: string;
 }
@@ -123,10 +122,10 @@ export interface WebSocketMessage {
   page?: number;
   x?: number;
   y?: number;
-  timestamp?: number;
-  last_sync_time?: number;
+  last_sync_time?: number;  // When last forward sync occurred
   pdf_mtime?: number;
   message?: string;
+  timestamp?: number;  // Used only for ping/pong RTT calculation
 }
 
 /**

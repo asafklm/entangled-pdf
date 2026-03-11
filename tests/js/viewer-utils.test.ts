@@ -404,7 +404,7 @@ describe('parseWebSocketMessage', () => {
   });
 
   it('should parse complex nested objects', () => {
-    const data: WebSocketData = { action: 'synctex', page: 3, y: 150.5, timestamp: 1234567890 };
+    const data: WebSocketData = { action: 'synctex', page: 3, y: 150.5, last_sync_time: 1234567890 };
     const result: WebSocketData | null = parseWebSocketMessage(JSON.stringify(data));
     expect(result).toEqual(data);
   });
@@ -431,33 +431,23 @@ describe('calculateReconnectDelay', () => {
 });
 
 describe('isNewerState', () => {
-  it('should return true when new timestamp is greater', () => {
-    const newData: StateUpdate = { timestamp: 1000 };
+  it('should return true when new last_sync_time is greater', () => {
+    const newData: StateUpdate = { page: 1, last_sync_time: 1000 };
     expect(isNewerState(newData, 500)).toBe(true);
   });
 
-  it('should return false when new timestamp is equal', () => {
-    const newData: StateUpdate = { timestamp: 1000 };
+  it('should return false when new last_sync_time is equal', () => {
+    const newData: StateUpdate = { page: 1, last_sync_time: 1000 };
     expect(isNewerState(newData, 1000)).toBe(false);
   });
 
-  it('should return false when new timestamp is older', () => {
-    const newData: StateUpdate = { timestamp: 500 };
+  it('should return false when new last_sync_time is older', () => {
+    const newData: StateUpdate = { page: 1, last_sync_time: 500 };
     expect(isNewerState(newData, 1000)).toBe(false);
   });
 
-  it('should handle last_update_time field', () => {
-    const newData: StateUpdate = { last_update_time: 2000 };
-    expect(isNewerState(newData, 1000)).toBe(true);
-  });
-
-  it('should prefer timestamp over last_update_time', () => {
-    const newData: StateUpdate = { timestamp: 3000, last_update_time: 1000 };
-    expect(isNewerState(newData, 2000)).toBe(true);
-  });
-
-  it('should handle missing timestamps', () => {
-    const newData: StateUpdate = {};
+  it('should handle missing last_sync_time', () => {
+    const newData: StateUpdate = { page: 1 };
     expect(isNewerState(newData, 0)).toBe(false);
     expect(isNewerState(newData, -1)).toBe(true);
   });

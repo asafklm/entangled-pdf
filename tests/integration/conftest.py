@@ -228,7 +228,6 @@ def typescript_interfaces():
         interfaces["StateUpdate"] = {
             "page": "number",
             "y": "number | undefined",
-            "timestamp": "number | undefined",
             "last_sync_time": "number | undefined",
             "action": "string | undefined"
         }
