@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 
-from src.routes import state as state_route
+from pdfserver.routes import state as state_route
 
 
 @pytest.fixture

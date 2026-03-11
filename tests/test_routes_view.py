@@ -6,9 +6,9 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 
-from src.routes import view as view_route
-from src.config import Settings
-from src.state import pdf_state
+from pdfserver.routes import view as view_route
+from pdfserver.config import Settings
+from pdfserver.state import pdf_state
 
 
 @pytest.fixture(autouse=True)

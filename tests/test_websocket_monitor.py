@@ -1,7 +1,7 @@
 """Tests for src.websocket_monitor.WebSocketMonitor."""
 
 import io
-from src.websocket_monitor import WebSocketMonitor
+from pdfserver.websocket_monitor import WebSocketMonitor
 
 
 def test_log_receive_writes_redacted_action():

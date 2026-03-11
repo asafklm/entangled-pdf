@@ -3,7 +3,7 @@
 import pytest
 from fastapi import WebSocket
 
-from src.connection_manager import ConnectionManager, manager
+from pdfserver.connection_manager import ConnectionManager, manager
 
 
 class TestConnectionManager:

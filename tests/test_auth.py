@@ -5,8 +5,8 @@ import asyncio
 import pytest
 from fastapi import HTTPException
 
-from src.routes.auth import authenticate
-from src.state import pdf_state
+from pdfserver.routes.auth import authenticate
+from pdfserver.state import pdf_state
 
 
 @pytest.mark.asyncio

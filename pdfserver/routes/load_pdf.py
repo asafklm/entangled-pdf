@@ -11,9 +11,9 @@ from typing import Optional
 from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import JSONResponse
 
-from src.config import get_settings
-from src.connection_manager import manager
-from src.state import pdf_state
+from pdfserver.config import get_settings
+from pdfserver.connection_manager import manager
+from pdfserver.state import pdf_state
 
 router = APIRouter()
 

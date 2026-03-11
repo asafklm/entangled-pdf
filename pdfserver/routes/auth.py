@@ -6,7 +6,7 @@ Handles token form submission and sets secure cookie for authenticated sessions.
 from fastapi import APIRouter, Form, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 
-from src.state import pdf_state
+from pdfserver.state import pdf_state
 
 router = APIRouter()
 

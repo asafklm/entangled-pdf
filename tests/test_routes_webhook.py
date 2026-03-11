@@ -5,8 +5,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from src.routes import webhook
-from src.config import Settings
+from pdfserver.routes import webhook
+from pdfserver.config import Settings
 
 
 @pytest.fixture

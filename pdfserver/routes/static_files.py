@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import Response
 from fastapi.staticfiles import StaticFiles
 
-from src.config import get_settings
+from pdfserver.config import get_settings
 
 
 def setup_static_files(app) -> None:

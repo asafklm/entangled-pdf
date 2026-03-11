@@ -6,7 +6,7 @@ Serves the PDF file with proper content type and security headers.
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
-from src.config import get_settings
+from pdfserver.config import get_settings
 
 router = APIRouter()
 

@@ -17,15 +17,36 @@ The server uses WebSockets for real-time updates with automatic fallback to HTTP
 
 ### Installation
 
-1. Clone or download this repository
-2. Install Python dependencies:
+#### Option 1: Install from GitHub (Recommended)
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/pdfserver.git
+cd pdfserver
+
+# Install the package (includes Python dependencies)
+pip install .
+
+# Or for development (editable install)
+pip install -e .
+```
+
+#### Option 2: Install Python Dependencies Only
+
+If you prefer not to install the package:
+
 ```bash
 pip install -r requirements.txt
 ```
-3. Install Node.js dependencies (required for PDF.js):
+
+#### Node.js Dependencies (Required for PDF.js)
+
 ```bash
 npm install
+npm run build  # Compile TypeScript to JavaScript
 ```
+
+> **Note:** After `pip install .`, the commands `pdf-server` and `sync-remote-pdf` will be available in your PATH. If using the development approach (without pip install), use `./bin/pdf-server` and `./bin/sync-remote-pdf` instead.
 
 ### Prerequisites for Inverse Search
 

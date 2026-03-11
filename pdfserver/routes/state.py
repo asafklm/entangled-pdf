@@ -6,7 +6,7 @@ Used by clients when they refocus to check for updates.
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from src.state import pdf_state
+from pdfserver.state import pdf_state
 
 router = APIRouter()
 

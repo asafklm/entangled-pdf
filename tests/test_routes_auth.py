@@ -5,8 +5,8 @@ from types import SimpleNamespace
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from src.routes import auth
-from src.state import pdf_state
+from pdfserver.routes import auth
+from pdfserver.state import pdf_state
 
 
 def _make_app() -> FastAPI:

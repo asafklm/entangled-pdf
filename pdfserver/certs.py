@@ -1,10 +1,10 @@
 """Certificate management for PdfServer.
 
 Can be used as a library or run as a CLI script:
-    python -m src.certs generate              # Generate new cert
-    python -m src.certs status                  # Check cert status
-    python -m src.certs generate --force        # Regenerate expired cert
-    python -m src.certs generate --cert PATH --key PATH  # Use existing
+    python -m pdfserver.certs generate              # Generate new cert
+    python -m pdfserver.certs status                  # Check cert status
+    python -m pdfserver.certs generate --force        # Regenerate expired cert
+    python -m pdfserver.certs generate --cert PATH --key PATH  # Use existing
 """
 
 import argparse
@@ -306,7 +306,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     if not info["exists"]:
         logger.info("\nStatus: NOT FOUND")
         logger.info("\nTo generate certificates:")
-        logger.info("  python -m src.certs generate")
+        logger.info("  python -m pdfserver.certs generate")
         return 1
     
     logger.info(f"\nStatus: {'VALID' if info['valid'] else 'INVALID'}")
@@ -316,7 +316,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     if info["expired"]:
         logger.info("\n⚠️  Certificate has EXPIRED")
         logger.info("To regenerate:")
-        logger.info("  python -m src.certs generate --force")
+        logger.info("  python -m pdfserver.certs generate --force")
         return 1
     elif info["error"]:
         logger.info(f"\n⚠️  Issue: {info['error']}")
@@ -335,7 +335,7 @@ def main() -> int:
     
     parser = argparse.ArgumentParser(
         description="PdfServer certificate management",
-        prog="python -m src.certs"
+        prog="python -m pdfserver.certs"
     )
     
     subparsers = parser.add_subparsers(dest="command", help="Available commands")

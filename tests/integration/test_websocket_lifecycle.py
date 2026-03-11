@@ -9,7 +9,7 @@ import time
 from unittest.mock import patch
 
 import pytest
-from src.config import get_settings
+from pdfserver.config import get_settings
 from tests.integration.helpers import MockWebSocket
 
 
@@ -21,7 +21,7 @@ class TestWebSocketLifecycle:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test that client receives message after reconnecting."""
-        from src.connection_manager import manager
+        from pdfserver.connection_manager import manager
         
         # First client connects
         client1 = MockWebSocket()
@@ -67,7 +67,7 @@ class TestWebSocketLifecycle:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test that broadcast doesn't fail when some clients disconnect."""
-        from src.connection_manager import manager
+        from pdfserver.connection_manager import manager
         
         # Create 3 clients
         clients = []
@@ -106,7 +106,7 @@ class TestWebSocketLifecycle:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test that 10+ simultaneous connections all receive broadcast."""
-        from src.connection_manager import manager
+        from pdfserver.connection_manager import manager
         
         # Create 15 clients
         clients = []
@@ -139,8 +139,8 @@ class TestWebSocketLifecycle:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Verify JSON structure matches expected format."""
-        from src.connection_manager import manager
-        from src.state import pdf_state
+        from pdfserver.connection_manager import manager
+        from pdfserver.state import pdf_state
         
         client = MockWebSocket()
         await manager.connect(client)
@@ -187,7 +187,7 @@ class TestWebSocketLifecycle:
         self, test_client, reset_connections
     ):
         """Test that WebSocket connections are properly accepted."""
-        from src.connection_manager import manager
+        from pdfserver.connection_manager import manager
         
         client = MockWebSocket()
         
@@ -206,7 +206,7 @@ class TestWebSocketLifecycle:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test that multiple broadcasts maintain sequence."""
-        from src.connection_manager import manager
+        from pdfserver.connection_manager import manager
         
         client = MockWebSocket()
         await manager.connect(client)

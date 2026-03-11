@@ -7,7 +7,7 @@ import asyncio
 import time
 
 import pytest
-from src.config import get_settings
+from pdfserver.config import get_settings
 from tests.integration.helpers import MockWebSocket
 
 
@@ -19,8 +19,8 @@ class TestEndToEndSyncTeX:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Simulate complete flow: Neovim → webhook → WebSocket → browser."""
-        from src.state import pdf_state
-        from src.connection_manager import manager
+        from pdfserver.state import pdf_state
+        from pdfserver.connection_manager import manager
         
         # Step 1: Browser connects (simulated)
         browser = MockWebSocket()
@@ -59,8 +59,8 @@ class TestEndToEndSyncTeX:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test browser disconnects, comes back, syncs to current position."""
-        from src.state import pdf_state
-        from src.connection_manager import manager
+        from pdfserver.state import pdf_state
+        from pdfserver.connection_manager import manager
         
         # Initial browser connects
         browser1 = MockWebSocket()
@@ -123,7 +123,7 @@ class TestEndToEndSyncTeX:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test two browsers, one update, both sync."""
-        from src.connection_manager import manager
+        from pdfserver.connection_manager import manager
         
         # Two browsers open same PDF
         browser1 = MockWebSocket()
@@ -158,8 +158,8 @@ class TestEndToEndSyncTeX:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Simulate a full editing session with multiple updates."""
-        from src.state import pdf_state
-        from src.connection_manager import manager
+        from pdfserver.state import pdf_state
+        from pdfserver.connection_manager import manager
         
         # Browser and editor setup
         browser = MockWebSocket()
@@ -219,7 +219,7 @@ class TestEndToEndSyncTeX:
     
     def test_viewer_html_served(self, test_client, temp_pdf_file):
         """Test that viewer HTML is served with correct config."""
-        from src.config import get_settings
+        from pdfserver.config import get_settings
         
         settings = get_settings()
         
@@ -239,8 +239,8 @@ class TestEndToEndSyncTeX:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test browser falls back to polling when WebSocket fails."""
-        from src.state import pdf_state
-        from src.connection_manager import manager
+        from pdfserver.state import pdf_state
+        from pdfserver.connection_manager import manager
         
         # No WebSocket connection (simulating failure)
         

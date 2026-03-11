@@ -18,7 +18,7 @@ def mock_settings(tmp_path):
     static_dir = tmp_path / "static"
     static_dir.mkdir()
     
-    from src.config import Settings
+    from pdfserver.config import Settings
     return Settings(
         pdf_file=pdf_file,
         port=8080,
@@ -164,7 +164,7 @@ class TestMain:
         with patch.object(sys, "argv", ["main.py"]):
             with patch("main.uvicorn.run") as mock_run:
                 with patch("main.init_settings") as mock_init:
-                    from src.config import Settings
+                    from pdfserver.config import Settings
                     mock_settings = Settings(
                         pdf_file=None,  # No PDF file in new architecture
                         port=8431,
@@ -189,7 +189,7 @@ class TestMain:
         with patch.object(sys, "argv", ["main.py", "--port", "9000"]):
             with patch("main.uvicorn.run"):
                 with patch("main.init_settings") as mock_init:
-                    from src.config import Settings
+                    from pdfserver.config import Settings
                     mock_settings = Settings(
                         pdf_file=None,
                         port=9000,
@@ -214,7 +214,7 @@ class TestMain:
         with patch.object(sys, "argv", ["main.py", "--inverse-search-nvim"]):
             with patch("main.uvicorn.run"):
                 with patch("main.init_settings") as mock_init:
-                    from src.config import Settings
+                    from pdfserver.config import Settings
                     mock_settings = Settings(
                         pdf_file=None,
                         port=8431,
@@ -240,7 +240,7 @@ class TestMain:
         with patch.object(sys, "argv", ["main.py", "--port", "8080"]):
             with patch("main.uvicorn.run") as mock_run:
                 with patch("main.init_settings") as mock_init:
-                    from src.config import Settings
+                    from pdfserver.config import Settings
                     mock_settings = Settings(
                         pdf_file=None,
                         port=8080,

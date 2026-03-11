@@ -7,7 +7,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from src.routes import static_files as static_files_module
+from pdfserver.routes import static_files as static_files_module
 
 class DummySettings:
     def __init__(self, static_dir: Path):

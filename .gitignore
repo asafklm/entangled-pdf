@@ -75,3 +75,5 @@ build/
 
 # PDF.js - installed via npm from node_modules, not tracked
 pdfjs-dist/
+egg-info
+*.egg-info

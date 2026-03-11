@@ -12,9 +12,9 @@ from typing import Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from src.connection_manager import manager
-from src.state import pdf_state
-from src.websocket_monitor import monitor as ws_monitor
+from pdfserver.connection_manager import manager
+from pdfserver.state import pdf_state
+from pdfserver.websocket_monitor import monitor as ws_monitor
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

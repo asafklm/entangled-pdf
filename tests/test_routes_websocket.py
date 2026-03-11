@@ -5,9 +5,9 @@ import asyncio
 from fastapi import FastAPI
 from unittest.mock import patch, AsyncMock, MagicMock
 
-from src.routes import websocket as websocket_route
-from src.connection_manager import ConnectionManager
-from src.state import pdf_state
+from pdfserver.routes import websocket as websocket_route
+from pdfserver.connection_manager import ConnectionManager
+from pdfserver.state import pdf_state
 
 
 @pytest.fixture

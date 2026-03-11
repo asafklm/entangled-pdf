@@ -17,12 +17,12 @@ from fastapi import FastAPI
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.certs import get_cert_paths, validate_certificate
-from src.config import init_settings
-from src.logging_sanitizer import SensitiveDataFilter
-from src.routes import auth, load_pdf, pdf, state, static_files, view, webhook, websocket
-from src.state import pdf_state
-from src.websocket_monitor import monitor as ws_monitor
+from pdfserver.certs import get_cert_paths, validate_certificate
+from pdfserver.config import init_settings
+from pdfserver.logging_sanitizer import SensitiveDataFilter
+from pdfserver.routes import auth, load_pdf, pdf, state, static_files, view, webhook, websocket
+from pdfserver.state import pdf_state
+from pdfserver.websocket_monitor import monitor as ws_monitor
 
 
 # Configure logging for foreground mode
@@ -61,7 +61,7 @@ def validate_ssl_config(settings) -> Optional[dict]:
             f"  Certificate: {cert_path}\n"
             f"  Private key: {key_path}\n\n"
             f"To generate certificates, run:\n"
-            f"  python -m src.certs generate\n\n"
+            f"  python -m pdfserver.certs generate\n\n"
             f"To use custom certificates:\n"
             f"  python main.py --ssl-cert /path/to/cert.pem --ssl-key /path/to/key.pem\n\n"
             f"To bypass HTTPS (not recommended):\n"
@@ -75,7 +75,7 @@ def validate_ssl_config(settings) -> Optional[dict]:
             f"SSL certificate has expired ({cert_path})\n\n"
             f"Expired on: {info.get('expires_at')}\n\n"
             f"To regenerate:\n"
-            f"  python -m src.certs generate --force\n\n"
+            f"  python -m pdfserver.certs generate --force\n\n"
             f"To bypass HTTPS (not recommended):\n"
             f"  python main.py --http"
         )
@@ -84,7 +84,7 @@ def validate_ssl_config(settings) -> Optional[dict]:
         raise RuntimeError(
             f"Certificate validation failed: {info['error']}\n\n"
             f"To regenerate:\n"
-            f"  python -m src.certs generate --force\n\n"
+            f"  python -m pdfserver.certs generate --force\n\n"
             f"To bypass HTTPS (not recommended):\n"
             f"  python main.py --http"
         )

@@ -26,9 +26,9 @@ from httpx import AsyncClient
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from main import create_app, init_settings
-from src.config import get_settings, settings as global_settings
-from src.connection_manager import ConnectionManager, manager
-from src.state import PDFState, pdf_state
+from pdfserver.config import get_settings, settings as global_settings
+from pdfserver.connection_manager import ConnectionManager, manager
+from pdfserver.state import PDFState, pdf_state
 
 
 @pytest.fixture(scope="session")

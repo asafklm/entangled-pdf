@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from src.config import Settings, init_settings, get_settings
+from pdfserver.config import Settings, init_settings, get_settings
 
 
 class TestSettings:
@@ -75,7 +75,7 @@ class TestSettingsGlobal:
     def test_get_settings_without_init(self):
         """Test that get_settings raises error if not initialized."""
         # Reset global settings
-        import src.config
+        import pdfserver.config
         src.config.settings = None
         
         with pytest.raises(RuntimeError, match="Settings not initialized"):

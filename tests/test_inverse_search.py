@@ -10,10 +10,10 @@ from pathlib import Path
 from fastapi import FastAPI
 from unittest.mock import patch, AsyncMock, MagicMock, mock_open
 
-from src.routes import websocket as websocket_route, auth as auth_route, load_pdf as load_pdf_route
-from src.routes import view as view_route
-from src.state import pdf_state, generate_websocket_token
-from src.connection_manager import ConnectionManager
+from pdfserver.routes import websocket as websocket_route, auth as auth_route, load_pdf as load_pdf_route
+from pdfserver.routes import view as view_route
+from pdfserver.state import pdf_state, generate_websocket_token
+from pdfserver.connection_manager import ConnectionManager
 
 
 @pytest.fixture(autouse=True)
@@ -240,7 +240,7 @@ class TestLoadPdfWithInverseSearch:
     @pytest.mark.asyncio
     async def test_load_pdf_with_inverse_search_enables_feature(self):
         """Test that loading PDF with inverse search command enables feature."""
-        from src.config import Settings
+        from pdfserver.config import Settings
         
         with patch('src.routes.load_pdf.get_settings') as mock_settings, \
              patch('src.routes.load_pdf.manager') as mock_manager:
@@ -279,7 +279,7 @@ class TestLoadPdfWithInverseSearch:
     @pytest.mark.asyncio
     async def test_load_pdf_http_does_not_enable_inverse_search(self):
         """Test that loading PDF via HTTP does not enable inverse search."""
-        from src.config import Settings
+        from pdfserver.config import Settings
         
         with patch('src.routes.load_pdf.get_settings') as mock_settings, \
              patch('src.routes.load_pdf.manager') as mock_manager:

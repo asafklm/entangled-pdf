@@ -9,7 +9,7 @@ from typing import Set
 
 from fastapi import WebSocket
 
-from src.websocket_monitor import monitor as ws_monitor
+from pdfserver.websocket_monitor import monitor as ws_monitor
 
 # Configure logging
 logger = logging.getLogger(__name__)

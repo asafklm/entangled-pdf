@@ -2,7 +2,7 @@
 
 import logging
 
-from src.logging_sanitizer import SensitiveDataFilter
+from pdfserver.logging_sanitizer import SensitiveDataFilter
 
 
 def test_filter_redacts_token_and_password_in_dict():
