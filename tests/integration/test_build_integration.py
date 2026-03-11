@@ -203,13 +203,13 @@ class TestTypeScriptInterfaceContracts:
         assert "page" in msg, "WebSocket message missing 'page'"
         assert "y" in msg, "WebSocket message missing 'y'"
         assert "action" in msg, "WebSocket message missing 'action'"
-        assert "timestamp" in msg, "WebSocket message missing 'timestamp'"
+        assert "last_sync_time" in msg, "WebSocket message missing 'last_sync_time'"
         
         # Types
         assert isinstance(msg["page"], int)
         assert isinstance(msg["y"], (int, float, type(None)))
         assert isinstance(msg["action"], str)
-        assert isinstance(msg["timestamp"], int)
+        assert isinstance(msg["last_sync_time"], int)
         
         # Values (line 30, col 5 -> page 3, y 305, x 25)
         assert msg["page"] == 3

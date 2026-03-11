@@ -71,15 +71,16 @@ describe("WebSocketManager", () => {
     expect(wsManager.isConnected).toBe(true);
     expect(connectedCalled).toBe(true);
 
-    const msg = { action: "synctex", page: 2, x: 10, y: 20, timestamp: Date.now() };
+    const msg = { action: "synctex", page: 2, x: 10, y: 20, last_sync_time: Date.now() };
     mockSocket.triggerMessage(msg);
     expect(received).toContainEqual(msg);
 
-    mockSocket.triggerMessage({ action: "ping" });
-    expect(mockSocket.sent.length).toBeGreaterThan(0);
-    const lastSent = mockSocket.sent[mockSocket.sent.length - 1];
-    expect(typeof lastSent).toBe("string");
-    expect(JSON.parse(lastSent)).toEqual({ action: "pong" });
+    // Test pong handling (client-authoritative protocol: client sends ping, receives pong)
+    const pingTime = Date.now();
+    mockSocket.triggerMessage({ action: "pong", timestamp: pingTime });
+    // Pong is handled internally (RTT calculation), no response sent
+    // The message should not be dispatched to handlers
+    expect(received.length).toBe(1); // Only the synctex message, not pong
   });
 
   it("should handle close with various codes and invoke disconnect callback accordingly", () => {

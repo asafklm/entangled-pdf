@@ -208,25 +208,23 @@ async def websocket_endpoint(
             try:
                 message = await asyncio.wait_for(
                     websocket.receive_json(), 
-                    timeout=30.0  # 30 second timeout for keepalive
+                    timeout=30.0  # 30 second timeout - client should ping every 25s
                 )
             except asyncio.TimeoutError:
-                # Send ping to keep connection alive
-                try:
-                    await websocket.send_json({"action": "ping"})
-                    continue
-                except Exception:
-                    # Client disconnected
-                    break
+                # No message received in 30 seconds - client should have pinged
+                # This is a failsafe to detect dead connections
+                logger.debug("WebSocket timeout - no ping received from client")
+                break
             
-            # Handle ping/pong for connection keepalive
+            # Handle ping/pong for connection keepalive (client-authoritative)
             if message.get("action") == "ping":
                 ws_monitor.log_receive(message)
-                await websocket.send_json({"action": "pong"})
+                # Echo back timestamp for RTT calculation
+                await websocket.send_json({
+                    "action": "pong",
+                    "timestamp": message.get("timestamp")
+                })
                 ws_monitor.log_sent({"action": "pong"})
-                continue
-            elif message.get("action") == "pong":
-                ws_monitor.log_receive(message)
                 continue
             
             # Log other received messages

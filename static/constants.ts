@@ -35,6 +35,7 @@ export const WEBSOCKET_CONNECT_TIMEOUT = 3000;
 export const RECONNECT_DELAY_BASE = 1000;
 export const MAX_RECONNECT_DELAY = 30000;
 export const POLLING_INTERVAL = 2000;
+export const WEBSOCKET_PING_INTERVAL = 25000; // 25 seconds - before server's 30s timeout
 
 // Tooltip constants
 export const TOOLTIP_AUTO_HIDE_DELAY = 3000;

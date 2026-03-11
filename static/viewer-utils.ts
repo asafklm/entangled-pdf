@@ -32,8 +32,7 @@ export interface MockCanvas {
 export interface StateUpdate {
   page: number;
   y?: number;
-  timestamp?: number;
-  last_update_time?: number;
+  last_sync_time?: number;
 }
 
 /**
@@ -43,8 +42,7 @@ export interface WebSocketData {
   action?: string;
   page?: number;
   y?: number;
-  timestamp?: number;
-  last_update_time?: number;
+  last_sync_time?: number;
 }
 
 /**
@@ -156,6 +154,6 @@ export function calculateReconnectDelay(attempts: number): number {
  * @returns True if newer
  */
 export function isNewerState(newData: StateUpdate, currentTimestamp: number): boolean {
-  const newTimestamp: number = newData.timestamp || newData.last_update_time || 0;
+  const newTimestamp: number = newData.last_sync_time || 0;
   return newTimestamp > currentTimestamp;
 }

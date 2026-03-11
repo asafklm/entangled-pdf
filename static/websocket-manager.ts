@@ -10,6 +10,7 @@ import {
   WEBSOCKET_CHECK_INTERVAL,
   WEBSOCKET_CONNECT_TIMEOUT,
   MAX_RECONNECT_DELAY,
+  WEBSOCKET_PING_INTERVAL,
 } from './constants';
 
 /**
@@ -42,6 +43,8 @@ export class WebSocketManager {
   private host: string;
   private port: number;
   private token: string | null;
+  private pingIntervalId: number | null = null;
+  private lastPingTime: number = 0;
 
   constructor(host: string, port: number, token: string | null = null) {
     this.host = host;
@@ -152,6 +155,7 @@ export class WebSocketManager {
       this.state = ConnectionState.CONNECTED;
       this.reconnectAttempts = 0;
       console.log('WebSocket connected');
+      this.startKeepalive();
       this.onConnectCallback?.();
     };
 
@@ -173,6 +177,7 @@ export class WebSocketManager {
       }
       this.state = ConnectionState.DISCONNECTED;
       this.socket = null;
+      this.stopKeepalive();
       console.log(`WebSocket closed (code: ${event.code})`);
       
       // Don't show error for clean closures
@@ -197,6 +202,7 @@ export class WebSocketManager {
    * Disconnect from WebSocket
    */
   disconnect(): void {
+    this.stopKeepalive();
     if (this.socket) {
       this.state = ConnectionState.CLOSING;
       try {
@@ -288,13 +294,10 @@ export class WebSocketManager {
    * Dispatch message to registered handlers
    */
   private dispatchMessage(data: WebSocketMessage): void {
-    // Handle ping/pong for connection keepalive
-    if (data.action === 'ping') {
-      this.send({ action: 'pong' });
-      return;
-    }
-    
+    // Handle pong for connection keepalive (client-authoritative)
     if (data.action === 'pong') {
+      const rtt = Date.now() - (data.timestamp || this.lastPingTime);
+      console.log(`WebSocket pong received (RTT: ${rtt}ms)`);
       return;
     }
 
@@ -308,6 +311,31 @@ export class WebSocketManager {
           console.error(`Error in handler for ${data.action}:`, e);
         }
       });
+    }
+  }
+
+  /**
+   * Start keepalive ping interval (client-authoritative)
+   * Client pings every 25 seconds before server's 30s timeout
+   */
+  private startKeepalive(): void {
+    this.stopKeepalive(); // Clear any existing interval
+    
+    this.pingIntervalId = window.setInterval(() => {
+      if (this.isConnected) {
+        this.lastPingTime = Date.now();
+        this.send({ action: 'ping', timestamp: this.lastPingTime });
+      }
+    }, WEBSOCKET_PING_INTERVAL);
+  }
+
+  /**
+   * Stop keepalive ping interval
+   */
+  private stopKeepalive(): void {
+    if (this.pingIntervalId !== null) {
+      window.clearInterval(this.pingIntervalId);
+      this.pingIntervalId = null;
     }
   }
 
