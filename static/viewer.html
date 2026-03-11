@@ -4,7 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ pdf | default(filename) }}</title>
-
+    
+    <!-- Favicon for desktop browsers -->
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <!-- Apple touch icon for iOS/iPad Safari -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
+    <!-- Chrome/Android theme color -->
+    <meta name="theme-color" content="#333333">
+    
     <style>
         body, html { margin: 0; padding: 0; background: #333; height: 100%; overflow: hidden; font-family: sans-serif; }
         #viewer-container {
