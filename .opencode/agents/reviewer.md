@@ -18,7 +18,7 @@ permission:
     "git status": allow
     "git status --short": allow
     "grep *": allow
-    "/home/asaf/programming/PdfServer/bin/python -m pytest*": allow
+    "./bin/python -m pytest*": allow
     "npm test": allow
     "npm run typecheck": allow
     "npm run build": allow
@@ -39,7 +39,7 @@ You are a code reviewer for the PdfServer project. Focus on finding actual bugs.
 - Test coverage: ensure tests exist for new functionality
 
 **Test Commands (from AGENTS.md):**
-- Python: `/home/asaf/programming/PdfServer/bin/python -m pytest tests/<file> -v`
+- Python: `./bin/python -m pytest tests/<file> -v`
 - TypeScript: `npm test`, `npm run typecheck`, `npm run build`
 
 **Output:**

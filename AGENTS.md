@@ -9,30 +9,30 @@ Python-based PDF server using FastAPI, WebSockets, and TypeScript for real-time 
 ```bash
 # Python (using project venv)
 # Start server with inverse search for Neovim
-/home/asaf/programming/PdfServer/bin/pdf-server start --inverse-search-nvim
+./bin/pdf-server start --inverse-search-nvim
 
 # Start server on custom port
-/home/asaf/programming/PdfServer/bin/pdf-server start --port 9000
+./bin/pdf-server start --port 9000
 
 # Check server status (also shows authentication token)
-/home/asaf/programming/PdfServer/bin/pdf-server status
+./bin/pdf-server status
 
 # View logs
-/home/asaf/programming/PdfServer/bin/pdf-server logs --follow
+./bin/pdf-server logs --follow
 
 # Stop server
-/home/asaf/programming/PdfServer/bin/pdf-server stop
+./bin/pdf-server stop
 
 # Load PDF with forward search
-/home/asaf/programming/PdfServer/bin/sync-remote-pdf --synctex-forward "42:5:chapter.tex" document.pdf
+./bin/sync-remote-pdf --synctex-forward "42:5:chapter.tex" document.pdf
 
 # Run server directly (foreground mode for debugging)
-/home/asaf/programming/PdfServer/bin/python main.py --inverse-search-nvim --foreground
-/home/asaf/programming/PdfServer/bin/uvicorn main:app --reload --port 8001
+./bin/python main.py --inverse-search-nvim --foreground
+./bin/uvicorn main:app --reload --port 8001
 
 # Python tests
-/home/asaf/programming/PdfServer/bin/python -m pytest tests/test_config.py -v
-/home/asaf/programming/PdfServer/bin/python -m pytest tests/test_config.py::test_function -v
+./bin/python -m pytest tests/test_config.py -v
+./bin/python -m pytest tests/test_config.py::test_function -v
 
 # TypeScript/JavaScript
 npm run build        # Compile TypeScript
@@ -176,7 +176,7 @@ class ConnectionManager:
 ## File Structure
 
 ```
-/home/asaf/programming/PdfServer/
+./
 ├── main.py                    # Server entry point
 ├── bin/
 │   ├── pdf-server            # Server lifecycle management (start/stop/status/logs)
