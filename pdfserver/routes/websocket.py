@@ -183,24 +183,30 @@ async def websocket_endpoint(
 ) -> None:
     """Handle WebSocket connections with token authentication.
     
-    Accepts connections with valid tokens and listens for messages including
-    inverse search requests. Invalid tokens result in immediate connection closure.
+    Accepts connections first, then validates tokens. This allows the client
+    to receive proper WebSocket close codes (4001/4002) instead of HTTP 403,
+    enabling the client to distinguish between network issues and authentication
+    failures (e.g., server restart with new token).
     
     Args:
         websocket: The WebSocket connection
         token: Authentication token from query parameter
     """
+    # Always accept the WebSocket connection first
+    # This allows us to send proper close codes to the client
+    await manager.connect(websocket)
+    
     # Validate token if inverse search is enabled
     if pdf_state.inverse_search_enabled:
         if not token:
             await websocket.close(code=4001, reason="Token required")
+            manager.disconnect(websocket)
             return
         
         if token != pdf_state.websocket_token:
             await websocket.close(code=4002, reason="Invalid token")
+            manager.disconnect(websocket)
             return
-    
-    await manager.connect(websocket)
     
     try:
         # Listen for incoming messages with timeout to detect dead connections

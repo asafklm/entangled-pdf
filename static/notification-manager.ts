@@ -194,13 +194,17 @@ export class NotificationManager {
  * @param bannerElement - The error banner DOM element
  */
 export function createErrorBanner(bannerElement: HTMLElement | null): {
-  show: (message: string) => void;
+  show: (message: string, isHtml?: boolean) => void;
   hide: () => void;
 } {
   return {
-    show: (message: string) => {
+    show: (message: string, isHtml = false) => {
       if (bannerElement) {
-        bannerElement.textContent = message;
+        if (isHtml) {
+          bannerElement.innerHTML = message;
+        } else {
+          bannerElement.textContent = message;
+        }
         bannerElement.style.display = 'block';
       }
     },

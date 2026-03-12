@@ -63,6 +63,7 @@ const CONFIG = window.PDF_CONFIG || {
 const container = document.getElementById('viewer-container');
 const errorBanner = createErrorBanner(document.getElementById('error-banner'));
 const noPdfMessage = document.getElementById('no-pdf-message');
+const connectionStatus = document.getElementById('connection-status');
 
 if (!container) {
   throw new Error('Viewer container not found');
@@ -91,20 +92,64 @@ clientLogger.attachWebSocket(wsManager);
 wsManager.on('synctex', handleSyncTeXMessage as MessageHandler);
 wsManager.on('reload', handleReloadMessage as MessageHandler);
 
+// Connection status indicator functions
+function updateConnectionStatus(connected: boolean): void {
+  if (!connectionStatus || !CONFIG.inverse_search_enabled) return;
+  
+  if (connected) {
+    connectionStatus.className = 'connected';
+    connectionStatus.querySelector('.status-text')!.textContent = 'Connected';
+    connectionStatus.style.display = 'flex';
+  } else {
+    connectionStatus.className = 'disconnected';
+    connectionStatus.querySelector('.status-text')!.textContent = 'Reconnect';
+    connectionStatus.style.display = 'flex';
+  }
+}
+
+function hideConnectionStatus(): void {
+  if (connectionStatus) {
+    connectionStatus.style.display = 'none';
+  }
+}
+
+// Setup connection status click handler
+if (connectionStatus) {
+  connectionStatus.addEventListener('click', () => {
+    if (connectionStatus.classList.contains('disconnected')) {
+      // Navigate to auth page to get new token
+      window.location.href = '/view';
+    }
+  });
+}
+
 // Setup WebSocket connection callbacks
 wsManager.onError(() => {
-  errorBanner.show('WebSocket connection error. Tab refocus or refresh to reconnect.');
+  // Silent error - connection status indicator shows state
+  updateConnectionStatus(false);
 });
 
 wsManager.onConnect(() => {
-  errorBanner.hide();
+  updateConnectionStatus(true);
 });
 
 wsManager.onDisconnect((code) => {
-  if (code !== 1000 && code !== 1001) {
-    errorBanner.show(`WebSocket disconnected (code: ${code}). Tab refocus or refresh to reconnect.`);
-  }
+  // Show disconnected state on indicator
+  updateConnectionStatus(false);
+  // Note: No intrusive banner - user can still view PDF
 });
+
+wsManager.onInvalidToken(() => {
+  // Server restarted with new token - show disconnected state
+  updateConnectionStatus(false);
+  // Note: User can still view PDF and use forward sync
+  // They just can't do inverse search until they re-authenticate
+});
+
+// Show initial connection status only if inverse search is enabled
+if (CONFIG.inverse_search_enabled) {
+  updateConnectionStatus(false);
+}
 
 // Connect to WebSocket
 wsManager.connect();
@@ -434,8 +479,16 @@ function handleLongPress(position: ViewportPosition, pdfPosition: PdfPosition): 
   createInverseSearchTooltip(
     position,
     pdfPosition,
-    () => performInverseSearch(pdfPosition),
-    () => hideActiveTooltip()
+    () => {
+      if (wsManager.isConnected) {
+        performInverseSearch(pdfPosition);
+      } else {
+        // Navigate to auth page when not connected
+        window.location.href = '/view';
+      }
+    },
+    () => hideActiveTooltip(),
+    wsManager.isConnected
   );
 }
 
@@ -484,8 +537,16 @@ async function performKeyboardInverseSearch(): Promise<void> {
   createInverseSearchTooltip(
     position,
     pdfPosition,
-    () => performInverseSearch(pdfPosition),
-    () => hideActiveTooltip()
+    () => {
+      if (wsManager.isConnected) {
+        performInverseSearch(pdfPosition);
+      } else {
+        // Navigate to auth page when not connected
+        window.location.href = '/view';
+      }
+    },
+    () => hideActiveTooltip(),
+    wsManager.isConnected
   );
 }
 

@@ -262,7 +262,7 @@ Jump from PDF to editor with Shift+Click.
 - Token-based authentication (Jupyter-style)
 - HTTPS required (inverse search disabled over HTTP)
 - Secure cookies with httpOnly, secure, sameSite=strict
-- Token regenerates on each PDF load
+- Token regenerates on server restart
 
 ### Sending Updates via HTTP
 
@@ -296,7 +296,45 @@ Parameters:
 - `NVIM_LISTEN_ADDRESS`: Neovim socket path (for inverse search)
 - `VIM_SERVERNAME`: Vim server name (for inverse search)
 
-## Troubleshooting
+### Security
+
+**Authentication Model:**
+
+| Endpoint | Auth Required | Data Protected | Notes |
+|----------|---------------|----------------|-------|
+| `/view`, `/get-pdf` | `pdf_token` cookie | PDF content | Token set after auth form |
+| WebSocket (`/ws`) | `?token=` param | Inverse search | Same token as cookie |
+| `/state` | None | Page position, sync time | **Public metadata** (see below) |
+| `/webhook/update` | `X-API-Key` header | SyncTeX updates | Server-to-server only |
+| `/api/load-pdf` | `X-API-Key` header | PDF loading | Server-to-server only |
+
+**Public Metadata (`/state`):**
+
+The `/state` endpoint is intentionally unauthenticated. It returns:
+- Current page number and Y position
+- Last sync timestamp  
+- PDF filename
+- Whether a PDF is loaded
+
+**This is not a security vulnerability** because:
+- No PDF content is exposed (position data is meaningless without the PDF)
+- The endpoint is read-only (cannot modify state)
+- Forward sync already requires `X-API-Key` from trusted clients
+- Position metadata is similar to "which page is open" - not sensitive in most contexts
+
+**Token Lifecycle:**
+
+- Token is generated per-server-instance (not per-PDF)
+- Token changes when server restarts
+- Re-authentication required after restart for inverse search
+- API key (forward sync) persists across restarts via `PDF_SERVER_API_KEY` env var
+
+**Secure Defaults:**
+
+- HTTPS/WSS required for inverse search (HTTP mode disables it)
+- Secure cookies: `httpOnly`, `secure`, `sameSite=strict`
+- Tokens are cryptographically random (256-bit entropy)
+- API key authentication for server-to-server communication
 
 ### "nvr: no server found" / Inverse search not working
 

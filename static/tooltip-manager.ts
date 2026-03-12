@@ -40,15 +40,17 @@ export function isTooltipActive(): boolean {
  * Create an inverse search confirmation tooltip
  * @param position - Screen coordinates for the tooltip
  * @param pdfPosition - PDF coordinates
- * @param onConfirm - Callback when user confirms
+ * @param onConfirm - Callback when user confirms (or re-authenticates if disconnected)
  * @param onCancel - Callback when user cancels
+ * @param isConnected - Whether WebSocket is connected (determines button text/action)
  * @returns The tooltip element
  */
 export function createInverseSearchTooltip(
   position: { clientX: number; clientY: number },
   pdfPosition: PdfPosition,
   onConfirm: () => void,
-  onCancel: () => void
+  onCancel: () => void,
+  isConnected: boolean = true
 ): HTMLElement {
   // Remove any existing tooltip
   hideActiveTooltip();
@@ -80,21 +82,25 @@ export function createInverseSearchTooltip(
   // Header
   const header = document.createElement('div');
   header.style.cssText = 'font-weight: bold; margin-bottom: 4px;';
-  header.textContent = 'Go to Source?';
+  header.textContent = isConnected ? 'Go to Source?' : 'Authentication Required';
   tooltip.appendChild(header);
 
   // Info text
   const info = document.createElement('div');
   info.style.cssText = 'font-size: 12px; opacity: 0.8; margin-bottom: 4px;';
-  info.textContent = `Page ${pdfPosition.page}, coordinates (${Math.round(pdfPosition.x)}, ${Math.round(pdfPosition.y)})`;
+  if (isConnected) {
+    info.textContent = `Page ${pdfPosition.page}, coordinates (${Math.round(pdfPosition.x)}, ${Math.round(pdfPosition.y)})`;
+  } else {
+    info.textContent = 'Server restarted. Re-authenticate to use inverse search.';
+  }
   tooltip.appendChild(info);
 
-  // Confirm button
-  const confirmButton = document.createElement('button');
-  confirmButton.textContent = 'Confirm (Enter)';
-  confirmButton.className = 'tooltip-confirm-btn';
-  confirmButton.style.cssText = `
-    background: #667eea;
+  // Action button
+  const actionButton = document.createElement('button');
+  actionButton.textContent = isConnected ? 'Confirm (Enter)' : 'Re-authenticate';
+  actionButton.className = 'tooltip-confirm-btn';
+  actionButton.style.cssText = `
+    background: ${isConnected ? '#667eea' : '#dc2626'};
     color: white;
     border: none;
     padding: 8px 16px;
@@ -106,13 +112,13 @@ export function createInverseSearchTooltip(
     margin-top: 4px;
   `;
 
-  confirmButton.addEventListener('click', (e) => {
+  actionButton.addEventListener('click', (e) => {
     e.stopPropagation();
     onConfirm();
     hideActiveTooltip();
   });
 
-  tooltip.appendChild(confirmButton);
+  tooltip.appendChild(actionButton);
 
   // Store reference
   activeTooltip = tooltip;
@@ -121,7 +127,7 @@ export function createInverseSearchTooltip(
   document.body.appendChild(tooltip);
 
   // Focus the button
-  confirmButton.focus();
+  actionButton.focus();
 
   // Setup keyboard handler
   setupTooltipKeyboardHandler(onConfirm, onCancel);

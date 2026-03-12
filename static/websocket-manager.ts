@@ -45,6 +45,8 @@ export class WebSocketManager {
   private token: string | null;
   private pingIntervalId: number | null = null;
   private lastPingTime: number = 0;
+  private reconnectTimeoutId: number | null = null;
+  private onInvalidTokenCallback: (() => void) | null = null;
 
   constructor(host: string, port: number, token: string | null = null) {
     this.host = host;
@@ -98,6 +100,13 @@ export class WebSocketManager {
   }
 
   /**
+   * Set invalid token callback (server restarted)
+   */
+  onInvalidToken(callback: () => void): void {
+    this.onInvalidTokenCallback = callback;
+  }
+
+  /**
    * Get current connection state
    */
   get connectionState(): ConnectionState {
@@ -124,6 +133,9 @@ export class WebSocketManager {
       console.log('WebSocket already connecting or connected');
       return;
     }
+
+    // Clear any pending auto-reconnect since we're manually connecting
+    this.stopAutoReconnect();
 
     // Clean up existing socket
     if (this.socket) {
@@ -180,9 +192,18 @@ export class WebSocketManager {
       this.stopKeepalive();
       console.log(`WebSocket closed (code: ${event.code})`);
       
+      // Handle invalid token (server restarted with new token)
+      if (event.code === 4002) {
+        console.log('WebSocket closed: Invalid token - server may have restarted');
+        this.onInvalidTokenCallback?.();
+        return;
+      }
+      
       // Don't show error for clean closures
       if (event.code !== 1000 && event.code !== 1001) {
         this.onDisconnectCallback?.(event.code);
+        // Start auto-reconnect with exponential backoff
+        this.startAutoReconnect();
       }
     };
 
@@ -203,6 +224,7 @@ export class WebSocketManager {
    */
   disconnect(): void {
     this.stopKeepalive();
+    this.stopAutoReconnect(); // Stop auto-reconnect on manual disconnect
     if (this.socket) {
       this.state = ConnectionState.CLOSING;
       try {
@@ -347,5 +369,37 @@ export class WebSocketManager {
       1000 * Math.pow(2, this.reconnectAttempts),
       MAX_RECONNECT_DELAY
     );
+  }
+
+  /**
+   * Start automatic reconnection with exponential backoff
+   */
+  private startAutoReconnect(): void {
+    // Don't start if already reconnecting or connected
+    if (this.reconnectTimeoutId !== null || this.isConnected) {
+      return;
+    }
+
+    const delay = this.calculateReconnectDelay();
+    this.reconnectAttempts++;
+    
+    console.log(`Auto-reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
+
+    this.reconnectTimeoutId = window.setTimeout(() => {
+      this.reconnectTimeoutId = null;
+      if (!this.isConnected) {
+        this.connect();
+      }
+    }, delay);
+  }
+
+  /**
+   * Stop auto-reconnect timeout
+   */
+  private stopAutoReconnect(): void {
+    if (this.reconnectTimeoutId !== null) {
+      window.clearTimeout(this.reconnectTimeoutId);
+      this.reconnectTimeoutId = null;
+    }
   }
 }

@@ -163,6 +163,68 @@
             -webkit-user-select: none;
             cursor: pointer;
         }
+        
+        /* Connection status indicator */
+        #connection-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-family: sans-serif;
+            z-index: 1000;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        #connection-status.connected {
+            background: rgba(34, 197, 94, 0.2);
+            color: rgba(34, 197, 94, 0.8);
+            opacity: 0.4;
+        }
+        
+        #connection-status.connected:hover {
+            opacity: 0.7;
+        }
+        
+        #connection-status.disconnected {
+            background: rgba(239, 68, 68, 0.9);
+            color: white;
+            opacity: 0.9;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        
+        #connection-status.disconnected:hover {
+            opacity: 1;
+            transform: scale(1.05);
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        #connection-status.connected .status-dot {
+            background: rgba(34, 197, 94, 0.8);
+        }
+        
+        #connection-status.disconnected .status-dot {
+            background: white;
+            animation: pulse-dot 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
     </style>
 </head>
 <body>
@@ -170,9 +232,13 @@
     <div id="status">Syncing...</div>
     <div id="no-pdf-message">
         <h2>No PDF Loaded</h2>
-        <p>Use <code>remote_pdf &lt;filename&gt;</code> to load a PDF file.</p>
+        <p>Use <code>pdf-server sync &lt;filename&gt;</code> to load a PDF file.</p>
     </div>
     <div id="viewer-container" tabindex="0"></div>
+    <div id="connection-status" class="connected" style="display: none;">
+        <span class="status-dot"></span>
+        <span class="status-text">Connected</span>
+    </div>
 
     <script>
         // Configuration from server
