@@ -24,6 +24,20 @@ urllib3.disable_warnings(InsecureRequestWarning)
 DEFAULT_PORT = 8431
 
 
+def get_server_url(port: int = DEFAULT_PORT, use_http: bool = False) -> str:
+    """Get server base URL for given port and protocol.
+    
+    Args:
+        port: Server port number
+        use_http: Use HTTP instead of HTTPS
+        
+    Returns:
+        Server base URL string
+    """
+    protocol = "http" if use_http else "https"
+    return f"{protocol}://localhost:{port}"
+
+
 def create_ssl_context() -> ssl.SSLContext:
     """Create SSL context that allows self-signed certificates."""
     context = ssl.create_default_context()
@@ -92,6 +106,13 @@ def send_request(
         return json.loads(response.read().decode('utf-8'))
     except urllib.error.HTTPError as e:
         error_body = e.read().decode('utf-8')
+        if e.code == 403:
+            # Provide actionable error message for authentication failures
+            raise Exception(
+                f"Authentication failed (HTTP 403). "
+                f"Ensure PDF_SERVER_API_KEY matches on both client and server. "
+                f"Restart server after setting the environment variable."
+            )
         raise Exception(f"HTTP {e.code}: {error_body}")
     except Exception as e:
         raise Exception(f"Request failed: {e}")
@@ -115,7 +136,7 @@ def load_pdf(pdf_path: Path, port: int, api_key: Optional[str] = None, use_http:
     if not pdf_path.exists():
         raise FileNotFoundError(f"PDF file not found: {pdf_path}")
     
-    data = {"pdf_file": str(pdf_path)}
+    data = {"pdf_path": str(pdf_path)}
     
     return send_request(
         "POST",
@@ -237,6 +258,16 @@ def main():
     
     args = parser.parse_args()
     
+    # Check for API key from command line or environment variable
+    api_key = args.api_key or os.getenv("PDF_SERVER_API_KEY")
+    
+    if not api_key:
+        print("Error: API key required.", file=sys.stderr)
+        print("Either:", file=sys.stderr)
+        print("  1. Set PDF_SERVER_API_KEY environment variable", file=sys.stderr)
+        print("  2. Use --api-key flag", file=sys.stderr)
+        return 1
+    
     try:
         # Load PDF
         if args.verbose:
@@ -245,7 +276,7 @@ def main():
         response = load_pdf(
             args.pdf_file,
             args.port,
-            api_key=args.api_key,
+            api_key=api_key,
             use_http=args.http
         )
         
@@ -264,7 +295,7 @@ def main():
                 column,
                 tex_file,
                 args.port,
-                api_key=args.api_key,
+                api_key=api_key,
                 use_http=args.http
             )
             
