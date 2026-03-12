@@ -46,7 +46,7 @@ npm install
 npm run build  # Compile TypeScript to JavaScript
 ```
 
-> **Note:** After `pip install .`, the commands `pdf-server` and `sync-remote-pdf` will be available in your PATH. If using the development approach (without pip install), use `./bin/pdf-server` and `./bin/sync-remote-pdf` instead.
+> **Note:** After `pip install .`, the command `pdf-server` will be available in your PATH. If using the development approach (without pip install), use `./bin/pdf-server` instead.
 
 ### Setup
 
@@ -112,15 +112,15 @@ vim() {
 **Neovim** (init.lua):
 ```lua
 vim.g.vimtex_view_method = 'general'
-vim.g.vimtex_view_general_viewer = 'sync-remote-pdf'
-vim.g.vimtex_view_general_options = '--synctex-forward @line:@col:@tex @pdf'
+vim.g.vimtex_view_general_viewer = 'pdf-server'
+vim.g.vimtex_view_general_options = 'sync @pdf @line:@col:@tex'
 ```
 
 **Vim** (.vimrc):
 ```vim
 let g:vimtex_view_method = 'general'
-let g:vimtex_view_general_viewer = 'sync-remote-pdf'
-let g:vimtex_view_general_options = '--synctex-forward @line:@col:@tex @pdf'
+let g:vimtex_view_general_viewer = 'pdf-server'
+let g:vimtex_view_general_options = 'sync @pdf @line:@col:@tex'
 ```
 
 Then reload your shell:
@@ -213,12 +213,12 @@ Trigger inverse search at the current position to jump to the corresponding sour
 
 ### VimTeX Integration
 
-PdfServer integrates seamlessly with VimTeX using the `sync-remote-pdf` CLI tool.
+PdfServer integrates seamlessly with VimTeX using the `pdf-server sync` CLI tool.
 
 **How It Works:**
 
 When you press `<leader>lv`:
-1. VimTeX calls: `sync-remote-pdf --synctex-forward line:col:texfile pdffile`
+1. VimTeX calls: `pdf-server sync @pdf @line:@col:@tex`
 2. Server converts line:column to PDF coordinates via SyncTeX
 3. Browser scrolls to position and shows red dot marker
 4. When you Shift+Click in the PDF, browser sends coordinates to server
@@ -230,16 +230,16 @@ When you press `<leader>lv`:
 
 ```bash
 # Load PDF without forward search
-sync-remote-pdf document.pdf
+pdf-server sync document.pdf
 
 # Load PDF with forward search (line:column:texfile)
-sync-remote-pdf --synctex-forward "42:5:chapter.tex" document.pdf
+pdf-server sync document.pdf 42:5:chapter.tex
 
 # Custom port
-sync-remote-pdf --port 9000 document.pdf
+pdf-server sync document.pdf --port 9000
 
 # Custom API key (if not using env var)
-sync-remote-pdf --api-key "your-secret-key" document.pdf
+pdf-server sync document.pdf --api-key "your-secret-key"
 ```
 
 **Server Management:**
@@ -247,9 +247,6 @@ sync-remote-pdf --api-key "your-secret-key" document.pdf
 ```bash
 # Check server status
 pdf-server status
-
-# Stop the server
-pdf-server stop
 ```
 
 ### Inverse Search (Backward Search)
@@ -385,8 +382,7 @@ killall nvim  # Warning: closes ALL nvim instances
 PdfServer/
 ├── main.py                 # Server entry point
 ├── bin/
-│   ├── pdf-server         # Server lifecycle management
-│   └── sync-remote-pdf    # LaTeX sync client
+│   └── pdf-server         # Server lifecycle management
 ├── pdfserver/
 │   ├── config.py          # Configuration management
 │   ├── connection_manager.py  # WebSocket connections
@@ -414,7 +410,7 @@ python -m pytest tests/ -v
 python -m pytest tests/test_config.py -v                              # Configuration tests
 python -m pytest tests/test_sync_unit.py -v                           # sync.py unit tests  
 python -m pytest tests/test_sync_e2e_subprocess.py -v                 # E2E tests with real server
-python -m pytest tests/test_sync_client_utils.py -v                   # sync-remote-pdf client tests
+python -m pytest tests/test_sync_client_utils.py -v                   # pdf-server sync client tests
 
 # Run specific test
 python -m pytest tests/test_config.py::TestSettings::test_default_values -v

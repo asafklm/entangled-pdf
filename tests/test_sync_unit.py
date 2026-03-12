@@ -1,6 +1,6 @@
 """Unit tests for pdfserver/sync.py client functions.
 
-Tests the sync-remote-pdf CLI client functions without requiring a running server.
+Tests the pdf-server sync CLI client functions without requiring a running server.
 Uses mocking to verify correct HTTP requests are constructed.
 """
 
@@ -16,10 +16,10 @@ from pdfserver.sync import (
     create_ssl_context,
     forward_search,
     load_pdf,
-    main,
     parse_synctex_forward,
     send_request,
 )
+from pdfserver.cli import main
 
 
 class TestCreateSslContext:
@@ -315,7 +315,7 @@ class TestMainArgumentParsing:
         # Clear environment variable
         monkeypatch.delenv("PDF_SERVER_API_KEY", raising=False)
 
-        with patch('sys.argv', ['sync-remote-pdf', str(pdf_file)]):
+        with patch('sys.argv', ['pdf-server', 'sync', str(pdf_file)]):
             result = main()
             assert result == 1
 
@@ -326,10 +326,10 @@ class TestMainArgumentParsing:
 
         monkeypatch.setenv("PDF_SERVER_API_KEY", "test-key")
 
-        with patch('pdfserver.sync.load_pdf') as mock_load:
+        with patch('pdfserver.cli.load_pdf') as mock_load:
             mock_load.return_value = {"pdf_file": str(pdf_file)}
 
-            with patch('sys.argv', ['sync-remote-pdf', str(pdf_file)]):
+            with patch('sys.argv', ['pdf-server', 'sync', str(pdf_file)]):
                 result = main()
                 assert result == 0
                 mock_load.assert_called_once()
@@ -339,10 +339,10 @@ class TestMainArgumentParsing:
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_text("dummy pdf content")
 
-        with patch('pdfserver.sync.load_pdf') as mock_load:
+        with patch('pdfserver.cli.load_pdf') as mock_load:
             mock_load.return_value = {"pdf_file": str(pdf_file)}
 
-            with patch('sys.argv', ['sync-remote-pdf', '--api-key', 'flag-key', str(pdf_file)]):
+            with patch('sys.argv', ['pdf-server', 'sync', '--api-key', 'flag-key', str(pdf_file)]):
                 result = main()
                 assert result == 0
                 mock_load.assert_called_once()
@@ -357,10 +357,10 @@ class TestMainArgumentParsing:
 
         monkeypatch.setenv("PDF_SERVER_API_KEY", "test-key")
 
-        with patch('pdfserver.sync.load_pdf') as mock_load:
+        with patch('pdfserver.cli.load_pdf') as mock_load:
             mock_load.return_value = {"pdf_file": str(pdf_file)}
 
-            with patch('sys.argv', ['sync-remote-pdf', '--port', '9000', str(pdf_file)]):
+            with patch('sys.argv', ['pdf-server', 'sync', '--port', '9000', str(pdf_file)]):
                 result = main()
                 assert result == 0
                 mock_load.assert_called_once()
@@ -377,10 +377,10 @@ class TestMainArgumentParsing:
 
         monkeypatch.setenv("PDF_SERVER_API_KEY", "test-key")
 
-        with patch('pdfserver.sync.load_pdf') as mock_load:
+        with patch('pdfserver.cli.load_pdf') as mock_load:
             mock_load.return_value = {"pdf_file": str(pdf_file)}
 
-            with patch('sys.argv', ['sync-remote-pdf', '--http', str(pdf_file)]):
+            with patch('sys.argv', ['pdf-server', 'sync', '--http', str(pdf_file)]):
                 result = main()
                 assert result == 0
                 mock_load.assert_called_once()
@@ -388,21 +388,22 @@ class TestMainArgumentParsing:
                 assert call_kwargs['use_http'] is True
 
     def test_main_with_synctex_forward(self, tmp_path, monkeypatch):
-        """Test that main accepts --synctex-forward flag."""
+        """Test that main accepts synctex info as positional argument."""
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_text("dummy pdf content")
 
         monkeypatch.setenv("PDF_SERVER_API_KEY", "test-key")
 
-        with patch('pdfserver.sync.load_pdf') as mock_load, \
-             patch('pdfserver.sync.forward_search') as mock_forward:
+        with patch('pdfserver.cli.load_pdf') as mock_load, \
+             patch('pdfserver.cli.forward_search') as mock_forward:
             mock_load.return_value = {"pdf_file": str(pdf_file)}
             mock_forward.return_value = {"status": "success"}
 
             with patch('sys.argv', [
-                'sync-remote-pdf',
-                '--synctex-forward', '42:5:chapter.tex',
-                str(pdf_file)
+                'pdf-server',
+                'sync',
+                str(pdf_file),
+                '42:5:chapter.tex'
             ]):
                 result = main()
                 assert result == 0
@@ -420,7 +421,7 @@ class TestMainArgumentParsing:
 
         monkeypatch.setenv("PDF_SERVER_API_KEY", "test-key")
 
-        with patch('sys.argv', ['sync-remote-pdf', str(nonexistent)]):
+        with patch('sys.argv', ['pdf-server', 'sync', str(nonexistent)]):
             result = main()
             assert result == 1
 
@@ -431,8 +432,8 @@ class TestMainArgumentParsing:
 
         monkeypatch.setenv("PDF_SERVER_API_KEY", "test-key")
 
-        with patch('pdfserver.sync.load_pdf', side_effect=Exception("Network error")):
-            with patch('sys.argv', ['sync-remote-pdf', str(pdf_file)]):
+        with patch('pdfserver.cli.load_pdf', side_effect=Exception("Network error")):
+            with patch('sys.argv', ['pdf-server', 'sync', str(pdf_file)]):
                 result = main()
                 assert result == 1
 
@@ -443,10 +444,10 @@ class TestMainArgumentParsing:
 
         monkeypatch.setenv("PDF_SERVER_API_KEY", "test-key")
 
-        with patch('pdfserver.sync.load_pdf') as mock_load:
+        with patch('pdfserver.cli.load_pdf') as mock_load:
             mock_load.return_value = {"pdf_file": str(pdf_file), "status": "loaded"}
 
-            with patch('sys.argv', ['sync-remote-pdf', '-v', str(pdf_file)]):
+            with patch('sys.argv', ['pdf-server', 'sync', '-v', str(pdf_file)]):
                 result = main()
                 captured = capsys.readouterr()
                 assert result == 0

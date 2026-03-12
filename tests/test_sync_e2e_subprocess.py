@@ -1,6 +1,6 @@
-"""End-to-end integration tests for sync-remote-pdf CLI with real server subprocess.
+"""End-to-end integration tests for pdf-server sync CLI with real server subprocess.
 
-These tests spawn actual pdf-server and sync-remote-pdf processes to test real-world
+These tests spawn actual pdf-server and pdf-server sync processes to test real-world
 usage without any mocking. Uses self-signed SSL certificates on port 18080.
 
 Environment Variables:
@@ -155,24 +155,25 @@ def running_server(test_certs, tmp_path_factory):
 
 
 class TestSyncRemotePdfSubprocess:
-    """End-to-end tests using real subprocesses for sync-remote-pdf."""
+    """End-to-end tests using real subprocesses for pdf-server sync."""
 
     def test_sync_remote_pdf_loads_pdf_successfully(self, running_server, tmp_path):
-        """Real sync-remote-pdf call loads PDF into real server."""
+        """Real pdf-server sync call loads PDF into real server."""
         # Create a test PDF file
         pdf_file = tmp_path / "test_document.pdf"
         pdf_file.write_bytes(b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n>>\nendobj\n")
         
-        # Build command
+        # Build command using new CLI structure
         cmd = [
             sys.executable,
-            "-m", "pdfserver.sync",
+            "-m", "pdfserver.cli",
+            "sync",
             str(pdf_file),
             "--port", str(running_server["port"]),
             "--api-key", running_server["api_key"],
         ]
         
-        # Run sync-remote-pdf
+        # Run pdf-server sync
         result = subprocess.run(
             cmd,
             capture_output=True,
@@ -196,7 +197,7 @@ class TestSyncRemotePdfSubprocess:
         assert response["filename"] == pdf_file.name
 
     def test_sync_remote_pdf_with_synctex_forward(self, running_server, tmp_path):
-        """Real sync-remote-pdf with --synctex-forward performs search."""
+        """Real pdf-server sync with synctex info performs search."""
         # Create test PDF
         pdf_file = tmp_path / "test_synctex.pdf"
         pdf_file.write_bytes(b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n>>\nendobj\n")
@@ -204,7 +205,8 @@ class TestSyncRemotePdfSubprocess:
         # First load the PDF
         load_cmd = [
             sys.executable,
-            "-m", "pdfserver.sync",
+            "-m", "pdfserver.cli",
+            "sync",
             str(pdf_file),
             "--port", str(running_server["port"]),
             "--api-key", running_server["api_key"],
@@ -218,12 +220,13 @@ class TestSyncRemotePdfSubprocess:
         )
         assert result.returncode == 0
         
-        # Now run with synctex-forward
+        # Now run with synctex info as positional arg
         synctex_cmd = [
             sys.executable,
-            "-m", "pdfserver.sync",
+            "-m", "pdfserver.cli",
+            "sync",
             str(pdf_file),
-            "--synctex-forward", "42:5:chapter.tex",
+            "42:5:chapter.tex",
             "--port", str(running_server["port"]),
             "--api-key", running_server["api_key"],
         ]
@@ -258,7 +261,8 @@ class TestSyncRemotePdfSubprocess:
         
         cmd = [
             sys.executable,
-            "-m", "pdfserver.sync",
+            "-m", "pdfserver.cli",
+            "sync",
             str(pdf_file),
             "--port", str(running_server["port"]),
             "--api-key", "wrong-api-key",
@@ -582,14 +586,15 @@ class TestParseSynctexForwardInE2E:
         assert result.returncode == 0
         
         # Use parsed values in forward search
-        # Note: sync-remote-pdf doesn't accept separate line/col, it takes combined format
+        # Note: pdf-server sync takes synctex info as positional arg
         synctex_arg = f"{line}:{col}:{tex}"
         
         forward_cmd = [
             sys.executable,
-            "-m", "pdfserver.sync",
+            "-m", "pdfserver.cli",
+            "sync",
             str(pdf_file),
-            "--synctex-forward", synctex_arg,
+            synctex_arg,
             "--port", str(running_server["port"]),
             "--api-key", running_server["api_key"],
         ]

@@ -52,7 +52,6 @@ dev = [
 
 [project.scripts]
 pdf-server = "pdfserver.cli:main"
-sync-remote-pdf = "pdfserver.sync:main"
 
 [project.urls]
 Homepage = "https://github.com/yourusername/pdfserver"

@@ -9,10 +9,13 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Optional
 
 import argcomplete
 import requests
 import urllib3
+
+from pdfserver.sync import load_pdf, forward_search, parse_synctex_forward
 
 # Suppress urllib3 warnings for self-signed certificates
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -78,7 +81,7 @@ def cmd_start(args):
     if is_server_running(port):
         print(f"Error: Server already running on port {port}", file=sys.stderr)
         print(f"Use 'pdf-server status --port {port}' to see details", file=sys.stderr)
-        print(f"Use 'pdf-server stop --port {port}' for stop instructions", file=sys.stderr)
+        print(f"Press Ctrl+C to stop the running server", file=sys.stderr)
         return 1
     
     # Find the main.py file
@@ -149,22 +152,6 @@ def cmd_start(args):
         return 1
 
 
-def cmd_stop(args):
-    """Show instructions for stopping the server."""
-    port = args.port or int(os.getenv("PDF_SERVER_PORT", DEFAULT_PORT))
-    
-    if is_server_running(port):
-        print(f"Server is running on port {port}")
-        print("\nTo stop the server:")
-        print("  Press Ctrl+C in the terminal where you ran 'pdf-server start'")
-        print(f"\nOr find the process and kill it:")
-        print(f"  kill $(lsof -t -i:{port})")
-    else:
-        print(f"Server not running on port {port}")
-    
-    return 0
-
-
 def cmd_status(args):
     """Show server status."""
     port = args.port or int(os.getenv("PDF_SERVER_PORT", DEFAULT_PORT))
@@ -200,6 +187,65 @@ def cmd_status(args):
     print(f"\n  URL: {protocol}://localhost:{port}/view")
     
     return 0
+
+
+def cmd_sync(args):
+    """Load PDF and optionally perform forward search."""
+    port = args.port or int(os.getenv("PDF_SERVER_PORT", DEFAULT_PORT))
+    
+    # Check for API key from command line or environment variable
+    api_key = args.api_key or os.getenv("PDF_SERVER_API_KEY")
+    
+    if not api_key:
+        print("Error: API key required.", file=sys.stderr)
+        print("Either:", file=sys.stderr)
+        print("  1. Set PDF_SERVER_API_KEY environment variable", file=sys.stderr)
+        print("  2. Use --api-key flag", file=sys.stderr)
+        return 1
+    
+    try:
+        # Load PDF
+        if args.verbose:
+            print(f"Loading PDF: {args.pdf_file}")
+        
+        response = load_pdf(
+            args.pdf_file,
+            port,
+            api_key=api_key,
+            use_http=args.http
+        )
+        
+        if args.verbose:
+            print(f"Server response: {response}")
+        
+        # Perform forward search if synctex info provided
+        if args.synctex:
+            line, column, tex_file = parse_synctex_forward(args.synctex)
+            
+            if args.verbose:
+                print(f"Forward search: line={line}, column={column}, file={tex_file}")
+            
+            search_response = forward_search(
+                line,
+                column,
+                tex_file,
+                port,
+                api_key=api_key,
+                use_http=args.http
+            )
+            
+            if args.verbose:
+                print(f"Forward search response: {search_response}")
+        
+        print(f"PDF loaded successfully: {response.get('pdf_file', args.pdf_file)}")
+        return 0
+        
+    except FileNotFoundError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
 
 
 def main():
@@ -263,11 +309,48 @@ def main():
         help="API key for authentication (default: PDF_SERVER_API_KEY env var)"
     )
     
-    # stop command
-    subparsers.add_parser("stop", help="Show how to stop the PDF server")
-    
     # status command
     subparsers.add_parser("status", help="Show server status")
+    
+    # sync command
+    sync_parser = subparsers.add_parser("sync", help="Load PDF and perform forward search")
+    
+    sync_parser.add_argument(
+        "pdf_file",
+        type=Path,
+        help="Path to PDF file to load"
+    )
+    
+    sync_parser.add_argument(
+        "synctex",
+        nargs="?",
+        metavar="LINE:COL:FILE",
+        help="Optional forward search in format line:column:texfile"
+    )
+    
+    sync_parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.getenv("PDF_SERVER_PORT", DEFAULT_PORT)),
+        help=f"Server port (default: {DEFAULT_PORT} or PDF_SERVER_PORT env var)"
+    )
+    
+    sync_parser.add_argument(
+        "--api-key",
+        help="API authentication key"
+    )
+    
+    sync_parser.add_argument(
+        "--http",
+        action="store_true",
+        help="Use HTTP instead of HTTPS"
+    )
+    
+    sync_parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Enable verbose output"
+    )
     
     # Enable bash completion
     argcomplete.autocomplete(parser)
@@ -276,10 +359,10 @@ def main():
     
     if args.command == "start":
         return cmd_start(args)
-    elif args.command == "stop":
-        return cmd_stop(args)
     elif args.command == "status":
         return cmd_status(args)
+    elif args.command == "sync":
+        return cmd_sync(args)
     else:
         parser.print_help()
         return 1

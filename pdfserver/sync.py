@@ -1,20 +1,18 @@
-"""CLI entry point for sync-remote-pdf command.
+"""Sync client library for PdfServer.
 
-This module provides the sync-remote-pdf tool for loading PDFs and
-performing forward search via SyncTeX.
+This module provides utility functions for loading PDFs and performing
+forward search via SyncTeX. These functions are used by the 
+pdf-server sync CLI command.
 """
 
-import argparse
 import http.client
 import json
 import os
 import ssl
-import sys
 import urllib.request
 from pathlib import Path
 from typing import Optional
 
-import argcomplete
 import urllib3
 from urllib3.exceptions import InsecureRequestWarning
 
@@ -208,110 +206,3 @@ def parse_synctex_forward(value: str) -> tuple[int, int, str]:
         raise ValueError(f"Line and column must be integers: {value}")
     
     return line, column, parts[2]
-
-
-def main():
-    """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="Load PDFs and perform forward search on PdfServer",
-        prog="sync-remote-pdf"
-    )
-    
-    parser.add_argument(
-        "pdf_file",
-        type=Path,
-        help="Path to PDF file to load"
-    )
-    
-    parser.add_argument(
-        "--synctex-forward",
-        metavar="LINE:COL:FILE",
-        help="Perform forward search: line:column:texfile"
-    )
-    
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=int(os.getenv("PDF_SERVER_PORT", DEFAULT_PORT)),
-        help=f"Server port (default: {DEFAULT_PORT} or PDF_SERVER_PORT env var)"
-    )
-    
-    parser.add_argument(
-        "--api-key",
-        help="API authentication key"
-    )
-    
-    parser.add_argument(
-        "--http",
-        action="store_true",
-        help="Use HTTP instead of HTTPS"
-    )
-    
-    parser.add_argument(
-        "-v", "--verbose",
-        action="store_true",
-        help="Enable verbose output"
-    )
-    
-    # Enable bash completion
-    argcomplete.autocomplete(parser)
-    
-    args = parser.parse_args()
-    
-    # Check for API key from command line or environment variable
-    api_key = args.api_key or os.getenv("PDF_SERVER_API_KEY")
-    
-    if not api_key:
-        print("Error: API key required.", file=sys.stderr)
-        print("Either:", file=sys.stderr)
-        print("  1. Set PDF_SERVER_API_KEY environment variable", file=sys.stderr)
-        print("  2. Use --api-key flag", file=sys.stderr)
-        return 1
-    
-    try:
-        # Load PDF
-        if args.verbose:
-            print(f"Loading PDF: {args.pdf_file}")
-        
-        response = load_pdf(
-            args.pdf_file,
-            args.port,
-            api_key=api_key,
-            use_http=args.http
-        )
-        
-        if args.verbose:
-            print(f"Server response: {response}")
-        
-        # Perform forward search if requested
-        if args.synctex_forward:
-            line, column, tex_file = parse_synctex_forward(args.synctex_forward)
-            
-            if args.verbose:
-                print(f"Forward search: line={line}, column={column}, file={tex_file}")
-            
-            search_response = forward_search(
-                line,
-                column,
-                tex_file,
-                args.port,
-                api_key=api_key,
-                use_http=args.http
-            )
-            
-            if args.verbose:
-                print(f"Forward search response: {search_response}")
-        
-        print(f"PDF loaded successfully: {response.get('pdf_file', args.pdf_file)}")
-        return 0
-        
-    except FileNotFoundError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        return 1
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        return 1
-
-
-if __name__ == "__main__":
-    sys.exit(main())

@@ -17,11 +17,8 @@ Python-based PDF server using FastAPI, WebSockets, and TypeScript for real-time 
 # Check server status (also shows authentication token)
 ./bin/pdf-server status
 
-# Stop server
-./bin/pdf-server stop
-
 # Load PDF with forward search
-./bin/sync-remote-pdf --synctex-forward "42:5:chapter.tex" document.pdf
+./bin/pdf-server sync document.pdf 42:5:chapter.tex
 
 # Run server directly (foreground mode for debugging)
 ./bin/python main.py --inverse-search-nvim --foreground
@@ -183,8 +180,7 @@ class ConnectionManager:
 ./
 ├── main.py                    # Server entry point
 ├── bin/
-│   ├── pdf-server            # Server lifecycle management (start/stop/status/logs)
-│   └── sync-remote-pdf       # LaTeX sync client (forward search only)
+│   └── pdf-server            # Server lifecycle management (start/stop/status/sync)
 ├── src/
 │   ├── config.py              # Pydantic settings
 │   ├── connection_manager.py   # WebSocket connections

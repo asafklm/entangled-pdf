@@ -13,10 +13,10 @@ PdfServer implements a **hybrid HTTP/WebSocket protocol** for LaTeX PDF synchron
 
 ### Editor → Server: HTTP POST `/webhook/update`
 
-The `sync-remote-pdf` command-line tool sends forward sync requests via HTTP:
+The `pdf-server sync` command sends forward sync requests via HTTP:
 
 ```bash
-sync-remote-pdf --synctex-forward "42:5:chapter.tex" document.pdf
+pdf-server sync document.pdf 42:5:chapter.tex
 ```
 
 **Why HTTP for Editor Communication?**
@@ -222,5 +222,5 @@ Using HTTP polling for browser updates would be inefficient:
 | `src/routes/webhook.py` | HTTP endpoint, SyncTeX forward search |
 | `src/routes/websocket.py` | WebSocket handler, inverse search execution |
 | `src/connection_manager.py` | Connection pooling, broadcasting |
-| `bin/sync-remote-pdf` | Editor-side HTTP client |
+| `pdfserver/sync.py` | Editor-side HTTP client library |
 | `static/websocket-manager.ts` | Browser-side WebSocket client |
