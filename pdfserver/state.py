@@ -13,8 +13,12 @@ from typing import Optional
 
 
 def generate_websocket_token() -> str:
-    """Generate a cryptographically secure random token for WebSocket authentication."""
-    return secrets.token_urlsafe(32)
+    """Generate a cryptographically secure random token for WebSocket authentication.
+    
+    Uses hexadecimal encoding (0-9, a-f) for easy terminal selection.
+    32 bytes = 256 bits of entropy, encoded as 64 hex characters.
+    """
+    return secrets.token_hex(32)
 
 
 @dataclass

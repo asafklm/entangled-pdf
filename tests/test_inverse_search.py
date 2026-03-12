@@ -40,13 +40,12 @@ class TestTokenGeneration:
         token2 = generate_websocket_token()
         assert token1 != token2
     
-    def test_generate_websocket_token_urlsafe(self):
-        """Test that tokens are URL-safe."""
+    def test_generate_websocket_token_hex(self):
+        """Test that tokens are hexadecimal (easily copiable)."""
         token = generate_websocket_token()
-        # URL-safe tokens should not contain problematic characters
-        assert ' ' not in token
-        assert '\n' not in token
-        assert '\t' not in token
+        # Hex tokens should only contain 0-9 and a-f
+        assert all(c in '0123456789abcdef' for c in token)
+        assert len(token) == 64  # 32 bytes = 64 hex chars
 
 
 class TestWebSocketTokenValidation:
@@ -132,7 +131,9 @@ class TestAuthEndpoint:
         from fastapi import Request
         mock_request = MagicMock(spec=Request)
         
-        response = await auth_route.authenticate(mock_request, token="test_token_abc")
+        response = await auth_route.authenticate(
+            mock_request, token="test_token_abc", c="0"
+        )
         
         assert response.status_code == 303
         assert response.headers["location"] == "/view"
@@ -141,18 +142,24 @@ class TestAuthEndpoint:
         assert "pdf_token=test_token_abc" in response.headers["set-cookie"]
     
     @pytest.mark.asyncio
-    async def test_auth_with_invalid_token_raises_403(self):
-        """Test that invalid token raises 403."""
+    async def test_auth_with_invalid_token_redirects_with_error(self):
+        """Test that invalid token redirects back to form with error counter."""
         pdf_state.inverse_search_enabled = True
         pdf_state.websocket_token = "test_token_abc"
         
         from fastapi import Request
+        from fastapi.responses import RedirectResponse
         mock_request = MagicMock(spec=Request)
         
-        with pytest.raises(Exception) as exc_info:
-            await auth_route.authenticate(mock_request, token="wrong_token")
+        response = await auth_route.authenticate(
+            mock_request, token="wrong_token", c="0"
+        )
         
-        assert "403" in str(exc_info.value) or "Invalid token" in str(exc_info.value)
+        # Should redirect with error params
+        assert isinstance(response, RedirectResponse)
+        assert "/view" in str(response.headers.get('location', ''))
+        assert "error=1" in str(response.headers.get('location', ''))
+        assert "c=1" in str(response.headers.get('location', ''))
     
     @pytest.mark.asyncio
     async def test_auth_when_inverse_disabled_raises_403(self):
