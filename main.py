@@ -18,7 +18,7 @@ from fastapi import FastAPI
 sys.path.insert(0, str(Path(__file__).parent))
 
 from pdfserver.certs import get_cert_paths, validate_certificate
-from pdfserver.config import init_settings
+from pdfserver.config import init_settings, ConfigError
 from pdfserver.logging_sanitizer import SensitiveDataFilter
 from pdfserver.routes import auth, load_pdf, pdf, state, static_files, view, webhook, websocket
 from pdfserver.state import pdf_state
@@ -139,6 +139,13 @@ def parse_args() -> argparse.Namespace:
     )
     
     parser.add_argument(
+        "--api-key",
+        type=str,
+        default=None,
+        help="API key for authentication (default: PDF_SERVER_API_KEY env var)"
+    )
+    
+    parser.add_argument(
         "--http",
         action="store_true",
         help="Use HTTP instead of HTTPS (not recommended)"
@@ -230,13 +237,19 @@ def main() -> None:
         settings = init_settings(
             pdf_file=None,  # PDF is loaded dynamically
             port=port,
+            api_key=args.api_key,
             use_https=not args.http,
             ssl_cert=args.ssl_cert,
             ssl_key=args.ssl_key
         )
-    except ValueError as e:
-        print(f"Configuration error: {e}", file=sys.stderr)
+    except ConfigError as e:
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
+    
+    # Report API key source
+    import os
+    if os.getenv("PDF_SERVER_API_KEY"):
+        print("API key loaded from PDF_SERVER_API_KEY environment variable", flush=True)
     
     # Set log level based on verbose flag
     if args.verbose:

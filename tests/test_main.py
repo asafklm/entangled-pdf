@@ -22,7 +22,7 @@ def mock_settings(tmp_path):
     return Settings(
         pdf_file=pdf_file,
         port=8080,
-        secret="test-secret",
+        api_key="test-secret",
         host="127.0.0.1",
         static_dir=static_dir
     )
@@ -168,7 +168,7 @@ class TestMain:
                     mock_settings = Settings(
                         pdf_file=None,  # No PDF file in new architecture
                         port=8431,
-                        secret="test-secret",
+                        api_key="test-secret",
                         host="0.0.0.0",
                         static_dir=static_dir
                     )
@@ -193,7 +193,7 @@ class TestMain:
                     mock_settings = Settings(
                         pdf_file=None,
                         port=9000,
-                        secret="test-secret",
+                        api_key="test-secret",
                         host="0.0.0.0",
                         static_dir=static_dir
                     )
@@ -218,7 +218,7 @@ class TestMain:
                     mock_settings = Settings(
                         pdf_file=None,
                         port=8431,
-                        secret="test-secret",
+                        api_key="test-secret",
                         host="0.0.0.0",
                         static_dir=static_dir,
                         use_https=True  # Required for inverse search
@@ -244,7 +244,7 @@ class TestMain:
                     mock_settings = Settings(
                         pdf_file=None,
                         port=8080,
-                        secret="test-secret",
+                        api_key="test-secret",
                         host="127.0.0.1",
                         static_dir=static_dir
                     )

@@ -37,7 +37,7 @@ class TestWebhookBroadcastFlow:
         response = test_client.post(
             "/webhook/update",
             json={"line": 50, "col": 5, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         
         assert response.status_code == 200
@@ -80,7 +80,7 @@ class TestWebhookBroadcastFlow:
             response = test_client.post(
                 "/webhook/update",
                 json={**update, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-                headers={"X-API-Key": get_settings().secret}
+                headers={"X-API-Key": get_settings().api_key}
             )
             assert response.status_code == 200
             await asyncio.sleep(0.01)  # Small delay between updates
@@ -113,7 +113,7 @@ class TestWebhookBroadcastFlow:
         response = test_client.post(
             "/webhook/update",
             json={"line": 100, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         
         assert response.status_code == 200
@@ -144,7 +144,7 @@ class TestWebhookBroadcastFlow:
         response = test_client.post(
             "/webhook/update",
             json={"line": 70, "col": 25, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         
         assert response.status_code == 200
@@ -179,7 +179,7 @@ class TestWebhookBroadcastFlow:
         response = test_client.post(
             "/webhook/update",
             json={"line": 20, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         
         assert response.status_code == 200

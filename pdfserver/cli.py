@@ -127,6 +127,9 @@ def cmd_start(args):
     if args.log_file:
         cmd.extend(["--log-file", str(args.log_file)])
     
+    if args.api_key:
+        cmd.extend(["--api-key", args.api_key])
+    
     # Set environment
     env = os.environ.copy()
     env["PDF_SERVER_PORT"] = str(port)
@@ -252,6 +255,12 @@ def main():
         type=Path,
         default=None,
         help="Write logs to file in addition to stdout"
+    )
+    
+    start_parser.add_argument(
+        "--api-key",
+        metavar="KEY",
+        help="API key for authentication (default: PDF_SERVER_API_KEY env var)"
     )
     
     # stop command

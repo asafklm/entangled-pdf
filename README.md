@@ -48,22 +48,44 @@ npm run build  # Compile TypeScript to JavaScript
 
 > **Note:** After `pip install .`, the commands `pdf-server` and `sync-remote-pdf` will be available in your PATH. If using the development approach (without pip install), use `./bin/pdf-server` and `./bin/sync-remote-pdf` instead.
 
-### Prerequisites for Inverse Search
+### Setup
 
-To use **inverse search** (Shift+Click in PDF → jump to editor), you need:
+After installation, complete the required setup and optional editor configuration.
 
-**For Neovim:**
+#### 1. API Key (Required)
+
+Generate a unique API key and add it to your shell:
+
 ```bash
-pip install neovim-remote
+# Generate a secure random key and add to ~/.bashrc (or ~/.zshrc)
+echo "export PDF_SERVER_API_KEY=\"$(openssl rand -hex 32)\"" >> ~/.bashrc
+
+# Reload your shell
+source ~/.bashrc
 ```
 
-**For Vim:** No additional packages needed (uses built-in `+clientserver` feature).
+Alternatively, you can use your own password:
+```bash
+# Use your own password (must be unique and hard to guess)
+echo 'export PDF_SERVER_API_KEY="my-unique-password-123"' >> ~/.bashrc
+source ~/.bashrc
+```
 
-### Shell Setup (One-Time Configuration)
+> **Security:** Use a long, random key in shared environments. A simple password is fine for personal use on a single machine.
 
-For seamless inverse search, configure your shell to use a fixed editor socket. Add the appropriate configuration to your `~/.bashrc` or `~/.zshrc`:
+#### 2. Editor Setup (Optional - for Inverse Search)
 
-**For Neovim Users:**
+To use **inverse search** (Shift+Click in PDF → jump to editor), configure your editor socket:
+
+**Prerequisites:**
+- **Neovim**: `pip install neovim-remote`
+- **Vim**: No additional packages needed
+
+**Shell Configuration:**
+
+Add to your `~/.bashrc` or `~/.zshrc`:
+
+**For Neovim:**
 ```bash
 # PDF Server + Neovim Integration
 export NVIM_LISTEN_ADDRESS="/tmp/nvim-${USER}.sock"
@@ -72,8 +94,9 @@ export NVIM_LISTEN_ADDRESS="/tmp/nvim-${USER}.sock"
 nvim() {
     command nvim --listen "$NVIM_LISTEN_ADDRESS" "$@"
 }
+```
 
-**For Vim Users:**
+**For Vim:**
 ```bash
 # PDF Server + Vim Integration  
 export VIM_SERVERNAME="VIM-${USER}"
@@ -82,26 +105,32 @@ export VIM_SERVERNAME="VIM-${USER}"
 vim() {
     command vim --servername "$VIM_SERVERNAME" "$@"
 }
-
-**Using UUID-Based Socket (Unique per machine and user):**
-```bash
-# Generate a unique socket for this machine and user (run once)
-echo "export NVIM_LISTEN_ADDRESS=\"/tmp/nvim-$(uuidgen)-${USER}.sock\"" >> ~/.bashrc
-# Then reload: source ~/.bashrc
 ```
 
-> **Note on Multiple Editor Instances:** The fixed socket approach above only supports **one editor instance at a time** for inverse search. If you run multiple nvim/vim instances with the same socket, inverse search may jump to the wrong editor. Experienced users who need multiple instances should devise their own solution (e.g., project-specific sockets or dynamic socket selection).
+**Editor Configuration:**
 
-**Reload your shell:**
+**Neovim** (init.lua):
+```lua
+vim.g.vimtex_view_method = 'general'
+vim.g.vimtex_view_general_viewer = 'sync-remote-pdf'
+vim.g.vimtex_view_general_options = '--synctex-forward @line:@col:@tex @pdf'
+```
+
+**Vim** (.vimrc):
+```vim
+let g:vimtex_view_method = 'general'
+let g:vimtex_view_general_viewer = 'sync-remote-pdf'
+let g:vimtex_view_general_options = '--synctex-forward @line:@col:@tex @pdf'
+```
+
+Then reload your shell:
 ```bash
 source ~/.bashrc  # or ~/.zshrc
 ```
 
+> **Note:** The fixed socket approach supports only one editor instance at a time. If you need multiple instances, use project-specific sockets.
+
 ### Starting the Server
-
-PdfServer uses two separate tools: `pdf-server` for server management and `sync-remote-pdf` for LaTeX synchronization.
-
-> **Prerequisites**: If using inverse search, ensure you've completed the [Prerequisites](#prerequisites-for-inverse-search) and [Shell Setup](#shell-setup-one-time-configuration) sections above.
 
 **Step 1: Start the server**
 
@@ -109,21 +138,17 @@ PdfServer uses two separate tools: `pdf-server` for server management and `sync-
 # Basic start (HTTPS mode, no inverse search)
 pdf-server start
 
-# Start with inverse search for Neovim (Shift+Click → editor)
-# Requires: pip install neovim-remote
+# Start with inverse search for Neovim
 pdf-server start --inverse-search-nvim
 
 # Start with inverse search for Vim
 pdf-server start --inverse-search-vim
 
-# Start with custom inverse search command
-pdf-server start --inverse-search-command "nvr --remote-silent +%{line} %{file}"
-
 # Start on different port
 pdf-server start --port 9000
 
 # Start in foreground (for debugging)
-pdf-server start --foreground
+pdf-server start --verbose
 ```
 
 When you start the server, you'll see:
@@ -146,61 +171,110 @@ Copy the token to your browser to enable inverse search
 
 **Step 3: Work in your editor**
 
-In Neovim with VimTeX:
-```lua
--- In your init.lua
-vim.g.vimtex_view_method = 'general'
-vim.g.vimtex_view_general_viewer = 'sync-remote-pdf'
-vim.g.vimtex_view_general_options = '--synctex-forward @line:@col:@tex @pdf'
-```
+In Neovim/Vim with VimTeX:
+- `<leader>ll` - Compile LaTeX document
+- `<leader>lv` - View PDF and forward search to cursor position
+- Shift+Click in PDF - Jump back to editor (inverse search)
 
-Then use `<leader>lv` to view/forward search.
+## Usage Guide
 
-### Managing the Server
+### PDF Viewer Controls
 
-```bash
-# Check server status
-pdf-server status
+The browser-based PDF viewer supports keyboard navigation (Vim-style) and multiple methods for inverse search.
 
-# View logs
-pdf-server logs
-pdf-server logs --follow  # Like tail -f
+#### Navigation
 
-# Stop the server
-pdf-server stop
-```
+**Scrolling:**
+- `j` or `↓` - Scroll down
+- `k` or `↑` - Scroll up  
+- `h` or `←` - Scroll left
+- `l` or `→` - Scroll right
 
-### Manual Forward Search
+**Page Navigation:**
+- `J` or `Page Down` - Next page
+- `K` or `Page Up` - Previous page
+- `g` - Jump to first page
+- `G` - Jump to last page
+- `Space` - Scroll one page down (`Shift+Space` for up)
 
-If you prefer to manually trigger forward search:
+#### Inverse Search (Jump PDF → Editor)
+
+Trigger inverse search at the current position to jump to the corresponding source code in your editor:
+
+**Keyboard:**
+- `i` - Trigger inverse search at the current scroll position
+
+**Mouse/Touch:**
+- `Shift+Click` on PDF - Jump to clicked location
+- `Long press/click` (hold ~0.5 seconds) - Jump to held location  
+- `Long touch` (mobile) - Jump to touched location
+
+> **Note:** Inverse search requires server to be started with `--inverse-search-nvim` or `--inverse-search-vim`, and your editor must be configured with a fixed socket (see [Setup](#setup)).
+
+### VimTeX Integration
+
+PdfServer integrates seamlessly with VimTeX using the `sync-remote-pdf` CLI tool.
+
+**How It Works:**
+
+When you press `<leader>lv`:
+1. VimTeX calls: `sync-remote-pdf --synctex-forward line:col:texfile pdffile`
+2. Server converts line:column to PDF coordinates via SyncTeX
+3. Browser scrolls to position and shows red dot marker
+4. When you Shift+Click in the PDF, browser sends coordinates to server
+5. Server runs `synctex edit` to convert to file:line and opens your editor
+
+### Manual Commands
+
+**Loading PDFs:**
 
 ```bash
 # Load PDF without forward search
 sync-remote-pdf document.pdf
 
-# Load PDF with forward search
+# Load PDF with forward search (line:column:texfile)
 sync-remote-pdf --synctex-forward "42:5:chapter.tex" document.pdf
 
 # Custom port
 sync-remote-pdf --port 9000 document.pdf
+
+# Custom API key (if not using env var)
+sync-remote-pdf --api-key "your-secret-key" document.pdf
 ```
 
-### Connecting in Browser
+**Server Management:**
 
-1. Start the server with `pdf-server start`
-2. Open your browser and navigate to the URL shown (e.g., `https://localhost:8431/view`)
-3. Enter the authentication token from the terminal
-4. Use `sync-remote-pdf` or VimTeX to load your PDF
-5. The PDF will display with page-by-page scrolling support
+```bash
+# Check server status
+pdf-server status
+
+# Stop the server
+pdf-server stop
+```
+
+### Inverse Search (Backward Search)
+
+Jump from PDF to editor with Shift+Click.
+
+**Requirements:**
+- Server started with inverse search enabled (`--inverse-search-nvim` or `--inverse-search-vim`)
+- Editor configured with fixed socket (see [Setup](#setup))
+- Browser authenticated with token from server startup
+
+**Security:**
+- Token-based authentication (Jupyter-style)
+- HTTPS required (inverse search disabled over HTTP)
+- Secure cookies with httpOnly, secure, sameSite=strict
+- Token regenerates on each PDF load
 
 ### Sending Updates via HTTP
 
-You can send position updates to scroll the PDF programmatically:
+You can send position updates programmatically:
 
 Using httpie:
 ```bash
 http POST localhost:8431/webhook/update \
-  X-API-Key:super-secret-123 \
+  X-API-Key:your-secret-key \
   page:=2 \
   y:=1000
 ```
@@ -208,7 +282,7 @@ http POST localhost:8431/webhook/update \
 Using curl:
 ```bash
 curl -X POST http://localhost:8431/webhook/update \
-  -H "X-API-Key: super-secret-123" \
+  -H "X-API-Key: your-secret-key" \
   -H "Content-Type: application/json" \
   -d '{"page": 2, "y": 1000}'
 ```
@@ -220,295 +294,10 @@ Parameters:
 
 ### Environment Variables
 
-- `PDF_SERVER_PORT`: Server port (default: 8431)
-- `PDF_SERVER_SECRET`: API key for webhook authentication (default: super-secret-123)
-- `PDF_SERVER_HOST`: Server host address (default: 0.0.0.0)
-
-### Project Structure
-
-```
-PdfServer/
-├── main.py                 # Server entry point
-├── bin/
-│   ├── pdf-server         # Server lifecycle management (start/stop/status/logs)
-│   └── sync-remote-pdf    # LaTeX sync client (forward search only)
-├── src/
-│   ├── config.py          # Configuration management
-│   ├── connection_manager.py  # WebSocket connections
-│   ├── logging_config.py    # XDG-compliant logging
-│   ├── state.py           # PDF state tracking
-│   └── routes/            # API endpoints
-│       ├── auth.py        # Token authentication
-│       ├── view.py        # HTML viewer
-│       ├── pdf.py         # PDF file serving
-│       ├── state.py       # State endpoint
-│       ├── webhook.py     # SyncTeX webhook
-│       ├── websocket.py   # WebSocket endpoint (bidirectional)
-│       └── load_pdf.py    # PDF loading API
-├── static/                # Frontend assets (TypeScript)
-│   ├── viewer.html        # Jinja2 HTML template
-│   ├── viewer.ts          # Main viewer with shift+click support
-│   ├── token_form.html    # Authentication form
-│   └── viewer.js          # Compiled JavaScript
-├── tests/                 # Test suite
-├── examples/              # Example PDFs
-└── requirements.txt       # Dependencies
-```
-
-### Running Tests
-
-```bash
-# Install test dependencies
-pip install pytest pytest-asyncio httpx responses
-
-# Run all tests
-python -m pytest tests/ -v
-
-# Run specific test file
-python -m pytest tests/test_config.py -v
-
-# Run specific test
-python -m pytest tests/test_config.py::TestSettings::test_default_values -v
-```
-
-### TypeScript Build & Test
-
-```bash
-# Install Node.js dependencies
-npm install
-
-# Compile TypeScript (generates .js and .d.ts files)
-npm run build
-
-# Type check without compiling
-npm run typecheck
-
-# Run JavaScript unit tests
-npm test
-
-# Run tests in watch mode
-npm test -- --watch
-```
-
-## Neovim + VimTeX Integration
-
-PdfServer integrates seamlessly with Neovim and VimTeX using the `sync-remote-pdf` CLI tool for forward search, with `pdf-server` managing the server lifecycle.
-
-### Quick Setup (Recommended)
-
-**Step 1: Configure Shell and VimTeX**
-
-First, complete the [Prerequisites](#prerequisites-for-inverse-search) and [Shell Setup](#shell-setup-one-time-configuration) sections above to configure your editor socket.
-
-Then configure VimTeX:
-
-**Neovim** (Lua configuration, e.g., `~/.config/nvim/init.lua`):
-```lua
-vim.g.vimtex_view_method = 'general'
-vim.g.vimtex_view_general_viewer = 'sync-remote-pdf'
-vim.g.vimtex_view_general_options = '--synctex-forward @line:@col:@tex @pdf'
-
--- Optional: Configure port and API key via environment variables
--- vim.env.PDF_SERVER_PORT = '8431'
--- vim.env.PDF_SERVER_SECRET = 'your-secret-key'
-```
-
-**Vim** (Vimscript, e.g., `~/.vimrc`):
-```vim
-let g:vimtex_view_method = 'general'
-let g:vimtex_view_general_viewer = 'sync-remote-pdf'
-let g:vimtex_view_general_options = '--synctex-forward @line:@col:@tex @pdf'
-
-" Optional: Configure port and API key via environment variables
-" let $PDF_SERVER_PORT = '8431'
-" let $PDF_SERVER_SECRET = 'your-secret-key'
-```
-
-**Step 2: Start the server (one time per session)**
-
-In a terminal, start the server with inverse search enabled:
-```bash
-pdf-server start --inverse-search-nvim
-```
-
-Copy the token and authenticate in your browser.
-
-**Step 3: Work in Neovim**
-
-That's it! Now when you use VimTeX:
-- `<leader>ll` - Compile LaTeX document
-- `<leader>lv` - View PDF and forward search to cursor position
-- Shift+Click in PDF - Jump back to editor (inverse search)
-
-**Note**: The `@line`, `@col`, and `@tex` placeholders are replaced by VimTeX with the current cursor position when you trigger forward search.
-
-### How It Works
-
-When you press `<leader>lv` (VimTeX's default forward search key):
-
-1. **VimTeX** calls: `sync-remote-pdf --synctex-forward line:col:texfile pdffile &`
-2. **sync-remote-pdf** checks if pdf_server is running via HTTP `/state`
-3. Loads the PDF via `/api/load-pdf` endpoint
-4. Sends synctex coordinates to `/webhook/update` endpoint
-5. Server converts line:column to PDF coordinates and broadcasts to browser
-6. Browser scrolls to position and shows red dot marker
-7. For inverse search: Shift+Click triggers `synctex edit` and executes the configured editor command
-
-### Manual Usage
-
-**Start the server:**
-```bash
-# Start with inverse search for Neovim
-pdf-server start --inverse-search-nvim
-
-# Start with custom inverse search
-pdf-server start --inverse-search-command "nvr --remote-silent +%{line} %{file}"
-
-# Start on different port
-pdf-server start --port 8080
-
-# Foreground mode (for debugging)
-pdf-server start --foreground
-```
-
-**Load PDF:**
-```bash
-# Load PDF without forward search
-sync-remote-pdf document.pdf
-
-# Load PDF with forward search
-sync-remote-pdf --synctex-forward "42:5:chapter.tex" document.pdf
-
-# Custom port
-sync-remote-pdf --port 8080 document.pdf
-```
-
-**Check status and logs:**
-```bash
-pdf-server status
-pdf-server logs --follow
-```
-
-**Stop the server:**
-```bash
-pdf-server stop
-```
-
-### SyncTeX Support
-
-PdfServer supports SyncTeX for precise forward search:
-
-1. Compile your LaTeX document with SyncTeX enabled:
-```bash
-pdflatex -synctex=1 document.tex
-```
-
-2. Forward search automatically converts line:column coordinates to PDF positions
-
-3. The server handles all synctex processing internally
-
-### Inverse Search (Backward Search)
-
-**NEW**: Jump from PDF to editor with Shift+Click!
-
-When enabled, you can click anywhere in the PDF while holding Shift, and your editor will open the corresponding source file at that location.
-
-#### Requirements
-
-**Prerequisites** (must complete before using):
-1. **Install nvr** (Neovim only): `pip install neovim-remote`
-2. **Configure shell**: Follow the [Shell Setup](#shell-setup-one-time-configuration) section above
-
-**Security requirements**:
-- **HTTPS/WSS only**: Inverse search requires secure connections (security feature)
-- **Token authentication**: Browser must authenticate with a token from terminal
-
-**Editor support**:
-- **Neovim**: Uses `nvr` (via `pip install neovim-remote`)
-- **Vim**: Uses built-in `--remote` feature (requires `+clientserver`)
-
-#### Setup
-
-1. Ensure prerequisites are met (see above)
-
-2. Start `pdf-server` with inverse search:
-```bash
-# For Neovim
-pdf-server start --inverse-search-nvim
-
-# For Vim (with +clientserver)
-pdf-server start --inverse-search-vim
-
-# Or with custom command
-pdf-server start --inverse-search-command "nvr --remote-silent +%{line} %{file}"
-```
-
-2. The terminal will display:
-```
-============================================================
-PDF Server Ready (inverse search: nvr)
-============================================================
-URL:    https://localhost:8431/view
-Token:  xJ9mK2pL5nQ8...
-============================================================
-Copy the token to your browser to enable inverse search
-============================================================
-```
-
-3. Open the URL in your browser
-4. Enter the token when prompted (use clipboard sync for cross-device access)
-5. Load your PDF with `sync-remote-pdf document.pdf`
-6. **Shift+Click** anywhere in the PDF to jump to the editor!
-
-#### How It Works
-
-When you Shift+Click in the PDF:
-1. Browser detects click coordinates
-2. Sends page/x/y via authenticated WebSocket
-3. Server runs `synctex edit` to convert to file:line
-4. Server executes your configured editor command
-5. Editor opens file and jumps to line
-
-#### Security Model
-
-- **Token-based auth**: Random 32-byte token (Jupyter-style)
-- **HTTPS required**: Inverse search disabled over HTTP
-- **Secure cookies**: httpOnly, secure, sameSite=strict
-- **Template-based**: Only `%{line}` and `%{file}` interpolated in commands
-- **Token regeneration**: New token on each PDF load for security
-
-#### Cross-Device Access
-
-The token authentication enables **secure** cross-device usage:
-1. Start server on desktop with `pdf-server start --inverse-search-nvim`
-2. Copy token from terminal
-3. Use clipboard sync (iCloud, KDE Connect, etc.) to send to tablet/phone
-4. Open browser on device, paste token
-5. Load PDF with `sync-remote-pdf` or from VimTeX
-6. Shift+Click PDF on device → editor jumps on desktop
-
-### Environment Variables
-
-Configure the server and clients via environment variables:
-
-```bash
-export PDF_SERVER_PORT=8431        # Server port (used by both pdf-server and sync-remote-pdf)
-export PDF_SERVER_SECRET=super-secret-123  # API authentication
-```
-
-Or in your editor configuration:
-
-**Neovim** (Lua):
-```lua
-vim.env.PDF_SERVER_PORT = '8080'
-vim.env.PDF_SERVER_SECRET = 'my-secret-key'
-```
-
-**Vim** (Vimscript):
-```vim
-let $PDF_SERVER_PORT = '8080'
-let $PDF_SERVER_SECRET = 'my-secret-key'
-```
+- `PDF_SERVER_PORT`: Server port (default: 8431, used by both server and client)
+- `PDF_SERVER_API_KEY`: API key for authentication (required)
+- `NVIM_LISTEN_ADDRESS`: Neovim socket path (for inverse search)
+- `VIM_SERVERNAME`: Vim server name (for inverse search)
 
 ## Troubleshooting
 
@@ -524,7 +313,7 @@ let $PDF_SERVER_SECRET = 'my-secret-key'
    # or
    echo $VIM_SERVERNAME       # For Vim
    ```
-   If empty, you haven't completed the [Shell Setup](#shell-setup-one-time-configuration).
+   If empty, you haven't completed the [Editor Setup](#2-editor-setup-optional---for-inverse-search).
 
 2. **Check that nvr is installed** (Neovim only):
    ```bash
@@ -543,24 +332,31 @@ let $PDF_SERVER_SECRET = 'my-secret-key'
    source ~/.bashrc  # or ~/.zshrc
    ```
 
+### Authentication Failed Errors
+
+**Problem**: You see "Authentication failed" when loading PDFs.
+
+**Solution**: Ensure the same `PDF_SERVER_API_KEY` is used on both server and client:
+1. Check server has the key: `echo $PDF_SERVER_API_KEY`
+2. Check client has the key: `echo $PDF_SERVER_API_KEY`
+3. Restart the server after setting the environment variable
+
 ### Multiple Editor Instances
 
 **Problem**: Inverse search jumps to the wrong editor instance.
 
-**Cause**: The fixed socket approach (e.g., `/tmp/nvim-${USER}.sock`) only supports one editor instance at a time for inverse search.
+**Cause**: The fixed socket approach only supports one editor instance at a time.
 
 **Solutions**:
 - Close other editor instances
 - Use separate terminals for different projects
-- Advanced users: Implement project-specific sockets (see [Shell Setup](#shell-setup-one-time-configuration))
+- Advanced users: Implement project-specific sockets
 
 ### Ghost Neovim Processes
 
-**Problem**: You see unexpected `nvim` processes running after using inverse search.
+**Problem**: You see unexpected `nvim` processes running.
 
-**Cause**: Old versions of pdf-server used `nvr` without `--nostart`, which would spawn new nvim processes if no server was found.
-
-**Solution**: This is fixed in the current version. Update to the latest version, or clean up manually:
+**Solution**: Clean up manually:
 ```bash
 killall nvim  # Warning: closes ALL nvim instances
 ```
@@ -581,7 +377,72 @@ killall nvim  # Warning: closes ALL nvim instances
 - **Silent error handling**: Gracefully handles synctex failures without disrupting workflow
 - **Flexible path handling**: Accepts both relative and absolute PDF paths
 
-## Architecture
+## Development
+
+### Project Structure
+
+```
+PdfServer/
+├── main.py                 # Server entry point
+├── bin/
+│   ├── pdf-server         # Server lifecycle management
+│   └── sync-remote-pdf    # LaTeX sync client
+├── pdfserver/
+│   ├── config.py          # Configuration management
+│   ├── connection_manager.py  # WebSocket connections
+│   ├── state.py           # PDF state tracking
+│   └── routes/            # API endpoints
+├── static/                # Frontend assets (TypeScript)
+│   ├── viewer.html        # Jinja2 HTML template
+│   ├── viewer.ts          # Main viewer
+│   └── viewer.js          # Compiled JavaScript
+├── tests/                 # Test suite
+├── examples/              # Example PDFs
+└── requirements.txt       # Dependencies
+```
+
+### Running Tests
+
+```bash
+# Install test dependencies
+pip install pytest pytest-asyncio httpx responses
+
+# Run all tests
+python -m pytest tests/ -v
+
+# Run specific test suites
+python -m pytest tests/test_config.py -v                              # Configuration tests
+python -m pytest tests/test_sync_unit.py -v                           # sync.py unit tests  
+python -m pytest tests/test_sync_e2e_subprocess.py -v                 # E2E tests with real server
+python -m pytest tests/test_sync_client_utils.py -v                   # sync-remote-pdf client tests
+
+# Run specific test
+python -m pytest tests/test_config.py::TestSettings::test_default_values -v
+
+# E2E tests use port 18080 by default. Override with:
+PDF_SERVER_TEST_PORT=28080 python -m pytest tests/test_sync_e2e_subprocess.py -v
+```
+
+### TypeScript Build & Test
+
+```bash
+# Install Node.js dependencies
+npm install
+
+# Compile TypeScript
+npm run build
+
+# Type check without compiling
+npm run typecheck
+
+# Run JavaScript unit tests
+npm test
+
+# Run tests in watch mode
+npm test -- --watch
+```
+
+### Architecture
 
 - **Backend**: FastAPI with WebSocket support (Python)
 - **Frontend**: TypeScript with PDF.js for rendering, compiled to ES2020

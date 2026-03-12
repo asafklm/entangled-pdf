@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from src import certs
+from pdfserver import certs
 
 
 def test_validate_certificate_not_found():

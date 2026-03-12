@@ -31,7 +31,7 @@ class TestWebSocketLifecycle:
         response = test_client.post(
             "/webhook/update",
             json={"line": 30, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         assert response.status_code == 200
         
@@ -51,7 +51,7 @@ class TestWebSocketLifecycle:
         response = test_client.post(
             "/webhook/update",
             json={"line": 50, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         assert response.status_code == 200
         
@@ -85,7 +85,7 @@ class TestWebSocketLifecycle:
         response = test_client.post(
             "/webhook/update",
             json={"line": 70, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         
         assert response.status_code == 200
@@ -119,7 +119,7 @@ class TestWebSocketLifecycle:
         response = test_client.post(
             "/webhook/update",
             json={"line": 100, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         
         assert response.status_code == 200
@@ -149,7 +149,7 @@ class TestWebSocketLifecycle:
         response = test_client.post(
             "/webhook/update",
             json={"line": 30, "col": 5, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         
         assert response.status_code == 200
@@ -218,7 +218,7 @@ class TestWebSocketLifecycle:
             response = test_client.post(
                 "/webhook/update",
                 json={"line": line, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-                headers={"X-API-Key": get_settings().secret}
+                headers={"X-API-Key": get_settings().api_key}
             )
             assert response.status_code == 200
         

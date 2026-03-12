@@ -151,7 +151,7 @@ class TestTypeContracts:
         response = test_client.post(
             "/webhook/update",
             json={"line": 50, "col": 5, "tex_file": "/path/to/test.tex", "pdf_file": str(get_settings().pdf_file)},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         assert response.status_code == 200
         
@@ -212,7 +212,7 @@ class TestTypeScriptNullHandling:
         response = test_client.post(
             "/webhook/update",
             json={"line": 0, "col": 0, "tex_file": "/path/to/test.tex", "pdf_file": str(get_settings().pdf_file)},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         
         assert response.status_code == 200
@@ -230,7 +230,7 @@ class TestTypeScriptNullHandling:
         response = test_client.post(
             "/webhook/update",
             json={"line": 50, "col": 0, "tex_file": "/path/to/test.tex", "pdf_file": str(get_settings().pdf_file)},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         
         assert response.status_code == 200

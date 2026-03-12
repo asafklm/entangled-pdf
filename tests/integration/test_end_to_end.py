@@ -33,7 +33,7 @@ class TestEndToEndSyncTeX:
         response = test_client.post(
             "/webhook/update",
             json={"line": 42, "col": 5, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         assert response.status_code == 200
         
@@ -71,7 +71,7 @@ class TestEndToEndSyncTeX:
         response = test_client.post(
             "/webhook/update",
             json={"line": 100, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         assert response.status_code == 200
         
@@ -85,7 +85,7 @@ class TestEndToEndSyncTeX:
         response = test_client.post(
             "/webhook/update",
             json={"line": 150, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         assert response.status_code == 200
         
@@ -107,7 +107,7 @@ class TestEndToEndSyncTeX:
         response = test_client.post(
             "/webhook/update",
             json={"line": 200, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         assert response.status_code == 200
         
@@ -137,7 +137,7 @@ class TestEndToEndSyncTeX:
         response = test_client.post(
             "/webhook/update",
             json={"line": 80, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         assert response.status_code == 200
         
@@ -181,7 +181,7 @@ class TestEndToEndSyncTeX:
             response = test_client.post(
                 "/webhook/update",
                 json={**edit, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-                headers={"X-API-Key": get_settings().secret}
+                headers={"X-API-Key": get_settings().api_key}
             )
             assert response.status_code == 200
             
@@ -253,7 +253,7 @@ class TestEndToEndSyncTeX:
         response = test_client.post(
             "/webhook/update",
             json={"line": 42, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         assert response.status_code == 200
         

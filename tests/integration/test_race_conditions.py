@@ -35,7 +35,7 @@ class TestRaceConditions:
             response = test_client.post(
                 "/webhook/update",
                 json={"line": line, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-                headers={"X-API-Key": get_settings().secret}
+                headers={"X-API-Key": get_settings().api_key}
             )
             return response.status_code
         
@@ -84,7 +84,7 @@ class TestRaceConditions:
         response = test_client.post(
             "/webhook/update",
             json={"line": 50, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         
         assert response.status_code == 200
@@ -116,7 +116,7 @@ class TestRaceConditions:
             response = test_client.post(
                 "/webhook/update",
                 json={"line": line, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-                headers={"X-API-Key": get_settings().secret}
+                headers={"X-API-Key": get_settings().api_key}
             )
             assert response.status_code == 200
             await asyncio.sleep(0.001)  # Tiny delay to ensure order
@@ -155,7 +155,7 @@ class TestRaceConditions:
         response = test_client.post(
             "/webhook/update",
             json={"line": 30, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         
         assert response.status_code == 200
@@ -191,7 +191,7 @@ class TestRaceConditions:
         response = test_client.post(
             "/webhook/update",
             json={"line": 50, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         
         assert response.status_code == 200
@@ -226,7 +226,7 @@ class TestRaceConditions:
         response = test_client.post(
             "/webhook/update",
             json={"line": 50, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         
         assert response.status_code == 200
@@ -256,7 +256,7 @@ class TestRaceConditions:
             response = test_client.post(
                 "/webhook/update",
                 json={"line": line, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-                headers={"X-API-Key": get_settings().secret}
+                headers={"X-API-Key": get_settings().api_key}
             )
             results.append(("write", response.status_code, line))
         

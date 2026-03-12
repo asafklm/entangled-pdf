@@ -21,7 +21,7 @@ def mock_settings(tmp_path):
     return Settings(
         pdf_file=pdf_file,
         port=8080,
-        secret="test-secret",
+        api_key="test-secret",
         host="127.0.0.1",
         static_dir=static_dir
     )
@@ -82,7 +82,7 @@ class TestGetPdf:
         settings = Settings(
             pdf_file=pdf_file,
             port=8080,
-            secret="test-secret",
+            api_key="test-secret",
             host="127.0.0.1",
             static_dir=static_dir
         )
@@ -109,7 +109,7 @@ class TestGetPdf:
         settings = Settings(
             pdf_file=pdf_file,
             port=8080,
-            secret="test-secret",
+            api_key="test-secret",
             host="127.0.0.1",
             static_dir=static_dir
         )
@@ -134,7 +134,7 @@ class TestGetPdf:
         settings = Settings(
             pdf_file=pdf_file,
             port=8080,
-            secret="test-secret",
+            api_key="test-secret",
             host="127.0.0.1",
             static_dir=static_dir
         )

@@ -17,9 +17,6 @@ Python-based PDF server using FastAPI, WebSockets, and TypeScript for real-time 
 # Check server status (also shows authentication token)
 ./bin/pdf-server status
 
-# View logs
-./bin/pdf-server logs --follow
-
 # Stop server
 ./bin/pdf-server stop
 
@@ -33,6 +30,13 @@ Python-based PDF server using FastAPI, WebSockets, and TypeScript for real-time 
 # Python tests
 ./bin/python -m pytest tests/test_config.py -v
 ./bin/python -m pytest tests/test_config.py::test_function -v
+./bin/python -m pytest tests/test_sync_unit.py -v                    # sync.py unit tests
+./bin/python -m pytest tests/test_sync_e2e_subprocess.py -v          # E2E tests with real server
+./bin/python -m pytest tests/test_sync_client_utils.py -v           # Client utility tests
+
+# E2E test configuration (optional)
+export PDF_SERVER_TEST_PORT=18080    # Default: 18080
+./bin/python -m pytest tests/test_sync_e2e_subprocess.py -v
 
 # TypeScript/JavaScript
 npm run build        # Compile TypeScript
@@ -208,7 +212,7 @@ class ConnectionManager:
 
 ## Security
 
-- Never hardcode secrets (use env vars: `PDF_SERVER_SECRET`)
+- Never hardcode secrets (use env vars: `PDF_SERVER_API_KEY`)
 - Validate all input data
 - Use X-API-Key pattern for authentication
 - Escape HTML template variables
@@ -232,3 +236,22 @@ class ConnectionManager:
 **TypeScript**: typescript, vitest, happy-dom, @types/node, pdfjs-dist
 
 When adding deps, prefer packages already in use.
+
+## Distribution Strategy
+
+**Current (Development Phase):**
+- Install via git clone + pip install
+- Users must have git knowledge
+- No PyPI publication yet (project not mature)
+
+**Future (Post-Maturation):**
+- Publish to PyPI
+- Recommend pipx for end-user installation: `pipx install pdfserver`
+- pipx provides isolated environments perfect for CLI tools
+- Avoid pip for end-users (can cause dependency conflicts)
+
+**Not Planned:**
+- Homebrew distribution (requires tap maintenance)
+- Standalone binaries (complex Node.js build integration)
+
+**Rationale:** Target users (LaTeX + Neovim) already have Python installed. pipx is the modern standard for Python CLI tools and provides the best user experience without requiring git knowledge.

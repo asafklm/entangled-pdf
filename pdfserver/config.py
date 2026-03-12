@@ -3,10 +3,20 @@
 Uses Pydantic Settings for type-safe configuration with environment variable support.
 """
 
+import os
 from pathlib import Path
 from typing import Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class ConfigError(ValueError):
+    """Configuration error with user-friendly message.
+    
+    This exception is raised for configuration errors that should be
+    displayed to the user without Pydantic validation details.
+    """
+    pass
 
 
 class Settings(BaseSettings):
@@ -18,7 +28,7 @@ class Settings(BaseSettings):
     Attributes:
         pdf_file: Path to the PDF file to serve (optional - can be loaded dynamically)
         port: Server port number (default: 8431)
-        secret: API key for webhook authentication (default: super-secret-123)
+        api_key: API key for webhook authentication (required - set via PDF_SERVER_API_KEY or --api-key)
         host: Server host address (default: 0.0.0.0)
         static_dir: Directory containing static files (default: static/)
         use_https: Whether to use HTTPS (default: True)
@@ -34,7 +44,7 @@ class Settings(BaseSettings):
     
     pdf_file: Optional[Path] = None
     port: int = 8431
-    secret: str = "super-secret-123"
+    api_key: Optional[str] = None
     host: str = "0.0.0.0"
     static_dir: Path = Path("static")
     use_https: bool = True
@@ -49,17 +59,24 @@ class Settings(BaseSettings):
         
         # Validate PDF file exists only if provided
         if self.pdf_file is not None and not self.pdf_file.exists():
-            raise ValueError(f"PDF file not found: {self.pdf_file}")
+            raise ConfigError(f"PDF file not found: {self.pdf_file}")
         
         # Validate static directory exists
         if not self.static_dir.exists():
-            raise ValueError(f"Static directory not found: {self.static_dir}")
+            raise ConfigError(f"Static directory not found: {self.static_dir}")
         
         # Resolve SSL certificate paths if provided
         if self.ssl_cert and not self.ssl_cert.is_absolute():
             self.ssl_cert = self.ssl_cert.resolve()
         if self.ssl_key and not self.ssl_key.is_absolute():
             self.ssl_key = self.ssl_key.resolve()
+        
+        # Validate API key is set
+        if not self.api_key:
+            raise ValueError(
+                "API key is required. Set PDF_SERVER_API_KEY environment variable "
+                "or use --api-key flag when starting the server."
+            )
 
 
 # Global settings instance (initialized in main.py)
@@ -69,6 +86,7 @@ settings: Optional[Settings] = None
 def init_settings(
     pdf_file: Optional[Path] = None,
     port: Optional[int] = None,
+    api_key: Optional[str] = None,
     use_https: Optional[bool] = None,
     ssl_cert: Optional[Path] = None,
     ssl_key: Optional[Path] = None
@@ -78,20 +96,33 @@ def init_settings(
     Args:
         pdf_file: Override PDF file path (optional)
         port: Override port number (optional)
+        api_key: Override API key (optional)
         use_https: Override HTTPS setting (optional)
         ssl_cert: Override SSL certificate path (optional)
         ssl_key: Override SSL key path (optional)
     
     Returns:
         Settings: Initialized settings instance
+    
+    Raises:
+        ConfigError: If API key is not provided and PDF_SERVER_API_KEY env var is not set
     """
     global settings
+    
+    # Validate API key before creating Settings (to avoid Pydantic wrapping)
+    final_api_key = api_key or os.getenv("PDF_SERVER_API_KEY")
+    if not final_api_key:
+        raise ConfigError(
+            "API key is required. Set PDF_SERVER_API_KEY environment variable "
+            "or use --api-key flag when starting the server."
+        )
     
     kwargs = {}
     if pdf_file is not None:
         kwargs["pdf_file"] = Path(pdf_file)
     if port is not None:
         kwargs["port"] = port
+    kwargs["api_key"] = final_api_key
     if use_https is not None:
         kwargs["use_https"] = use_https
     if ssl_cert is not None:

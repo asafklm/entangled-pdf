@@ -106,8 +106,11 @@ async def receive_webhook(
     settings = get_settings()
     
     # Validate API key
-    if x_api_key != settings.secret:
-        raise HTTPException(status_code=403, detail="Unauthorized")
+    if x_api_key != settings.api_key:
+        raise HTTPException(
+            status_code=403,
+            detail="Authentication failed. Ensure PDF_SERVER_API_KEY is set and server was restarted."
+        )
     
     # Extract parameters
     try:

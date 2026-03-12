@@ -33,7 +33,7 @@ class TestStateConsistency:
         response = test_client.post(
             "/webhook/update",
             json={"line": 50, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         assert response.status_code == 200
         
@@ -66,7 +66,7 @@ class TestStateConsistency:
             response = test_client.post(
                 "/webhook/update",
                 json={"line": line, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-                headers={"X-API-Key": get_settings().secret}
+                headers={"X-API-Key": get_settings().api_key}
             )
             assert response.status_code == 200
             
@@ -92,7 +92,7 @@ class TestStateConsistency:
             return test_client.post(
                 "/webhook/update",
                 json={"line": line, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-                headers={"X-API-Key": get_settings().secret}
+                headers={"X-API-Key": get_settings().api_key}
             )
         
         # Fire multiple concurrent requests (lines 10, 20, 30, 40, 50)
@@ -134,7 +134,7 @@ class TestStateConsistency:
         response = test_client.post(
             "/webhook/update",
             json={"line": 30, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         assert response.status_code == 200
         
@@ -179,7 +179,7 @@ class TestStateConsistency:
             response = test_client.post(
                 "/webhook/update",
                 json={"line": line, "col": 0, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-                headers={"X-API-Key": get_settings().secret}
+                headers={"X-API-Key": get_settings().api_key}
             )
             results.append(("update", response.status_code))
         
@@ -211,7 +211,7 @@ class TestStateConsistency:
         response = test_client.post(
             "/webhook/update",
             json={"line": 50, "col": 5, "tex_file": "test.tex", "pdf_file": "test.pdf"},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
         assert response.status_code == 200
         

@@ -38,7 +38,7 @@ class TestLoadPdfEndpoint:
             response = test_client.post(
                 "/api/load-pdf",
                 json={"pdf_path": str(temp_pdf_file)},
-                headers={"X-API-Key": get_settings().secret}
+                headers={"X-API-Key": get_settings().api_key}
             )
 
             assert response.status_code == 200
@@ -89,7 +89,7 @@ class TestLoadPdfEndpoint:
         response = test_client.post(
             "/api/load-pdf",
             json={},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
 
         assert response.status_code == 400
@@ -103,7 +103,7 @@ class TestLoadPdfEndpoint:
         response = test_client.post(
             "/api/load-pdf",
             json={"pdf_path": "/nonexistent/path/file.pdf"},
-            headers={"X-API-Key": get_settings().secret}
+            headers={"X-API-Key": get_settings().api_key}
         )
 
         assert response.status_code == 400
@@ -133,7 +133,7 @@ class TestLoadPdfEndpoint:
             response = test_client.post(
                 "/api/load-pdf",
                 json={"pdf_path": rel_path},
-                headers={"X-API-Key": get_settings().secret}
+                headers={"X-API-Key": get_settings().api_key}
             )
 
             assert response.status_code == 200
@@ -167,7 +167,7 @@ class TestLoadPdfEndpoint:
             response = test_client.post(
                 "/api/load-pdf",
                 json={"pdf_path": str(temp_pdf_file)},
-                headers={"X-API-Key": get_settings().secret}
+                headers={"X-API-Key": get_settings().api_key}
             )
 
             assert response.status_code == 200
@@ -206,7 +206,7 @@ class TestLoadPdfStateUpdates:
             response = test_client.post(
                 "/api/load-pdf",
                 json={"pdf_path": str(temp_pdf_file)},
-                headers={"X-API-Key": get_settings().secret}
+                headers={"X-API-Key": get_settings().api_key}
             )
 
             assert response.status_code == 200
@@ -243,7 +243,7 @@ class TestLoadPdfStateUpdates:
             response = test_client.post(
                 "/api/load-pdf",
                 json={"pdf_path": str(temp_pdf_file)},
-                headers={"X-API-Key": get_settings().secret}
+                headers={"X-API-Key": get_settings().api_key}
             )
 
             assert response.status_code == 200
@@ -272,7 +272,7 @@ class TestLoadPdfStateUpdates:
             response = test_client.post(
                 "/api/load-pdf",
                 json={"pdf_path": str(temp_pdf_file)},
-                headers={"X-API-Key": get_settings().secret}
+                headers={"X-API-Key": get_settings().api_key}
             )
 
             assert response.status_code == 200
@@ -324,7 +324,7 @@ class TestLoadPdfSequential:
             response1 = test_client.post(
                 "/api/load-pdf",
                 json={"pdf_path": str(temp_pdf_file)},
-                headers={"X-API-Key": get_settings().secret}
+                headers={"X-API-Key": get_settings().api_key}
             )
             assert response1.status_code == 200
 
@@ -335,7 +335,7 @@ class TestLoadPdfSequential:
             response2 = test_client.post(
                 "/api/load-pdf",
                 json={"pdf_path": str(second_pdf)},
-                headers={"X-API-Key": get_settings().secret}
+                headers={"X-API-Key": get_settings().api_key}
             )
             assert response2.status_code == 200
 

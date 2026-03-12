@@ -246,7 +246,7 @@ class TestLoadPdfWithInverseSearch:
              patch('src.routes.load_pdf.manager') as mock_manager:
             
             mock_settings.return_value = MagicMock(spec=Settings)
-            mock_settings.return_value.secret = "test_secret"
+            mock_settings.return_value.api_key = "test_secret"
             mock_settings.return_value.use_https = True
             mock_settings.return_value.pdf_file = None
             
@@ -285,7 +285,7 @@ class TestLoadPdfWithInverseSearch:
              patch('src.routes.load_pdf.manager') as mock_manager:
             
             mock_settings.return_value = MagicMock(spec=Settings)
-            mock_settings.return_value.secret = "test_secret"
+            mock_settings.return_value.api_key = "test_secret"
             mock_settings.return_value.use_https = False  # HTTP mode
             mock_settings.return_value.pdf_file = None
             
