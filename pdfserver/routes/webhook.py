@@ -48,6 +48,8 @@ async def run_synctex_view(
             "-o", str(pdf_path)
         ]
         
+        logger.info(f"Running synctex command: {' '.join(cmd)}")
+        
         # Run with timeout and capture output
         process = await asyncio.create_subprocess_exec(
             *cmd,
@@ -57,17 +59,49 @@ async def run_synctex_view(
         
         stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=5.0)
         
+        stdout_str = stdout.decode()
+        stderr_str = stderr.decode()
+        
+        logger.info(f"Synctex stdout: {stdout_str}")
+        if stderr_str:
+            logger.info(f"Synctex stderr: {stderr_str}")
+        
         if process.returncode != 0:
-            logger.warning(f"synctex failed: {stderr.decode().strip()}")
+            logger.warning(f"synctex failed with returncode {process.returncode}: {stderr_str.strip()}")
             return None
         
         # Parse synctex output
         result = {}
-        for output_line in stdout.decode().split('\n'):
-            if ":" in output_line:
-                key, value = output_line.split(":", 1)
+        for output_line in stdout_str.split('\n'):
+            if ':' in output_line:
+                key, value = output_line.split(':', 1)
                 result[key.strip()] = value.strip()
         
+        # Check for warnings in result
+        if 'SyncTeX Warning' in result:
+            logger.warning(f"Synctex warning: {result.get('SyncTeX Warning')}")
+        
+        # Validate required keys exist
+        required_keys = ['Page', 'x', 'y']
+        missing_keys = [k for k in required_keys if k not in result]
+        if missing_keys:
+            logger.warning(f"Synctex result missing required keys: {missing_keys}. Result: {result}")
+            return None
+        
+        # Validate coordinates are meaningful (not all zeros)
+        try:
+            page = int(result.get('Page', 0))
+            x = float(result.get('x', 0))
+            y = float(result.get('y', 0))
+            
+            if page <= 0 or x <= 0 or y <= 0:
+                logger.warning(f"Synctex returned invalid coordinates: page={page}, x={x}, y={y}")
+                return None
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Failed to parse synctex coordinates: {e}. Result: {result}")
+            return None
+        
+        logger.info(f"Synctex successful: page={page}, x={x}, y={y}")
         return result
         
     except (asyncio.TimeoutError, subprocess.TimeoutExpired):
@@ -112,19 +146,29 @@ async def receive_webhook(
             detail="Authentication failed. Ensure PDF_SERVER_API_KEY is set and server was restarted."
         )
     
-    # Extract parameters
+    logger.info(f"Webhook received: {data}")
+    
+    # Extract and validate required parameters
+    required_fields = ["line", "col", "tex_file", "pdf_file"]
+    missing_fields = [field for field in required_fields if field not in data]
+    
+    if missing_fields:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Missing required fields: {', '.join(missing_fields)}"
+        )
+    
+    # Validate field types and values
     try:
         line = int(data["line"])
         col = int(data["col"])
         tex_file = data["tex_file"]
         pdf_file = data["pdf_file"]
-    except (ValueError, TypeError, KeyError):
-        # Missing or invalid synctex parameters - don't scroll, just return success
-        return JSONResponse(content={
-            "status": "success",
-            "page": None,
-            "message": "No valid synctex parameters, no scroll performed"
-        })
+    except (ValueError, TypeError) as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid parameter value: {e}"
+        )
     
     # Normalize PDF file path
     pdf_path = Path(pdf_file)
@@ -132,46 +176,39 @@ async def receive_webhook(
         pdf_path = (settings.static_dir / pdf_path).resolve()
     
     # Run synctex to get PDF coordinates
+    logger.info(f"Running synctex: line={line}, col={col}, tex_file={tex_file}, pdf_path={pdf_path}")
     synctex_result = await run_synctex_view(line, col, tex_file, pdf_path)
     
     if synctex_result:
-        # Successful synctex lookup - extract coordinates and broadcast
-        try:
-            page = int(synctex_result.get("Page", 0))
-            y = float(synctex_result.get("y", 0))
-            x = float(synctex_result.get("x", 0))
-            
-            # Update global state
-            pdf_state.update(page, y)
-            
-            # Broadcast to all connected clients
-            await manager.broadcast({
-                "action": "synctex",
-                "page": page,
-                "y": y,
-                "x": x,
-                "last_sync_time": pdf_state.last_sync_time
-            })
-            
-            return JSONResponse(content={
-                "status": "success",
-                "page": page,
-                "y": y,
-                "x": x
-            })
-            
-        except (ValueError, TypeError):
-            # Invalid coordinate values - don't scroll
-            logger.warning(f"Invalid synctex coordinates: {synctex_result}")
-            return JSONResponse(content={
-                "status": "success",
-                "page": None,
-                "message": "Invalid synctex coordinates, no scroll performed"
-            })
-    else:
-        # Synctex failed - don't scroll
+        # Successful synctex lookup - coordinates already validated in run_synctex_view
+        page = int(synctex_result["Page"])
+        y = float(synctex_result["y"])
+        x = float(synctex_result["x"])
+        
+        # Update global state with x coordinate for reconnecting clients
+        pdf_state.update(page, y, x)
+        
+        # Broadcast to all connected clients
+        logger.info(f"Broadcasting synctex to {len(manager.active_connections)} clients: page={page}, y={y}, x={x}")
+        await manager.broadcast({
+            "action": "synctex",
+            "page": page,
+            "y": y,
+            "x": x,
+            "last_sync_time": pdf_state.last_sync_time
+        })
+        
         return JSONResponse(content={
             "status": "success",
+            "page": page,
+            "y": y,
+            "x": x
+        })
+    else:
+        # Synctex failed - don't scroll
+        logger.warning(f"Synctex lookup failed for {tex_file}:{line}:{col} -> {pdf_path}")
+        return JSONResponse(content={
+            "status": "error",
             "page": None,
             "message": "Synctex lookup failed, no scroll performed"
-        })
+        }, status_code=400)

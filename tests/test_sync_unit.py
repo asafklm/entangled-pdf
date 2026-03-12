@@ -225,7 +225,7 @@ class TestForwardSearch:
     """Test forward search functionality."""
 
     def test_forward_search_sends_correct_data(self):
-        """Test that forward_search sends correct data structure."""
+        """Test that forward_search sends correct data structure with all required fields."""
         with patch('pdfserver.sync.send_request') as mock_send:
             mock_send.return_value = {"status": "success"}
 
@@ -233,6 +233,7 @@ class TestForwardSearch:
                 line=42,
                 column=5,
                 tex_file="chapter.tex",
+                pdf_file="/path/to/document.pdf",
                 port=8431,
                 api_key="test-key"
             )
@@ -240,19 +241,20 @@ class TestForwardSearch:
             mock_send.assert_called_once()
             call_kwargs = mock_send.call_args[1] if mock_send.call_args[1] else mock_send.call_args.kwargs
 
-            # Check the data sent
+            # Check the data sent has all required fields
             data = call_kwargs.get('data')
             assert data is not None
-            assert data["page"] == 42  # Server uses line as page
-            assert data["column"] == 5
-            assert data["tex_file"] == "chapter.tex"
+            assert data["line"] == 42, f"Expected line=42, got {data.get('line')}"
+            assert data["col"] == 5, f"Expected col=5, got {data.get('col')}"
+            assert data["tex_file"] == "chapter.tex", f"Expected tex_file='chapter.tex', got {data.get('tex_file')}"
+            assert data["pdf_file"] == "/path/to/document.pdf", f"Expected pdf_file='/path/to/document.pdf', got {data.get('pdf_file')}"
 
     def test_forward_search_uses_webhook_endpoint(self):
         """Test that forward_search uses /webhook/update endpoint."""
         with patch('pdfserver.sync.send_request') as mock_send:
             mock_send.return_value = {"status": "success"}
 
-            forward_search(10, 0, "main.tex", 8431)
+            forward_search(10, 0, "main.tex", "/path/to/file.pdf", 8431)
 
             call_args = mock_send.call_args
             positional_args = call_args[0]
@@ -391,6 +393,10 @@ class TestMainArgumentParsing:
         """Test that main accepts synctex info as positional argument."""
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_text("dummy pdf content")
+        
+        # Create a tex file that actually exists (for validation)
+        tex_file = tmp_path / "chapter.tex"
+        tex_file.write_text("\\documentclass{article}\\begin{document}Test\\end{document}")
 
         monkeypatch.setenv("PDF_SERVER_API_KEY", "test-key")
 
@@ -403,7 +409,7 @@ class TestMainArgumentParsing:
                 'pdf-server',
                 'sync',
                 str(pdf_file),
-                '42:5:chapter.tex'
+                f'42:5:{tex_file}'
             ]):
                 result = main()
                 assert result == 0
@@ -412,8 +418,9 @@ class TestMainArgumentParsing:
                 call_kwargs = mock_forward.call_args.kwargs
                 assert call_args[0] == 42  # line
                 assert call_args[1] == 5   # column
-                assert call_args[2] == 'chapter.tex'  # tex_file
-                assert call_args[3] == 8431  # port
+                assert call_args[2] == str(tex_file)  # tex_file (absolute path)
+                assert call_args[3] == str(pdf_file)  # pdf_file
+                assert call_args[4] == 8431  # port
 
     def test_main_handles_file_not_found(self, tmp_path, monkeypatch):
         """Test that main handles FileNotFoundError gracefully."""
@@ -500,6 +507,7 @@ class TestIntegrationBetweenFunctions:
                 line=42,
                 column=5,
                 tex_file="chapter.tex",
+                pdf_file="/path/to/document.pdf",
                 port=8431,
                 api_key="test-key"
             )
@@ -513,6 +521,48 @@ class TestIntegrationBetweenFunctions:
             assert request.full_url == "https://localhost:8431/webhook/update"
             
             sent_data = json.loads(request.data.decode('utf-8'))
-            assert sent_data['page'] == 42
-            assert sent_data['column'] == 5
+            assert sent_data['line'] == 42
+            assert sent_data['col'] == 5
             assert sent_data['tex_file'] == "chapter.tex"
+            assert sent_data['pdf_file'] == "/path/to/document.pdf"
+
+
+class TestPatchPathValidation:
+    """Validate that mock patch paths point to real modules.
+    
+    These tests catch refactoring errors where module paths change
+    but tests still patch the old paths (which silently do nothing).
+    """
+    
+    def test_webhook_patch_path_exists(self):
+        """Verify that pdfserver.routes.webhook module exists for patching."""
+        try:
+            import pdfserver.routes.webhook
+            assert hasattr(pdfserver.routes.webhook, 'get_settings')
+            assert hasattr(pdfserver.routes.webhook, 'run_synctex_view')
+        except ImportError:
+            pytest.fail("pdfserver.routes.webhook module not found - tests may be patching wrong path")
+    
+    def test_config_patch_path_exists(self):
+        """Verify that pdfserver.config module exists for patching."""
+        try:
+            import pdfserver.config
+            assert hasattr(pdfserver.config, 'get_settings')
+        except ImportError:
+            pytest.fail("pdfserver.config module not found - tests may be patching wrong path")
+    
+    def test_connection_manager_patch_path_exists(self):
+        """Verify that pdfserver.connection_manager module exists for patching."""
+        try:
+            import pdfserver.connection_manager
+            assert hasattr(pdfserver.connection_manager, 'manager')
+        except ImportError:
+            pytest.fail("pdfserver.connection_manager module not found - tests may be patching wrong path")
+    
+    def test_src_routes_webhook_does_not_exist(self):
+        """Verify that old 'src.routes.webhook' path no longer exists.
+        
+        This ensures tests have been updated after the src/ -> pdfserver/ refactor.
+        """
+        with pytest.raises(ImportError):
+            import src.routes.webhook

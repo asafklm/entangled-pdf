@@ -222,13 +222,19 @@ def cmd_sync(args):
         if args.synctex:
             line, column, tex_file = parse_synctex_forward(args.synctex)
             
+            # Resolve tex_file to absolute path and validate it exists
+            tex_file_path = Path(tex_file).resolve()
+            if not tex_file_path.exists():
+                raise FileNotFoundError(f"TeX source file not found: {tex_file_path}")
+            
             if args.verbose:
-                print(f"Forward search: line={line}, column={column}, file={tex_file}")
+                print(f"Forward search: line={line}, column={column}, file={tex_file_path}")
             
             search_response = forward_search(
                 line,
                 column,
-                tex_file,
+                str(tex_file_path),
+                str(args.pdf_file),
                 port,
                 api_key=api_key,
                 use_http=args.http

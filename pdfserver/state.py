@@ -28,12 +28,14 @@ class PDFState:
     Attributes:
         current_page: The currently viewed page number (1-indexed)
         current_y: The vertical position in PDF points (optional)
+        current_x: The horizontal position for sync marker (optional)
         last_sync_time: Timestamp of last forward sync (synctex) in milliseconds
         pdf_file: Path to the currently loaded PDF file (optional)
         pdf_mtime: Last modification time of the PDF file (optional)
     """
     current_page: int = 1
     current_y: Optional[float] = None
+    current_x: Optional[float] = None
     last_sync_time: int = field(default_factory=lambda: int(time.time() * 1000))
     pdf_file: Optional[Path] = None
     pdf_mtime: Optional[float] = None
@@ -41,15 +43,17 @@ class PDFState:
     inverse_search_enabled: bool = False
     inverse_search_command: Optional[str] = None
     
-    def update(self, page: int, y: Optional[float] = None) -> None:
+    def update(self, page: int, y: Optional[float] = None, x: Optional[float] = None) -> None:
         """Update the current state with new position.
         
         Args:
             page: New page number
             y: New vertical position (optional)
+            x: New horizontal position for sync marker (optional)
         """
         self.current_page = page
         self.current_y = y
+        self.current_x = x
         self.last_sync_time = int(time.time() * 1000)
     
     def update_pdf(self, pdf_path: Path) -> bool:
@@ -85,6 +89,7 @@ class PDFState:
         return {
             "page": self.current_page,
             "y": self.current_y,
+            "x": self.current_x,
             "last_sync_time": self.last_sync_time,
             "pdf_file": str(self.pdf_file) if self.pdf_file else None,
             "pdf_mtime": self.pdf_mtime,

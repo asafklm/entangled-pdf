@@ -150,29 +150,35 @@ def forward_search(
     line: int,
     column: int,
     tex_file: str,
+    pdf_file: str,
     port: int,
     api_key: Optional[str] = None,
     use_http: bool = False
 ) -> dict:
     """Perform forward search via webhook.
-    
+
     Args:
         line: Line number in source file
         column: Column number in source file
         tex_file: Path to TeX source file
+        pdf_file: Path to PDF file (must match currently loaded PDF)
         port: Server port
         api_key: Optional API key
         use_http: Use HTTP instead of HTTPS
-        
+
     Returns:
         Server response
     """
-    data = {
-        "page": line,  # Server uses line as page for now
-        "column": column,
-        "tex_file": tex_file
-    }
+    # Resolve PDF path to absolute (like load_pdf does)
+    pdf_path = Path(pdf_file).resolve()
     
+    data = {
+        "line": line,
+        "col": column,
+        "tex_file": tex_file,
+        "pdf_file": str(pdf_path)
+    }
+
     return send_request(
         "POST",
         "/webhook/update",
