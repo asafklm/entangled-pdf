@@ -4,6 +4,8 @@ Uses Jinja2 templating for proper HTML rendering with variable substitution.
 Includes token-based authentication for inverse search functionality.
 """
 
+import time
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -66,10 +68,30 @@ async def view_page(request: Request) -> HTMLResponse:
         cookie_token = request.cookies.get("pdf_token")
         if cookie_token != pdf_state.websocket_token:
             # Not authenticated - show token form
+            # Check if this is an auth failure redirect
+            context = {}
+            if request.query_params.get("error") == "1":
+                error_count = request.query_params.get("c", "1")
+                error_ts = request.query_params.get("t")
+                try:
+                    count_int = int(error_count)
+                    emojis = ["😞", "😟", "😢", "😭", "🧐"]
+                    # Cap at last emoji for 5+ attempts
+                    emoji_index = min(count_int - 1, len(emojis) - 1)
+                    context["error_emoji"] = emojis[emoji_index]
+                    context["error_count"] = count_int
+                    if error_ts:
+                        context["error_time"] = time.strftime(
+                            "%H:%M:%S", time.localtime(int(error_ts))
+                        )
+                except (ValueError, OverflowError):
+                    # Invalid counter/timestamp, ignore error display
+                    pass
+            
             return templates.TemplateResponse(
                 request,
                 "token_form.html",
-                {}
+                context
             )
         # Authenticated - include token in viewer template
         ws_token = pdf_state.websocket_token
