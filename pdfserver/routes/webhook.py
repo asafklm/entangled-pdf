@@ -62,9 +62,9 @@ async def run_synctex_view(
         stdout_str = stdout.decode()
         stderr_str = stderr.decode()
         
-        logger.info(f"Synctex stdout: {stdout_str}")
+        logger.debug(f"Synctex stdout: {stdout_str}")
         if stderr_str:
-            logger.info(f"Synctex stderr: {stderr_str}")
+            logger.debug(f"Synctex stderr: {stderr_str}")
         
         if process.returncode != 0:
             logger.warning(f"synctex failed with returncode {process.returncode}: {stderr_str.strip()}")
@@ -146,7 +146,7 @@ async def receive_webhook(
             detail="Authentication failed. Ensure PDF_SERVER_API_KEY is set and server was restarted."
         )
     
-    logger.info(f"Webhook received: {data}")
+    logger.debug(f"Webhook received: {data}")
     
     # Extract and validate required parameters
     required_fields = ["line", "col", "tex_file", "pdf_file"]
@@ -176,7 +176,7 @@ async def receive_webhook(
         pdf_path = (settings.static_dir / pdf_path).resolve()
     
     # Run synctex to get PDF coordinates
-    logger.info(f"Running synctex: line={line}, col={col}, tex_file={tex_file}, pdf_path={pdf_path}")
+    logger.debug(f"Running synctex: line={line}, col={col}, tex_file={tex_file}, pdf_path={pdf_path}")
     synctex_result = await run_synctex_view(line, col, tex_file, pdf_path)
     
     if synctex_result:
@@ -189,7 +189,7 @@ async def receive_webhook(
         pdf_state.update(page, y, x)
         
         # Broadcast to all connected clients
-        logger.info(f"Broadcasting synctex to {len(manager.active_connections)} clients: page={page}, y={y}, x={x}")
+        logger.info(f"Synctex: line {line} → page {page} @ (x={x:.2f}, y={y:.2f})")
         await manager.broadcast({
             "action": "synctex",
             "page": page,

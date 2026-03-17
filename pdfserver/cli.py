@@ -222,7 +222,7 @@ def cmd_sync(args):
         )
         
         if args.verbose:
-            print(f"Server response: {response}")
+            print(f"Loaded: {response.get('filename', args.pdf_file.name)}")
         
         # Perform forward search if synctex info provided
         if args.synctex:
@@ -247,7 +247,13 @@ def cmd_sync(args):
             )
             
             if args.verbose:
-                print(f"Forward search response: {search_response}")
+                page = search_response.get('page')
+                x = search_response.get('x')
+                y = search_response.get('y')
+                if page and x is not None and y is not None:
+                    print(f"Forward: line {line} → page {page} @ (x={x:.2f}, y={y:.2f})")
+                else:
+                    print(f"Forward search: no position found")
         
         print(f"PDF loaded successfully: {response.get('pdf_file', args.pdf_file)}")
         return 0
