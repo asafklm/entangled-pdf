@@ -2,6 +2,7 @@
   "name": "pdfserver",
   "version": "1.0.0",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "build": "tsc && npm run bundle",
     "bundle": "esbuild static/viewer.ts --bundle --outfile=static/viewer.js --format=esm --target=es2020 --platform=browser --external:/pdfjs/* --external:/pdfjs/pdf.worker.mjs",

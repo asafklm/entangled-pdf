@@ -7,7 +7,7 @@ name = "pdfserver"
 version = "1.0.0"
 description = "FastAPI-based PDF server with real-time sync and SyncTeX integration for LaTeX workflows"
 readme = "README.md"
-license = {file = "LICENSE"}
+license = {text = "MIT"}
 requires-python = ">=3.8"
 authors = [
     {name = "Your Name", email = "your.email@example.com"}
@@ -17,7 +17,7 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: Apache Software License",
+    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
