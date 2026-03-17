@@ -176,6 +176,36 @@ In Neovim/Vim with VimTeX:
 - `<leader>lv` - View PDF and forward search to cursor position
 - Shift+Click in PDF - Jump back to editor (inverse search)
 
+### SSL Certificates
+
+PdfServer uses HTTPS by default with self-signed certificates. To use your own certificates:
+
+```bash
+# Specify certificates at runtime
+pdf-server start --ssl-cert /path/to/cert.pem --ssl-key /path/to/key.pem
+
+# Or install certificates to default location
+python -m pdfserver.certs generate --cert /path/to/cert.pem --key /path/to/key.pem
+```
+
+**Example with Tailscale certificates:**
+```bash
+pdf-server start --inverse-search-nvim \
+  --ssl-cert /etc/ntfy/certs/elul.asymptote-cirius.ts.net.crt \
+  --ssl-key /etc/ntfy/certs/elul.asymptote-cirius.ts.net.key
+```
+
+You can obtain certificates from [Let's Encrypt](https://letsencrypt.org/) or [Tailscale HTTPS](https://tailscale.com/kb/1153/https/).
+
+#### HTTP Mode (Not Recommended)
+
+For local-only development without HTTPS:
+```bash
+pdf-server start --http
+```
+
+Note: Inverse search is disabled in HTTP mode for security.
+
 ## Usage Guide
 
 ### PDF Viewer Controls

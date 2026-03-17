@@ -133,6 +133,12 @@ def cmd_start(args):
     if args.api_key:
         cmd.extend(["--api-key", args.api_key])
     
+    if args.ssl_cert:
+        cmd.extend(["--ssl-cert", str(args.ssl_cert)])
+    
+    if args.ssl_key:
+        cmd.extend(["--ssl-key", str(args.ssl_key)])
+    
     # Set environment
     env = os.environ.copy()
     env["PDF_SERVER_PORT"] = str(port)
@@ -313,6 +319,20 @@ def main():
         "--api-key",
         metavar="KEY",
         help="API key for authentication (default: PDF_SERVER_API_KEY env var)"
+    )
+    
+    start_parser.add_argument(
+        "--ssl-cert",
+        metavar="PATH",
+        type=Path,
+        help="Path to SSL certificate file (PEM format)"
+    )
+    
+    start_parser.add_argument(
+        "--ssl-key",
+        metavar="PATH",
+        type=Path,
+        help="Path to SSL private key file (PEM format)"
     )
     
     # status command
