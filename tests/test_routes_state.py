@@ -10,17 +10,28 @@ from pdfserver.routes import state as state_route
 
 
 @pytest.fixture
-def client():
-    """Create test client for state endpoint."""
-    app = FastAPI()
-    app.include_router(state_route.router)
-    return TestClient(app)
+def mock_settings():
+    """Create mock settings."""
+    settings = MagicMock()
+    settings.port = 8431
+    settings.pdf_file = Path("/path/to/test.pdf")
+    settings.use_https = True
+    return settings
 
 
 class TestGetState:
     """Test suite for GET /state endpoint."""
     
-    def test_get_state_returns_current_state(self, client):
+    @pytest.fixture
+    def client_with_mock(self, mock_settings):
+        """Create test client with mocked dependencies."""
+        app = FastAPI()
+        app.include_router(state_route.router)
+        
+        with patch("pdfserver.routes.state.get_settings", return_value=mock_settings):
+            yield TestClient(app)
+    
+    def test_get_state_returns_current_state(self, client_with_mock, mock_settings):
         """Test that endpoint returns current PDF state with file path."""
         mock_state = MagicMock()
         mock_state.to_dict.return_value = {
@@ -30,9 +41,11 @@ class TestGetState:
             "pdf_file": "/path/to/test.pdf",
             "pdf_loaded": True
         }
+        mock_state.inverse_search_enabled = False
+        mock_state.websocket_token = "test-token"
         
         with patch("pdfserver.routes.state.pdf_state", mock_state):
-            response = client.get("/state")
+            response = client_with_mock.get("/state")
             
             assert response.status_code == 200
             data = response.json()
@@ -42,7 +55,7 @@ class TestGetState:
             assert data["y"] == 150.5
             assert data["last_sync_time"] == 1234567890
     
-    def test_get_state_json_format(self, client):
+    def test_get_state_json_format(self, client_with_mock, mock_settings):
         """Test that response is valid JSON with correct structure."""
         mock_state = MagicMock()
         mock_state.to_dict.return_value = {
@@ -52,9 +65,11 @@ class TestGetState:
             "pdf_file": None,
             "pdf_loaded": False
         }
+        mock_state.inverse_search_enabled = False
+        mock_state.websocket_token = "test-token"
         
         with patch("pdfserver.routes.state.pdf_state", mock_state):
-            response = client.get("/state")
+            response = client_with_mock.get("/state")
             
             assert response.status_code == 200
             assert response.headers["content-type"] == "application/json"
@@ -67,7 +82,7 @@ class TestGetState:
             assert "y" in data
             assert "last_sync_time" in data
     
-    def test_get_state_default_values(self, client):
+    def test_get_state_default_values(self, client_with_mock, mock_settings):
         """Test that endpoint returns default state values."""
         mock_state = MagicMock()
         mock_state.to_dict.return_value = {
@@ -77,9 +92,11 @@ class TestGetState:
             "pdf_file": None,
             "pdf_loaded": False
         }
+        mock_state.inverse_search_enabled = False
+        mock_state.websocket_token = "test-token"
         
         with patch("pdfserver.routes.state.pdf_state", mock_state):
-            response = client.get("/state")
+            response = client_with_mock.get("/state")
             
             assert response.status_code == 200
             data = response.json()
@@ -87,9 +104,8 @@ class TestGetState:
             assert data["y"] is None
             assert data["pdf_loaded"] is False
     
-    def test_get_state_reflects_updates(self, client):
+    def test_get_state_reflects_updates(self, client_with_mock, mock_settings):
         """Test that endpoint reflects state updates."""
-        # First update
         mock_state1 = MagicMock()
         mock_state1.to_dict.return_value = {
             "page": 3,
@@ -98,15 +114,16 @@ class TestGetState:
             "pdf_file": "/path/to/doc1.pdf",
             "pdf_loaded": True
         }
+        mock_state1.inverse_search_enabled = False
+        mock_state1.websocket_token = "test-token"
         
         with patch("pdfserver.routes.state.pdf_state", mock_state1):
-            response = client.get("/state")
+            response = client_with_mock.get("/state")
             data = response.json()
             assert data["page"] == 3
             assert data["y"] == 100.0
             assert data["pdf_file"] == "/path/to/doc1.pdf"
         
-        # Second update
         mock_state2 = MagicMock()
         mock_state2.to_dict.return_value = {
             "page": 7,
@@ -115,15 +132,17 @@ class TestGetState:
             "pdf_file": "/path/to/doc2.pdf",
             "pdf_loaded": True
         }
+        mock_state2.inverse_search_enabled = False
+        mock_state2.websocket_token = "test-token"
         
         with patch("pdfserver.routes.state.pdf_state", mock_state2):
-            response = client.get("/state")
+            response = client_with_mock.get("/state")
             data = response.json()
             assert data["page"] == 7
             assert data["y"] == 250.5
             assert data["pdf_file"] == "/path/to/doc2.pdf"
     
-    def test_get_state_with_zero_y(self, client):
+    def test_get_state_with_zero_y(self, client_with_mock, mock_settings):
         """Test that y=0 is properly returned (not treated as None)."""
         mock_state = MagicMock()
         mock_state.to_dict.return_value = {
@@ -133,16 +152,18 @@ class TestGetState:
             "pdf_file": "/path/to/test.pdf",
             "pdf_loaded": True
         }
+        mock_state.inverse_search_enabled = False
+        mock_state.websocket_token = "test-token"
         
         with patch("pdfserver.routes.state.pdf_state", mock_state):
-            response = client.get("/state")
+            response = client_with_mock.get("/state")
             
             assert response.status_code == 200
             data = response.json()
             assert data["page"] == 2
             assert data["y"] == 0.0
     
-    def test_get_state_large_page_number(self, client):
+    def test_get_state_large_page_number(self, client_with_mock, mock_settings):
         """Test with large page numbers."""
         mock_state = MagicMock()
         mock_state.to_dict.return_value = {
@@ -152,16 +173,18 @@ class TestGetState:
             "pdf_file": "/path/to/big.pdf",
             "pdf_loaded": True
         }
+        mock_state.inverse_search_enabled = False
+        mock_state.websocket_token = "test-token"
         
         with patch("pdfserver.routes.state.pdf_state", mock_state):
-            response = client.get("/state")
+            response = client_with_mock.get("/state")
             
             assert response.status_code == 200
             data = response.json()
             assert data["page"] == 9999
             assert data["y"] == 5000.5
     
-    def test_get_state_timestamp_type(self, client):
+    def test_get_state_timestamp_type(self, client_with_mock, mock_settings):
         """Test that timestamp is returned as integer."""
         mock_state = MagicMock()
         mock_state.to_dict.return_value = {
@@ -171,9 +194,11 @@ class TestGetState:
             "pdf_file": None,
             "pdf_loaded": False
         }
+        mock_state.inverse_search_enabled = False
+        mock_state.websocket_token = "test-token"
         
         with patch("pdfserver.routes.state.pdf_state", mock_state):
-            response = client.get("/state")
+            response = client_with_mock.get("/state")
             
             assert response.status_code == 200
             data = response.json()

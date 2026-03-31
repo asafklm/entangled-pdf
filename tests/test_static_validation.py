@@ -175,10 +175,10 @@ class TestESModuleValidation:
 class TestStaticFileServing:
     """Tests to verify all static assets are properly served."""
     
-    def test_pdfjs_files_are_served(self, test_client: TestClient):
+    def test_pdfjs_files_are_served(self, real_test_client: TestClient):
         """Verify PDF.js files return 200 OK."""
         # Main PDF.js module
-        response = test_client.get("/pdfjs/pdf.mjs")
+        response = real_test_client.get("/pdfjs/pdf.mjs")
         assert response.status_code == 200, (
             f"/pdfjs/pdf.mjs returned {response.status_code}. "
             "PDF.js main module must be accessible."
@@ -189,15 +189,15 @@ class TestStaticFileServing:
         )
         
         # PDF.js worker
-        response = test_client.get("/pdfjs/pdf.worker.mjs")
+        response = real_test_client.get("/pdfjs/pdf.worker.mjs")
         assert response.status_code == 200, (
             f"/pdfjs/pdf.worker.mjs returned {response.status_code}. "
             "PDF.js worker must be accessible."
         )
     
-    def test_viewer_js_is_served_as_module(self, test_client: TestClient):
+    def test_viewer_js_is_served_as_module(self, real_test_client: TestClient):
         """Verify viewer.js is accessible."""
-        response = test_client.get("/static/viewer.js")
+        response = real_test_client.get("/static/viewer.js")
         assert response.status_code == 200, (
             f"/static/viewer.js returned {response.status_code}. "
             "Viewer JavaScript must be accessible."
@@ -206,9 +206,9 @@ class TestStaticFileServing:
         content = response.text
         assert len(content) > 1000, "viewer.js seems too small, may be incomplete"
     
-    def test_worker_source_is_local(self, test_client: TestClient):
+    def test_worker_source_is_local(self, real_test_client: TestClient):
         """Verify PDF.js worker is loaded from local path, not CDN."""
-        response = test_client.get("/static/viewer.js")
+        response = real_test_client.get("/static/viewer.js")
         assert response.status_code == 200
         
         content = response.text

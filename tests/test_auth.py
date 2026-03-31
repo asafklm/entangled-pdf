@@ -3,20 +3,31 @@
 import asyncio
 
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 from fastapi import HTTPException
 
-from pdfserver.routes.auth import authenticate
+from pdfserver.routes import auth as auth_route
 from pdfserver.state import pdf_state
 
 
+@pytest.fixture
+def app():
+    """Create FastAPI app with auth router."""
+    app = FastAPI()
+    app.include_router(auth_route.router)
+    return app
+
+
 @pytest.mark.asyncio
-async def test_auth_success_sets_cookie():
+async def test_auth_success_sets_cookie(app):
     old_inverse = pdf_state.inverse_search_enabled
     old_token = pdf_state.websocket_token
     pdf_state.inverse_search_enabled = True
     pdf_state.websocket_token = "TEST-TOKEN-ABC"
 
-    resp = await authenticate(None, token="TEST-TOKEN-ABC")  # type: ignore[arg-type]
+    client = TestClient(app)
+    resp = client.post("/auth", data={"token": "TEST-TOKEN-ABC"}, follow_redirects=False)
     assert resp.status_code == 303
     set_cookie = resp.headers.get("set-cookie", "")
     assert "pdf_token=TEST-TOKEN-ABC" in set_cookie
@@ -26,15 +37,20 @@ async def test_auth_success_sets_cookie():
 
 
 @pytest.mark.asyncio
-async def test_auth_invalid_token_raises():
+async def test_auth_invalid_token_redirects(app):
     pdf_state.inverse_search_enabled = True
     pdf_state.websocket_token = "VALID"
-    with pytest.raises(HTTPException):
-        await authenticate(None, token="BAD")  # type: ignore[arg-type]
+    
+    client = TestClient(app)
+    resp = client.post("/auth", data={"token": "BAD"}, follow_redirects=False)
+    assert resp.status_code == 303
+    assert "error=1" in resp.headers["location"]
 
 
 @pytest.mark.asyncio
-async def test_auth_inverse_not_enabled_raises():
+async def test_auth_inverse_not_enabled_raises(app):
     pdf_state.inverse_search_enabled = False
-    with pytest.raises(HTTPException):
-        await authenticate(None, token="ANY")  # type: ignore[arg-type]
+    
+    client = TestClient(app)
+    resp = client.post("/auth", data={"token": "ANY"}, follow_redirects=False)
+    assert resp.status_code == 403

@@ -79,7 +79,7 @@ class TestLoadPdfEndpoint:
         )
 
         assert response.status_code == 403
-        assert "Unauthorized" in response.json()["detail"]
+        assert "Authentication failed" in response.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_load_pdf_missing_path(

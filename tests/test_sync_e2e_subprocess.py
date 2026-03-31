@@ -108,7 +108,7 @@ def running_server(test_certs, tmp_path_factory):
         cwd=str(Path(__file__).parent.parent),
         env=env,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.STDOUT,  # Merge stderr into stdout
     )
     
     # Wait for server to be ready (check with health endpoint or wait fixed time)
@@ -124,11 +124,31 @@ def running_server(test_certs, tmp_path_factory):
     else:
         # Server didn't start
         process.terminate()
-        stdout, stderr = process.communicate(timeout=5)
+        stdout, _ = process.communicate(timeout=5)
         raise RuntimeError(
             f"Server failed to start on port {port}.\n"
-            f"stdout: {stdout.decode()}\n"
-            f"stderr: {stderr.decode()}"
+            f"output: {stdout.decode()}"
+        )
+    
+    # Wait for server to be fully ready by checking /state endpoint
+    import urllib.request
+    for i in range(max_retries):
+        try:
+            url = f"https://{TEST_SERVER_HOST}:{port}/state"
+            req = urllib.request.Request(url)
+            ctx = create_ssl_context()
+            with urllib.request.urlopen(req, context=ctx, timeout=2) as resp:
+                if resp.status == 200:
+                    break
+        except Exception:
+            time.sleep(0.5)
+    else:
+        # Server didn't respond to HTTP requests
+        process.terminate()
+        stdout, _ = process.communicate(timeout=5)
+        raise RuntimeError(
+            f"Server started but not responding to HTTP requests.\n"
+            f"output: {stdout.decode()}"
         )
     
     # Give server a bit more time to fully initialize

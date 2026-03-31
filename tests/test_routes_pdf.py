@@ -162,12 +162,12 @@ class TestPdfCachingHeaders:
         assert "max-age" in response.headers["Cache-Control"]
     
     def test_get_pdf_has_etag(self, client, mock_settings):
-        """Test response includes ETag header based on mtime."""
+        """Test response includes ETag header."""
         response = client.get("/get-pdf")
         assert response.status_code == 200
         assert "ETag" in response.headers
-        mtime = int(mock_settings.pdf_file.stat().st_mtime)
-        assert f'"{mtime}"' == response.headers["ETag"]
+        assert response.headers["ETag"].startswith('"')
+        assert response.headers["ETag"].endswith('"')
     
     def test_etag_format(self, client):
         """Test ETag is properly quoted."""

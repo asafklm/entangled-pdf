@@ -19,13 +19,13 @@ from fastapi.testclient import TestClient
 class TestScriptLoadingOrder:
     """Tests to verify correct script loading order."""
     
-    def test_pdf_config_script_before_viewer_js(self, test_client: TestClient):
+    def test_pdf_config_script_before_viewer_js(self, real_test_client: TestClient):
         """Verify PDF_CONFIG is defined before viewer.js loads.
         
         This prevents the race condition where viewer.js tries to access
         window.PDF_CONFIG before it's defined by the inline script.
         """
-        response = test_client.get("/view")
+        response = real_test_client.get("/view")
         assert response.status_code == 200
         
         html = response.text
@@ -52,13 +52,13 @@ class TestScriptLoadingOrder:
             "Move the inline PDF_CONFIG script before the viewer.js script tag."
         )
     
-    def test_no_defer_or_async_on_module_scripts(self, test_client: TestClient):
+    def test_no_defer_or_async_on_module_scripts(self, real_test_client: TestClient):
         """Verify viewer.js doesn't have defer/async attributes that could cause race conditions.
         
         ES modules load asynchronously by default, adding defer/async can cause
         timing issues with module initialization.
         """
-        response = test_client.get("/view")
+        response = real_test_client.get("/view")
         assert response.status_code == 200
         
         html = response.text
@@ -82,14 +82,14 @@ class TestScriptLoadingOrder:
                 "async can cause timing issues."
             )
     
-    def test_required_dom_elements_before_scripts(self, test_client: TestClient):
+    def test_required_dom_elements_before_scripts(self, real_test_client: TestClient):
         """Verify required DOM elements exist before JavaScript runs.
         
         viewer.js accesses these elements immediately on load:
         - #viewer-container (required for PDF rendering)
         - #status (optional, but should exist)
         """
-        response = test_client.get("/view")
+        response = real_test_client.get("/view")
         assert response.status_code == 200
         
         html = response.text
@@ -115,14 +115,14 @@ class TestScriptLoadingOrder:
 class TestModuleScriptValidation:
     """Tests to verify correct ES module usage in HTML."""
     
-    def test_viewer_js_is_es_module(self, test_client: TestClient):
+    def test_viewer_js_is_es_module(self, real_test_client: TestClient):
         """Verify viewer.js is loaded as ES module (type='module').
         
         This is critical for the import * as pdfjsLib from '/pdfjs/pdf.mjs' 
         statement to work correctly. Without type='module', the import
         statement will cause a syntax error.
         """
-        response = test_client.get("/view")
+        response = real_test_client.get("/view")
         assert response.status_code == 200
         
         html = response.text
@@ -140,14 +140,14 @@ class TestModuleScriptValidation:
                 "Without this, the ES module import in viewer.js will fail."
             )
     
-    def test_no_redundant_pdfjs_import_in_html(self, test_client: TestClient):
+    def test_no_redundant_pdfjs_import_in_html(self, real_test_client: TestClient):
         """Verify HTML doesn't have redundant pdfjsLib import.
         
         viewer.js now imports pdfjsLib directly, so having a separate
         inline script that also imports it is redundant and can cause
         confusion about which import is being used.
         """
-        response = test_client.get("/view")
+        response = real_test_client.get("/view")
         assert response.status_code == 200
         
         html = response.text
@@ -177,14 +177,14 @@ class TestModuleScriptValidation:
 class TestConfigurationDataValidation:
     """Tests to verify configuration data is properly embedded."""
     
-    def test_pdf_config_has_required_fields(self, test_client: TestClient):
+    def test_pdf_config_has_required_fields(self, real_test_client: TestClient):
         """Verify PDF_CONFIG contains all required fields.
         
         Required fields:
         - port: number (WebSocket port)
         - filename: string (PDF filename for display)
         """
-        response = test_client.get("/view")
+        response = real_test_client.get("/view")
         assert response.status_code == 200
         
         html = response.text
@@ -214,13 +214,13 @@ class TestConfigurationDataValidation:
             "Required for page title and display"
         )
     
-    def test_pdf_config_values_are_valid(self, test_client: TestClient):
+    def test_pdf_config_values_are_valid(self, real_test_client: TestClient):
         """Verify PDF_CONFIG values are valid types and ranges.
         
         - port: positive integer
         - filename: non-empty string
         """
-        response = test_client.get("/view")
+        response = real_test_client.get("/view")
         assert response.status_code == 200
         
         html = response.text
@@ -251,9 +251,9 @@ class TestConfigurationDataValidation:
 class TestHTMLStructureValidation:
     """Tests to verify overall HTML structure."""
     
-    def test_html_has_doctype(self, test_client: TestClient):
+    def test_html_has_doctype(self, real_test_client: TestClient):
         """Verify HTML has proper DOCTYPE declaration."""
-        response = test_client.get("/view")
+        response = real_test_client.get("/view")
         assert response.status_code == 200
         
         html = response.text
@@ -263,9 +263,9 @@ class TestHTMLStructureValidation:
             "Required for standards mode rendering"
         )
     
-    def test_html_has_viewport_meta(self, test_client: TestClient):
+    def test_html_has_viewport_meta(self, real_test_client: TestClient):
         """Verify HTML has viewport meta tag for mobile compatibility."""
-        response = test_client.get("/view")
+        response = real_test_client.get("/view")
         assert response.status_code == 200
         
         html = response.text
@@ -276,9 +276,9 @@ class TestHTMLStructureValidation:
             'Expected: <meta name="viewport" content="width=device-width, initial-scale=1.0">'
         )
     
-    def test_title_is_set(self, test_client: TestClient):
+    def test_title_is_set(self, real_test_client: TestClient):
         """Verify HTML has title tag set from filename."""
-        response = test_client.get("/view")
+        response = real_test_client.get("/view")
         assert response.status_code == 200
         
         html = response.text

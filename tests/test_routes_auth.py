@@ -51,4 +51,5 @@ def test_auth_forbidden_invalid_token() -> None:
     client = TestClient(app)
 
     resp = client.post("/auth", data={"token": "wrong-token"}, follow_redirects=False)
-    assert resp.status_code == HTTPStatus.FORBIDDEN
+    assert resp.status_code == HTTPStatus.SEE_OTHER
+    assert "error=1" in resp.headers["location"]

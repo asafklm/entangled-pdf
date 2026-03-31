@@ -3,6 +3,7 @@
 Tests that TypeScript compiles correctly and generates valid output.
 """
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -10,6 +11,28 @@ from pathlib import Path
 import pytest
 from pdfserver.config import get_settings
 from tests.integration.helpers import MockWebSocket
+
+
+def get_node_path():
+    """Get Node.js bin directory path if available."""
+    # Check common nvm locations
+    nvm_dir = Path.home() / ".nvm" / "versions" / "node"
+    if nvm_dir.exists():
+        # Get the latest version
+        versions = sorted(nvm_dir.iterdir(), reverse=True)
+        if versions:
+            return str(versions[0] / "bin")
+    return None
+
+
+def get_env_with_node():
+    """Get environment with Node.js in PATH."""
+    env = os.environ.copy()
+    node_path = get_node_path()
+    if node_path:
+        current_path = env.get("PATH", "")
+        env["PATH"] = f"{node_path}:{current_path}"
+    return env
 
 
 class TestTypeScriptCompilation:
@@ -20,14 +43,20 @@ class TestTypeScriptCompilation:
         """Get project root directory."""
         return Path(__file__).parent.parent.parent
     
-    def test_typescript_compiles_without_errors(self, project_root):
+    @pytest.fixture(scope="class")
+    def node_env(self):
+        """Get environment with Node.js in PATH."""
+        return get_env_with_node()
+    
+    def test_typescript_compiles_without_errors(self, project_root, node_env):
         """Test that TypeScript compiler runs without errors."""
         # Check if TypeScript compiler is available
         result = subprocess.run(
             ["npx", "tsc", "--noEmit"],
             cwd=project_root,
             capture_output=True,
-            text=True
+            text=True,
+            env=node_env
         )
         
         # TypeScript should compile without errors
@@ -39,7 +68,7 @@ class TestTypeScriptCompilation:
         assert viewer_ts.exists(), "viewer.ts not found"
         assert viewer_ts.stat().st_size > 0, "viewer.ts is empty"
     
-    def test_compiled_js_exists(self, project_root):
+    def test_compiled_js_exists(self, project_root, node_env):
         """Test that compiled viewer.js exists."""
         viewer_js = project_root / "static" / "viewer.js"
         
@@ -53,7 +82,8 @@ class TestTypeScriptCompilation:
                     ["npm", "run", "build"],
                     cwd=project_root,
                     capture_output=True,
-                    text=True
+                    text=True,
+                    env=node_env
                 )
                 assert result.returncode == 0, "Failed to compile TypeScript"
             
@@ -137,12 +167,12 @@ class TestTypeScriptInterfaceContracts:
             pytest.skip("viewer.ts not found")
         return viewer_ts.read_text()
     
-    def test_state_update_interface_matches_api(self, viewer_ts_content, test_client, reset_state):
+    def test_state_update_interface_matches_api(self, viewer_ts_content, test_client, reset_state, mock_synctex):
         """Test that StateUpdate interface matches /state API response."""
         # Get actual API response
         response = test_client.post(
             "/webhook/update",
-            json={"line": 10, "col": 5, "tex_file": "/path/to/test.tex", "pdf_file": str(get_settings().pdf_file)},
+            json={"line": 10, "col": 5, "tex_file": "test.tex", "pdf_file": str(get_settings().pdf_file)},
             headers={"X-API-Key": get_settings().api_key}
         )
         assert response.status_code == 200
@@ -228,7 +258,12 @@ class TestBuildFailureScenarios:
         """Get project root directory."""
         return Path(__file__).parent.parent.parent
     
-    def test_build_fails_on_syntax_error(self, project_root, tmp_path):
+    @pytest.fixture(scope="class")
+    def node_env(self):
+        """Get environment with Node.js in PATH."""
+        return get_env_with_node()
+    
+    def test_build_fails_on_syntax_error(self, project_root, tmp_path, node_env):
         """Test that build fails when there's a syntax error."""
         # Create a file with intentional syntax error
         test_ts = tmp_path / "test_error.ts"
@@ -239,7 +274,8 @@ class TestBuildFailureScenarios:
             ["npx", "tsc", "--noEmit", str(test_ts)],
             cwd=project_root,
             capture_output=True,
-            text=True
+            text=True,
+            env=node_env
         )
         
         # Should fail due to type error
