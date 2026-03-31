@@ -1,0 +1,8 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e2]:
+  - generic [ref=e5]: EXAMPLE FILE 1. First Page Line 1 Line 2 Line 3 Line 4 Line 5 Line 6 Line 7 Line 8 Line 9 Line 10 Line 11 Line 12 Line 13 Line 14 Line 15 Line 16 Line 17 Line 18 Line 19 Line 20 Line 21 Line 22 Line 23 Line 24 Line 25 Line 26 Line 27 Line 28 Line 29 Line 30 Line 31 Line 32 Line 33 Line 34 Line 35 1
+  - generic [ref=e8]: EXAMPLE FILE 2 2. Second Page Line 1 Line 2 Line 3 Line 4 Line 5 Line 6 Line 7 Line 8 Line 9 Line 10 Line 11 Line 12 Line 13 Line 14 Line 15 Line 16 Line 17 Line 18 Line 19 Line 20 Line 21 Line 22 Line 23 Line 24 Line 25 Line 26 Line 27 Line 28 Line 29 Line 30 Line 31 Line 32 Line 33 Line 34 Line 35
+  - generic [ref=e11]: EXAMPLE FILE 3 Paragraph 1. This is a paragraph with several lines, some of them quite long and may span a couple or even several lines. For testing purposes, the intension is to check forward sync and backward sync on a more realistic text, which will be more similar two what we can usually find in a book or a research paper (at least a well written one). Paragraph 2. Is here to allow us to test how sync forward and sync back work on two different paragraphs. There is no real content here, just more text.
+```
