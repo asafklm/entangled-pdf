@@ -81,7 +81,7 @@ class TestCertsGenerateCommand:
         new_cert = cert_path.read_text()
         assert new_cert != initial_cert
 
-    def test_certs_generate_with_cert_key_copies_to_default(self, tmp_path: Path):
+    def test_certs_generate_with_cert_key_copies_to_default(self, tmp_path: Path, monkeypatch):
         """Test that --cert and --key copy existing certs to default location."""
         # Create source cert files
         src_cert = tmp_path / "source.crt"
@@ -99,14 +99,32 @@ class TestCertsGenerateCommand:
         assert src_cert.exists()
         assert src_key.exists()
         
-        # Test copy_existing_cert function
-        # Note: This copies to default location, which we can't easily test
-        # without affecting user's system. So we just verify the function works.
-        default_cert, default_key = certs.get_cert_paths()
+        # Mock get_cert_paths and get_cert_directory to use temp directory
+        mock_default_dir = tmp_path / "default"
+        mock_default_cert = mock_default_dir / "server.crt"
+        mock_default_key = mock_default_dir / "server.key"
         
-        # Skip if default certs already exist (user's system)
-        if default_cert.exists():
-            pytest.skip("Default certs already exist on user's system")
+        monkeypatch.setattr(
+            certs,
+            "get_cert_paths",
+            lambda: (mock_default_cert, mock_default_key)
+        )
+        monkeypatch.setattr(
+            certs,
+            "get_cert_directory",
+            lambda: mock_default_dir
+        )
+        
+        # Test copy_existing_cert function
+        certs.copy_existing_cert(src_cert, src_key)
+        
+        # Verify files were copied to mocked default location
+        assert mock_default_cert.exists()
+        assert mock_default_key.exists()
+        
+        # Verify content matches source
+        assert mock_default_cert.read_text() == src_cert.read_text()
+        assert mock_default_key.read_text() == src_key.read_text()
 
     def test_certs_status_returns_exit_code(self, tmp_path: Path):
         """Test that status command returns appropriate exit codes."""
