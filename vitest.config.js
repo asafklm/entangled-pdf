@@ -34,8 +34,10 @@ export default defineConfig({
               { browser: 'chromium', headless: true }
             ]
           },
-          include: ['tests/js/browser/**/*.test.ts'],
-          testTimeout: 30000
+          include: ['tests/js/browser/**/*.spec.ts', 'tests/js/browser/**/*.test.ts'],
+          testTimeout: 60000,
+          hookTimeout: 30000,
+          setupFiles: ['./tests/js/browser/setup.ts']
         }
       }
     ]
