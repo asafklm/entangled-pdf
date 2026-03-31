@@ -214,20 +214,24 @@ class TestSyncRemotePdfSubprocess:
         )
         
         assert response["pdf_loaded"] is True
-        assert response["filename"] == pdf_file.name
+        assert Path(response["pdf_file"]).name == pdf_file.name
 
     def test_sync_remote_pdf_with_synctex_forward(self, running_server, tmp_path):
         """Real pdf-server sync with synctex info performs search."""
-        # Create test PDF
-        pdf_file = tmp_path / "test_synctex.pdf"
-        pdf_file.write_bytes(b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n>>\nendobj\n")
+        # Use the example PDF which has synctex data
+        project_root = Path(__file__).parent.parent
+        example_pdf = project_root / "examples" / "example.pdf"
+        example_tex = project_root / "examples" / "example.tex"
+        
+        if not example_pdf.exists() or not example_tex.exists():
+            pytest.skip("example.pdf or example.tex not found in examples/")
         
         # First load the PDF
         load_cmd = [
             sys.executable,
             "-m", "pdfserver.cli",
             "sync",
-            str(pdf_file),
+            str(example_pdf),
             "--port", str(running_server["port"]),
             "--api-key", running_server["api_key"],
         ]
@@ -245,8 +249,8 @@ class TestSyncRemotePdfSubprocess:
             sys.executable,
             "-m", "pdfserver.cli",
             "sync",
-            str(pdf_file),
-            "42:5:chapter.tex",
+            str(example_pdf),
+            f"42:5:{example_tex}",
             "--port", str(running_server["port"]),
             "--api-key", running_server["api_key"],
         ]
@@ -306,7 +310,8 @@ class TestSyncRemotePdfSubprocess:
         
         cmd = [
             sys.executable,
-            "-m", "pdfserver.sync",
+            "-m", "pdfserver.cli",
+            "sync",
             str(nonexistent),
             "--port", str(running_server["port"]),
             "--api-key", running_server["api_key"],
@@ -331,7 +336,8 @@ class TestSyncRemotePdfSubprocess:
         
         cmd = [
             sys.executable,
-            "-m", "pdfserver.sync",
+            "-m", "pdfserver.cli",
+            "sync",
             "-v",
             str(pdf_file),
             "--port", str(running_server["port"]),
@@ -360,7 +366,8 @@ class TestSyncRemotePdfSubprocess:
         
         cmd = [
             sys.executable,
-            "-m", "pdfserver.sync",
+            "-m", "pdfserver.cli",
+            "sync",
             str(pdf_file),
             "--port", str(unused_port),
             "--api-key", TEST_API_KEY,
@@ -391,7 +398,8 @@ class TestSyncRemotePdfSubprocess:
         # Load first PDF
         cmd1 = [
             sys.executable,
-            "-m", "pdfserver.sync",
+            "-m", "pdfserver.cli",
+            "sync",
             str(pdf1),
             "--port", str(running_server["port"]),
             "--api-key", running_server["api_key"],
@@ -410,12 +418,13 @@ class TestSyncRemotePdfSubprocess:
             "GET", "/state", running_server["port"],
             api_key=running_server["api_key"]
         )
-        assert state1["filename"] == pdf1.name
+        assert Path(state1["pdf_file"]).name == pdf1.name
         
         # Load second PDF
         cmd2 = [
             sys.executable,
-            "-m", "pdfserver.sync",
+            "-m", "pdfserver.cli",
+            "sync",
             str(pdf2),
             "--port", str(running_server["port"]),
             "--api-key", running_server["api_key"],
@@ -434,7 +443,7 @@ class TestSyncRemotePdfSubprocess:
             "GET", "/state", running_server["port"],
             api_key=running_server["api_key"]
         )
-        assert state2["filename"] == pdf2.name
+        assert Path(state2["pdf_file"]).name == pdf2.name
         
         # Load first PDF again
         result3 = subprocess.run(
@@ -450,7 +459,7 @@ class TestSyncRemotePdfSubprocess:
             "GET", "/state", running_server["port"],
             api_key=running_server["api_key"]
         )
-        assert state3["filename"] == pdf1.name
+        assert Path(state3["pdf_file"]).name == pdf1.name
 
     def test_sync_remote_pdf_with_custom_port(self, running_server, tmp_path):
         """--port flag connects to correct server (redundant but explicit test)."""
@@ -460,7 +469,8 @@ class TestSyncRemotePdfSubprocess:
         
         cmd = [
             sys.executable,
-            "-m", "pdfserver.sync",
+            "-m", "pdfserver.cli",
+            "sync",
             str(pdf_file),
             "--port", str(running_server["port"]),
             "--api-key", running_server["api_key"],
@@ -530,12 +540,16 @@ class TestForwardSearchFunction:
 
     def test_forward_search_triggers_webhook(self, running_server, tmp_path):
         """forward_search() calls webhook endpoint successfully."""
-        # First load a PDF
-        pdf_file = tmp_path / "test_forward.pdf"
-        pdf_file.write_bytes(b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n>>\nendobj\n")
+        # Use the example PDF which has synctex data
+        project_root = Path(__file__).parent.parent
+        example_pdf = project_root / "examples" / "example.pdf"
+        example_tex = project_root / "examples" / "example.tex"
+        
+        if not example_pdf.exists() or not example_tex.exists():
+            pytest.skip("example.pdf or example.tex not found in examples/")
         
         load_pdf(
-            pdf_file,
+            example_pdf,
             port=running_server["port"],
             api_key=running_server["api_key"],
         )
@@ -544,7 +558,8 @@ class TestForwardSearchFunction:
         result = forward_search(
             line=42,
             column=5,
-            tex_file="chapter.tex",
+            tex_file=str(example_tex),
+            pdf_file=str(example_pdf),
             port=running_server["port"],
             api_key=running_server["api_key"],
         )
@@ -579,20 +594,26 @@ class TestParseSynctexForwardInE2E:
 
     def test_parse_and_use_synctex_in_subprocess(self, running_server, tmp_path):
         """Parse synctex argument and use in subprocess command."""
-        pdf_file = tmp_path / "test_synctex_e2e.pdf"
-        pdf_file.write_bytes(b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n>>\nendobj\n")
+        # Use the example PDF which has synctex data
+        project_root = Path(__file__).parent.parent
+        example_pdf = project_root / "examples" / "example.pdf"
+        example_tex = project_root / "examples" / "example.tex"
+        
+        if not example_pdf.exists() or not example_tex.exists():
+            pytest.skip("example.pdf or example.tex not found in examples/")
         
         # Parse synctex argument
-        line, col, tex = parse_synctex_forward("100:20:section.tex")
+        line, col, tex = parse_synctex_forward(f"100:20:{example_tex}")
         assert line == 100
         assert col == 20
-        assert tex == "section.tex"
+        assert tex == str(example_tex)
         
         # Load PDF first
         load_cmd = [
             sys.executable,
-            "-m", "pdfserver.sync",
-            str(pdf_file),
+            "-m", "pdfserver.cli",
+            "sync",
+            str(example_pdf),
             "--port", str(running_server["port"]),
             "--api-key", running_server["api_key"],
         ]
@@ -613,7 +634,7 @@ class TestParseSynctexForwardInE2E:
             sys.executable,
             "-m", "pdfserver.cli",
             "sync",
-            str(pdf_file),
+            str(example_pdf),
             synctex_arg,
             "--port", str(running_server["port"]),
             "--api-key", running_server["api_key"],
