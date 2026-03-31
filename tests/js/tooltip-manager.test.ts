@@ -150,30 +150,6 @@ describe('Tooltip Manager', () => {
       expect(document.querySelector('.inverse-search-tooltip')).toBeNull();
     });
 
-    it.skip('should handle Enter key press to confirm', () => {
-      // SKIPPED: Keyboard event capture phase handling doesn't work reliably in happy-dom.
-      // This functionality is tested manually and works in real browsers.
-      // The button click handler (tested above) covers the same code path.
-      const onConfirm = vi.fn();
-      const onCancel = vi.fn();
-
-      createInverseSearchTooltip(
-        { clientX: 100, clientY: 100 },
-        { page: 1, x: 50, y: 50 },
-        onConfirm,
-        onCancel
-      );
-
-      // Simulate Enter key
-      const enterEvent = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
-      document.dispatchEvent(enterEvent);
-      
-      vi.runAllTimers();
-
-      expect(onConfirm).toHaveBeenCalledTimes(1);
-      expect(isTooltipActive()).toBe(false);
-    });
-
     it.skip('should handle Escape key press to cancel', () => {
       // SKIPPED: Keyboard event capture phase handling doesn't work reliably in happy-dom.
       // This functionality is tested manually and works in real browsers.
@@ -252,38 +228,6 @@ describe('Tooltip Manager', () => {
       expect(onConfirm).toHaveBeenCalled();
 
       document.removeEventListener('keydown', parentHandler, true);
-    });
-
-    it.skip('should stop keyboard handler after tooltip is dismissed', () => {
-      // SKIPPED: Depends on keyboard event capture phase handling which doesn't work reliably in happy-dom.
-      // This functionality is tested manually and works in real browsers.
-      const onConfirm = vi.fn();
-
-      createInverseSearchTooltip(
-        { clientX: 100, clientY: 100 },
-        { page: 1, x: 50, y: 50 },
-        onConfirm,
-        vi.fn()
-      );
-
-      // Dismiss with Escape
-      const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
-      document.dispatchEvent(escapeEvent);
-      vi.runAllTimers();
-
-      // Verify tooltip is dismissed
-      expect(isTooltipActive()).toBe(false);
-
-      // Reset mock
-      onConfirm.mockClear();
-
-      // Press Enter again - should not trigger onConfirm since handler is removed
-      const enterEvent = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
-      document.dispatchEvent(enterEvent);
-      vi.runAllTimers();
-
-      // onConfirm should not have been called again
-      expect(onConfirm).not.toHaveBeenCalled();
     });
 
     it('should handle multiple rapid tooltip creations', () => {
