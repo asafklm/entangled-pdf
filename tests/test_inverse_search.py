@@ -269,7 +269,8 @@ class TestLoadPdfWithInverseSearch:
             
             with patch.object(Path, 'exists', return_value=True), \
                  patch.object(Path, 'resolve', return_value=Path(pdf_path)), \
-                 patch.object(Path, 'stat') as mock_stat:
+                 patch.object(Path, 'stat') as mock_stat, \
+                 patch('pdfserver.routes.load_pdf.validate_pdf_file', return_value=(True, "")):
                 
                 mock_stat_result = MagicMock()
                 mock_stat_result.st_mtime = 12345
@@ -308,7 +309,8 @@ class TestLoadPdfWithInverseSearch:
             
             with patch.object(Path, 'exists', return_value=True), \
                  patch.object(Path, 'resolve', return_value=Path(pdf_path)), \
-                 patch.object(Path, 'stat') as mock_stat:
+                 patch.object(Path, 'stat') as mock_stat, \
+                 patch('pdfserver.routes.load_pdf.validate_pdf_file', return_value=(True, "")):
                 
                 mock_stat_result = MagicMock()
                 mock_stat_result.st_mtime = 12345

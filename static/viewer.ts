@@ -91,6 +91,7 @@ clientLogger.attachWebSocket(wsManager);
 // Setup WebSocket message handlers
 wsManager.on('synctex', handleSyncTeXMessage as MessageHandler);
 wsManager.on('reload', handleReloadMessage as MessageHandler);
+wsManager.on('error', handleErrorMessage as MessageHandler);
 
 // Connection status indicator functions
 function updateConnectionStatus(connected: boolean): void {
@@ -335,6 +336,17 @@ function handleReloadMessage(data: WebSocketMessage): void {
     stateManager.updatePdfMtime(reloadMtime);
   }
   reloadPDF();
+}
+
+/**
+ * Handle error message from WebSocket
+ */
+function handleErrorMessage(data: WebSocketMessage): void {
+  const errorMessage = data.message;
+  if (errorMessage) {
+    console.error('Server error:', errorMessage);
+    notificationManager.error(errorMessage);
+  }
 }
 
 /**

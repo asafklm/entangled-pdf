@@ -112,7 +112,8 @@ export type WebSocketAction =
   | 'inverse_search'
   | 'ping'
   | 'pong'
-  | 'log';
+  | 'log'
+  | 'error';
 
 /**
  * WebSocket message structure

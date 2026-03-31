@@ -5,6 +5,7 @@ the server. Broadcasts a reload message to all connected WebSocket clients.
 Supports configuring inverse search command for LaTeX editing workflows.
 """
 
+import logging
 from pathlib import Path
 from typing import Optional
 
@@ -16,6 +17,34 @@ from pdfserver.connection_manager import manager
 from pdfserver.state import pdf_state
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+def validate_pdf_file(pdf_path: Path) -> tuple[bool, str]:
+    """Validate that a file is a valid PDF.
+    
+    Checks file extension (warns if not .pdf) and validates PDF magic bytes.
+    
+    Args:
+        pdf_path: Path to the file to validate
+        
+    Returns:
+        Tuple of (is_valid: bool, error_message: str)
+    """
+    # Check file extension and warn if not .pdf
+    if pdf_path.suffix.lower() != ".pdf":
+        logger.warning(f"File '{pdf_path.name}' does not have .pdf extension")
+    
+    # Validate PDF magic bytes (header must start with %PDF)
+    try:
+        with open(pdf_path, "rb") as f:
+            header = f.read(5)
+            if header != b"%PDF-":
+                return False, f"File '{pdf_path.name}' is not a valid PDF file (invalid header)"
+    except Exception as e:
+        return False, f"Cannot read file '{pdf_path.name}': {e}"
+    
+    return True, ""
 
 
 @router.post("/api/load-pdf")
@@ -40,7 +69,7 @@ async def load_pdf(
         JSONResponse: Success status with websocket_token if inverse search enabled
     
     Raises:
-        HTTPException: 403 if API key is invalid, 400 if PDF not found
+        HTTPException: 403 if API key is invalid, 400 if PDF not found or invalid
     """
     settings = get_settings()
     
@@ -64,6 +93,21 @@ async def load_pdf(
     # Validate PDF file exists
     if not pdf_path.exists():
         raise HTTPException(status_code=400, detail=f"PDF file not found: {pdf_path}")
+    
+    # Validate PDF file format (check BEFORE updating state)
+    is_valid, error_message = validate_pdf_file(pdf_path)
+    if not is_valid:
+        # Log the validation failure as an error
+        logger.error(f"PDF validation failed: {error_message}")
+        
+        # Broadcast error to clients so they can show notification
+        await manager.broadcast({
+            "action": "error",
+            "message": error_message
+        })
+        
+        # Return error response - do NOT update PDF state
+        raise HTTPException(status_code=400, detail=error_message)
     
     # Update the server's PDF file
     settings.pdf_file = pdf_path
