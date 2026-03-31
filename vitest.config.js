@@ -1,19 +1,43 @@
-/** @type {import('vitest/config').UserConfig} */
-export default {
+import { defineConfig } from 'vitest/config';
+import { playwright } from '@vitest/browser-playwright';
+
+export default defineConfig({
   test: {
-    environment: 'happy-dom',
-    globals: true,
-    setupFiles: ['./tests/js/setup.ts'],
-    include: ['tests/js/**/*.test.ts'],
-    coverage: {
-      reporter: ['text', 'json', 'html'],
-      include: ['static/*.ts'],
-      exclude: ['static/viewer.ts'] // Exclude main file - requires complex pdfjs mock
-    }
-  },
-  resolve: {
-    alias: {
-      '@static': '/static'
-    }
+    projects: [
+      {
+        test: {
+          name: 'unit',
+          environment: 'happy-dom',
+          globals: true,
+          setupFiles: ['./tests/js/setup.ts'],
+          include: ['tests/js/**/*.test.ts'],
+          exclude: ['tests/js/browser/**'],
+          coverage: {
+            reporter: ['text', 'json', 'html'],
+            include: ['static/*.ts'],
+            exclude: ['static/viewer.ts']
+          }
+        },
+        resolve: {
+          alias: {
+            '@static': '/static'
+          }
+        }
+      },
+      {
+        test: {
+          name: 'browser',
+          browser: {
+            enabled: true,
+            provider: playwright(),
+            instances: [
+              { browser: 'chromium', headless: true }
+            ]
+          },
+          include: ['tests/js/browser/**/*.test.ts'],
+          testTimeout: 30000
+        }
+      }
+    ]
   }
-};
+});
