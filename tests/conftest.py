@@ -3,11 +3,15 @@
 Provides fixtures that are shared across all test files.
 """
 
+import os
 import sys
 from pathlib import Path
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# Set default API key for tests
+os.environ.setdefault("PDF_SERVER_API_KEY", "test-api-key-for-testing")
 
 # Import fixtures from integration tests
 from tests.integration.conftest import (

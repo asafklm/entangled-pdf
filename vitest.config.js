@@ -1,5 +1,4 @@
 import { defineConfig } from 'vitest/config';
-import { playwright } from '@vitest/browser-playwright';
 
 export default defineConfig({
   test: {
@@ -11,7 +10,7 @@ export default defineConfig({
           globals: true,
           setupFiles: ['./tests/js/setup.ts'],
           include: ['tests/js/**/*.test.ts'],
-          exclude: ['tests/js/browser/**'],
+          exclude: ['tests/js/browser/**', 'tests/e2e/**'],
           coverage: {
             reporter: ['text', 'json', 'html'],
             include: ['static/*.ts'],
@@ -22,22 +21,6 @@ export default defineConfig({
           alias: {
             '@static': '/static'
           }
-        }
-      },
-      {
-        test: {
-          name: 'browser',
-          browser: {
-            enabled: true,
-            provider: playwright(),
-            instances: [
-              { browser: 'chromium', headless: true }
-            ]
-          },
-          include: ['tests/js/browser/**/*.spec.ts', 'tests/js/browser/**/*.test.ts'],
-          testTimeout: 60000,
-          hookTimeout: 30000,
-          setupFiles: ['./tests/js/browser/setup.ts']
         }
       }
     ]

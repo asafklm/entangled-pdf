@@ -38,8 +38,10 @@ export PDF_SERVER_TEST_PORT=18080    # Default: 18080
 # TypeScript/JavaScript
 npm run build        # Compile TypeScript
 npm run typecheck    # Type check only
-npm test             # Run Vitest tests
+npm test             # Run Vitest unit tests
 npm test -- --watch # Watch mode
+npm run test:e2e     # Run Playwright E2E tests
+npm run test:e2e:ui  # Run E2E tests with UI
 
 # Webhook testing
 http POST localhost:8001/webhook/update X-API-Key:super-secret-123 page:=2 y:=221.19
@@ -229,7 +231,7 @@ class ConnectionManager:
 ## Dependencies
 
 **Python**: fastapi, uvicorn, websockets, pydantic-settings, jinja2, requests, responses, pytest, pytest-asyncio, httpx
-**TypeScript**: typescript, vitest, happy-dom, @types/node, pdfjs-dist
+**TypeScript**: typescript, vitest, happy-dom, @types/node, pdfjs-dist, @playwright/test
 
 When adding deps, prefer packages already in use.
 

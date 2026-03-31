@@ -34,7 +34,7 @@ class TestWebSocketConnection:
         """Test that WebSocket connection is added to manager."""
         test_manager = ConnectionManager()
         
-        with patch("src.routes.websocket.manager", test_manager):
+        with patch("pdfserver.routes.websocket.manager", test_manager):
             # Create a mock websocket
             mock_ws = AsyncMock()
             mock_ws.accept = AsyncMock()
@@ -54,7 +54,7 @@ class TestWebSocketConnection:
         """Test that WebSocket disconnect removes from manager."""
         test_manager = ConnectionManager()
         
-        with patch("src.routes.websocket.manager", test_manager):
+        with patch("pdfserver.routes.websocket.manager", test_manager):
             mock_ws = AsyncMock()
             mock_ws.accept = AsyncMock()
             
@@ -73,7 +73,7 @@ class TestWebSocketConnection:
         """Test that WebSocket connection stays alive waiting for messages."""
         test_manager = ConnectionManager()
         
-        with patch("src.routes.websocket.manager", test_manager):
+        with patch("pdfserver.routes.websocket.manager", test_manager):
             mock_ws = AsyncMock()
             mock_ws.accept = AsyncMock()
             
@@ -99,7 +99,7 @@ class TestWebSocketConnection:
         """Test that multiple WebSocket clients can connect."""
         test_manager = ConnectionManager()
         
-        with patch("src.routes.websocket.manager", test_manager):
+        with patch("pdfserver.routes.websocket.manager", test_manager):
             # First client
             mock_ws1 = AsyncMock()
             mock_ws1.accept = AsyncMock()
@@ -127,7 +127,7 @@ class TestWebSocketIntegration:
         """Test WebSocket with real ConnectionManager."""
         test_manager = ConnectionManager()
         
-        with patch("src.routes.websocket.manager", test_manager):
+        with patch("pdfserver.routes.websocket.manager", test_manager):
             mock_ws = AsyncMock()
             mock_ws.accept = AsyncMock()
             from fastapi import WebSocketDisconnect
@@ -145,7 +145,7 @@ class TestWebSocketIntegration:
         """Test broadcasting to connected WebSocket client."""
         test_manager = ConnectionManager()
         
-        with patch("src.routes.websocket.manager", test_manager):
+        with patch("pdfserver.routes.websocket.manager", test_manager):
             mock_ws = AsyncMock()
             mock_ws.accept = AsyncMock()
             mock_ws.send_json = AsyncMock()

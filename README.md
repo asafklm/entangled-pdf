@@ -471,7 +471,7 @@ PdfServer/
 # Install test dependencies
 pip install pytest pytest-asyncio httpx responses
 
-# Run all tests
+# Run all Python tests
 python -m pytest tests/ -v
 
 # Run specific test suites
@@ -499,11 +499,20 @@ npm run build
 # Type check without compiling
 npm run typecheck
 
-# Run JavaScript unit tests
+# Run JavaScript unit tests (Vitest)
 npm test
 
 # Run tests in watch mode
 npm test -- --watch
+
+# Run Playwright E2E tests (browser tests)
+npm run test:e2e
+
+# Run E2E tests with UI
+npm run test:e2e:ui
+
+# Run E2E tests in debug mode
+npm run test:e2e:debug
 ```
 
 ### Architecture
@@ -513,7 +522,7 @@ npm test -- --watch
 - **Build**: TypeScript compiler (tsc) outputs .js alongside .ts sources
 - **Protocol**: WebSocket for real-time, HTTP polling as fallback
 - **Sync**: Timestamp-based update tracking prevents unnecessary scrolling
-- **Testing**: Vitest for TypeScript unit tests with happy-dom environment
+- **Testing**: Vitest for TypeScript unit tests, Playwright for E2E browser tests
 
 ## License
 

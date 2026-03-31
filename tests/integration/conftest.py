@@ -89,7 +89,7 @@ def test_app(test_settings):
     # Reset connection manager
     manager.active_connections.clear()
     
-    with patch("src.config.settings", test_settings):
+    with patch("pdfserver.config.settings", test_settings):
         app = create_app()
         yield app
 
@@ -281,7 +281,7 @@ def mock_synctex():
             "v": str(y)   # vertical position
         }
     
-    with patch("src.routes.webhook.run_synctex_view", side_effect=mock_run_synctex):
+    with patch("pdfserver.routes.webhook.run_synctex_view", side_effect=mock_run_synctex):
         yield mock_run_synctex
 
 

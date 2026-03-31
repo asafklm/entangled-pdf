@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from pdfserver.certs import get_cert_paths, validate_certificate
 from pdfserver.config import init_settings, ConfigError
 from pdfserver.logging_sanitizer import SensitiveDataFilter
-from pdfserver.routes import auth, load_pdf, pdf, state, static_files, view, webhook, websocket
+from pdfserver.routes import auth, load_pdf, pdf, state, static_files, test_utils, view, webhook, websocket
 from pdfserver.state import pdf_state
 from pdfserver.websocket_monitor import monitor as ws_monitor
 
@@ -112,6 +112,7 @@ def create_app() -> FastAPI:
     app.include_router(webhook.router)
     app.include_router(websocket.router)
     app.include_router(load_pdf.router)
+    app.include_router(test_utils.router)
     
     # Setup static files
     static_files.setup_static_files(app)

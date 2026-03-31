@@ -7,13 +7,15 @@
     "build": "tsc && npm run bundle",
     "bundle": "esbuild static/viewer.ts --bundle --outfile=static/viewer.js --format=esm --target=es2020 --platform=browser --external:/pdfjs/* --external:/pdfjs/pdf.worker.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "vitest"
+    "test": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/node": "^25.3.0",
-    "@vitest/browser-playwright": "^4.1.2",
     "happy-dom": "^20.6.3",
-    "playwright": "^1.58.2",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   },

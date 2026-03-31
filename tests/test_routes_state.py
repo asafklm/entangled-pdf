@@ -31,7 +31,7 @@ class TestGetState:
             "pdf_loaded": True
         }
         
-        with patch("src.routes.state.pdf_state", mock_state):
+        with patch("pdfserver.routes.state.pdf_state", mock_state):
             response = client.get("/state")
             
             assert response.status_code == 200
@@ -53,7 +53,7 @@ class TestGetState:
             "pdf_loaded": False
         }
         
-        with patch("src.routes.state.pdf_state", mock_state):
+        with patch("pdfserver.routes.state.pdf_state", mock_state):
             response = client.get("/state")
             
             assert response.status_code == 200
@@ -78,7 +78,7 @@ class TestGetState:
             "pdf_loaded": False
         }
         
-        with patch("src.routes.state.pdf_state", mock_state):
+        with patch("pdfserver.routes.state.pdf_state", mock_state):
             response = client.get("/state")
             
             assert response.status_code == 200
@@ -99,7 +99,7 @@ class TestGetState:
             "pdf_loaded": True
         }
         
-        with patch("src.routes.state.pdf_state", mock_state1):
+        with patch("pdfserver.routes.state.pdf_state", mock_state1):
             response = client.get("/state")
             data = response.json()
             assert data["page"] == 3
@@ -116,7 +116,7 @@ class TestGetState:
             "pdf_loaded": True
         }
         
-        with patch("src.routes.state.pdf_state", mock_state2):
+        with patch("pdfserver.routes.state.pdf_state", mock_state2):
             response = client.get("/state")
             data = response.json()
             assert data["page"] == 7
@@ -134,7 +134,7 @@ class TestGetState:
             "pdf_loaded": True
         }
         
-        with patch("src.routes.state.pdf_state", mock_state):
+        with patch("pdfserver.routes.state.pdf_state", mock_state):
             response = client.get("/state")
             
             assert response.status_code == 200
@@ -153,7 +153,7 @@ class TestGetState:
             "pdf_loaded": True
         }
         
-        with patch("src.routes.state.pdf_state", mock_state):
+        with patch("pdfserver.routes.state.pdf_state", mock_state):
             response = client.get("/state")
             
             assert response.status_code == 200
@@ -172,7 +172,7 @@ class TestGetState:
             "pdf_loaded": False
         }
         
-        with patch("src.routes.state.pdf_state", mock_state):
+        with patch("pdfserver.routes.state.pdf_state", mock_state):
             response = client.get("/state")
             
             assert response.status_code == 200

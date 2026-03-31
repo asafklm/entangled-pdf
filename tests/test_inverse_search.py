@@ -191,8 +191,8 @@ class TestViewPageAuthCheck:
         mock_request.cookies = {}  # No token cookie
         
         with patch.object(view_route, '_templates', None), \
-             patch('src.routes.view.get_settings') as mock_settings, \
-             patch('src.routes.view.Jinja2Templates') as mock_templates_class:
+             patch('pdfserver.routes.view.get_settings') as mock_settings, \
+             patch('pdfserver.routes.view.Jinja2Templates') as mock_templates_class:
             
             mock_settings.return_value.pdf_file = None
             mock_settings.return_value.port = 8431
@@ -222,8 +222,8 @@ class TestViewPageAuthCheck:
         mock_request.cookies = {"pdf_token": "test_token"}  # Valid token
         
         with patch.object(view_route, '_templates', None), \
-             patch('src.routes.view.get_settings') as mock_settings, \
-             patch('src.routes.view.Jinja2Templates') as mock_templates_class:
+             patch('pdfserver.routes.view.get_settings') as mock_settings, \
+             patch('pdfserver.routes.view.Jinja2Templates') as mock_templates_class:
             
             mock_settings.return_value.pdf_file = None
             mock_settings.return_value.port = 8431
@@ -249,8 +249,8 @@ class TestLoadPdfWithInverseSearch:
         """Test that loading PDF with inverse search command enables feature."""
         from pdfserver.config import Settings
         
-        with patch('src.routes.load_pdf.get_settings') as mock_settings, \
-             patch('src.routes.load_pdf.manager') as mock_manager:
+        with patch('pdfserver.routes.load_pdf.get_settings') as mock_settings, \
+             patch('pdfserver.routes.load_pdf.manager') as mock_manager:
             
             mock_settings.return_value = MagicMock(spec=Settings)
             mock_settings.return_value.api_key = "test_secret"
@@ -288,8 +288,8 @@ class TestLoadPdfWithInverseSearch:
         """Test that loading PDF via HTTP does not enable inverse search."""
         from pdfserver.config import Settings
         
-        with patch('src.routes.load_pdf.get_settings') as mock_settings, \
-             patch('src.routes.load_pdf.manager') as mock_manager:
+        with patch('pdfserver.routes.load_pdf.get_settings') as mock_settings, \
+             patch('pdfserver.routes.load_pdf.manager') as mock_manager:
             
             mock_settings.return_value = MagicMock(spec=Settings)
             mock_settings.return_value.api_key = "test_secret"

@@ -1,4 +1,4 @@
-"""Tests for src.routes.auth.authenticate."""
+"""Tests for pdfserver.routes.auth.authenticate."""
 
 import asyncio
 

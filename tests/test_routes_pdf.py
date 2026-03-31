@@ -33,7 +33,7 @@ def client(mock_settings):
     app = FastAPI()
     app.include_router(pdf_route.router)
     
-    with patch("src.routes.pdf.get_settings", return_value=mock_settings):
+    with patch("pdfserver.routes.pdf.get_settings", return_value=mock_settings):
         yield TestClient(app)
 
 
@@ -90,7 +90,7 @@ class TestGetPdf:
         app = FastAPI()
         app.include_router(pdf_route.router)
         
-        with patch("src.routes.pdf.get_settings", return_value=settings):
+        with patch("pdfserver.routes.pdf.get_settings", return_value=settings):
             client = TestClient(app)
             response = client.get("/get-pdf")
             
@@ -117,7 +117,7 @@ class TestGetPdf:
         app = FastAPI()
         app.include_router(pdf_route.router)
         
-        with patch("src.routes.pdf.get_settings", return_value=settings):
+        with patch("pdfserver.routes.pdf.get_settings", return_value=settings):
             client = TestClient(app)
             response = client.get("/get-pdf")
             
@@ -142,7 +142,7 @@ class TestGetPdf:
         app = FastAPI()
         app.include_router(pdf_route.router)
         
-        with patch("src.routes.pdf.get_settings", return_value=settings):
+        with patch("pdfserver.routes.pdf.get_settings", return_value=settings):
             client = TestClient(app)
             response = client.get("/get-pdf")
             
