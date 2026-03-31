@@ -45,6 +45,186 @@ test.describe('Inverse Search E2E', () => {
       
       await expect(page.locator('#connection-status')).toBeVisible({ timeout: 5000 });
     });
+
+    test('long-press shows inverse search tooltip with confirmation', async ({ page, httpsInverseServer }) => {
+      // Load the PDF
+      await fetch(`${httpsInverseServer.baseUrl}/api/load-pdf`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': httpsInverseServer.apiKey,
+        },
+        body: JSON.stringify({
+          pdf_path: EXAMPLE_PDF,
+        }),
+      });
+      
+      // Get auth token and set cookie
+      const stateResponse = await fetch(`${httpsInverseServer.baseUrl}/state`);
+      const stateData = await stateResponse.json();
+      const token = stateData.websocket_token;
+      
+      await page.context().addCookies([{
+        name: 'pdf_token',
+        value: token,
+        domain: 'localhost',
+        path: '/',
+        secure: true,
+        httpOnly: true,
+        sameSite: 'Strict',
+      }]);
+      
+      await page.goto(`${httpsInverseServer.baseUrl}/view`);
+      
+      // Wait for PDF to render
+      await expect(page.locator('#viewer-container canvas').first()).toBeVisible({ timeout: 10000 });
+      
+      // Long-press on the PDF canvas to trigger inverse search (hold for 600ms)
+      const canvas = page.locator('#viewer-container canvas').first();
+      await canvas.hover();
+      await canvas.dispatchEvent('mousedown');
+      await page.waitForTimeout(600); // Wait longer than the 500ms threshold
+      await canvas.dispatchEvent('mouseup');
+      
+      // Wait for tooltip to appear
+      const tooltip = page.locator('.inverse-search-tooltip');
+      await expect(tooltip).toBeVisible({ timeout: 5000 });
+      
+      // Verify tooltip content
+      await expect(tooltip.locator('text=Go to Source?')).toBeVisible();
+      await expect(tooltip.locator('button.tooltip-confirm-btn')).toContainText('Confirm (Enter)');
+      
+      // Click the confirm button (same code path as Enter key)
+      await tooltip.locator('button.tooltip-confirm-btn').click();
+      
+      // Wait for tooltip to disappear
+      await expect(tooltip).not.toBeVisible({ timeout: 5000 });
+      
+      // Verify red marker feedback is shown
+      const marker = page.locator('.synctex-marker');
+      await expect(marker).toBeVisible({ timeout: 5000 });
+    });
+
+    test('long-press tooltip can be dismissed with Escape key', async ({ page, httpsInverseServer }) => {
+      // Load the PDF
+      await fetch(`${httpsInverseServer.baseUrl}/api/load-pdf`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': httpsInverseServer.apiKey,
+        },
+        body: JSON.stringify({
+          pdf_path: EXAMPLE_PDF,
+        }),
+      });
+      
+      // Get auth token and set cookie
+      const stateResponse = await fetch(`${httpsInverseServer.baseUrl}/state`);
+      const stateData = await stateResponse.json();
+      const token = stateData.websocket_token;
+      
+      await page.context().addCookies([{
+        name: 'pdf_token',
+        value: token,
+        domain: 'localhost',
+        path: '/',
+        secure: true,
+        httpOnly: true,
+        sameSite: 'Strict',
+      }]);
+      
+      await page.goto(`${httpsInverseServer.baseUrl}/view`);
+      
+      // Wait for PDF to render
+      await expect(page.locator('#viewer-container canvas').first()).toBeVisible({ timeout: 10000 });
+      
+      // Long-press on the PDF canvas to trigger inverse search (hold for 600ms)
+      const canvas = page.locator('#viewer-container canvas').first();
+      await canvas.hover();
+      await canvas.dispatchEvent('mousedown');
+      await page.waitForTimeout(600); // Wait longer than the 500ms threshold
+      await canvas.dispatchEvent('mouseup');
+      
+      // Wait for tooltip to appear
+      const tooltip = page.locator('.inverse-search-tooltip');
+      await expect(tooltip).toBeVisible({ timeout: 5000 });
+      
+      // Press Escape key to cancel
+      await page.keyboard.press('Escape');
+      
+      // Wait for tooltip to disappear
+      await expect(tooltip).not.toBeVisible({ timeout: 5000 });
+      
+      // Verify no marker feedback is shown (tooltip was cancelled)
+      const marker = page.locator('.synctex-marker');
+      await expect(marker).not.toBeVisible({ timeout: 2000 });
+    });
+
+    test('tooltip can be dismissed and re-shown', async ({ page, httpsInverseServer }) => {
+      // Load the PDF
+      await fetch(`${httpsInverseServer.baseUrl}/api/load-pdf`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': httpsInverseServer.apiKey,
+        },
+        body: JSON.stringify({
+          pdf_path: EXAMPLE_PDF,
+        }),
+      });
+      
+      // Get auth token and set cookie
+      const stateResponse = await fetch(`${httpsInverseServer.baseUrl}/state`);
+      const stateData = await stateResponse.json();
+      const token = stateData.websocket_token;
+      
+      await page.context().addCookies([{
+        name: 'pdf_token',
+        value: token,
+        domain: 'localhost',
+        path: '/',
+        secure: true,
+        httpOnly: true,
+        sameSite: 'Strict',
+      }]);
+      
+      await page.goto(`${httpsInverseServer.baseUrl}/view`);
+      
+      // Wait for PDF to render
+      await expect(page.locator('#viewer-container canvas').first()).toBeVisible({ timeout: 10000 });
+      
+      // First long-press - show tooltip and dismiss by clicking outside
+      const canvas = page.locator('#viewer-container canvas').first();
+      await canvas.hover();
+      await canvas.dispatchEvent('mousedown');
+      await page.waitForTimeout(600);
+      await canvas.dispatchEvent('mouseup');
+      
+      const tooltip = page.locator('.inverse-search-tooltip');
+      await expect(tooltip).toBeVisible({ timeout: 5000 });
+      
+      // Dismiss by clicking outside the tooltip (on the PDF canvas)
+      await canvas.click();
+      await expect(tooltip).not.toBeVisible({ timeout: 5000 });
+      
+      // Wait a moment to ensure cleanup
+      await page.waitForTimeout(500);
+      
+      // Second long-press - should work normally
+      await canvas.hover();
+      await canvas.dispatchEvent('mousedown');
+      await page.waitForTimeout(600);
+      await canvas.dispatchEvent('mouseup');
+      await expect(tooltip).toBeVisible({ timeout: 5000 });
+      
+      // Click confirm button - should work (tooltip state was properly cleaned up)
+      await tooltip.locator('button.tooltip-confirm-btn').click();
+      await expect(tooltip).not.toBeVisible({ timeout: 5000 });
+      
+      // Verify red marker feedback is shown
+      const marker = page.locator('.synctex-marker');
+      await expect(marker).toBeVisible({ timeout: 5000 });
+    });
   });
 
   test.describe('HTTPS without Inverse Search', () => {
