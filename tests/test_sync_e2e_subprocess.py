@@ -12,6 +12,7 @@ Example:
 """
 
 import os
+import signal
 import socket
 import subprocess
 import sys
@@ -30,6 +31,13 @@ from pdfserver.sync import (
     load_pdf,
     parse_synctex_forward,
     send_request,
+)
+
+# Import process tracking utilities from conftest
+from tests.conftest import (
+    kill_process_tree,
+    track_test_process,
+    untrack_test_process,
 )
 
 # Default test port (can be overridden via env var)
@@ -59,8 +67,14 @@ def test_certs(tmp_path_factory) -> Generator[tuple[Path, Path], None, None]:
 
 
 @pytest.fixture(scope="module")
-def running_server(test_certs, tmp_path_factory):
+def running_server(test_certs, tmp_path_factory, request):
     """Start a real pdf-server process for end-to-end testing.
+    
+    This fixture now includes robust cleanup:
+    - Tracks process in temp file for zombie detection
+    - Uses process tree kill (including children)
+    - Handles both graceful and forceful termination
+    - Cleans up even if tests are interrupted
     
     Yields:
         dict: Server info with 'port', 'api_key', 'cert_path', 'key_path', 'process'
@@ -111,19 +125,27 @@ def running_server(test_certs, tmp_path_factory):
         stderr=subprocess.STDOUT,  # Merge stderr into stdout
     )
     
+    # Track process for cleanup (even if tests crash)
+    test_id = f"{request.node.name}_{time.time()}"
+    track_test_process(process.pid, port, test_id)
+    
     # Wait for server to be ready (check with health endpoint or wait fixed time)
     max_retries = 30
+    server_ready = False
     for i in range(max_retries):
         try:
             # Try to connect
             ctx = create_ssl_context()
             with socket.create_connection((TEST_SERVER_HOST, port), timeout=1):
+                server_ready = True
                 break
         except (socket.error, ConnectionRefusedError):
             time.sleep(0.5)
-    else:
-        # Server didn't start
-        process.terminate()
+    
+    if not server_ready:
+        # Server didn't start - clean up and fail
+        kill_process_tree(process.pid, timeout=2.0)
+        untrack_test_process(process.pid)
         stdout, _ = process.communicate(timeout=5)
         raise RuntimeError(
             f"Server failed to start on port {port}.\n"
@@ -132,6 +154,7 @@ def running_server(test_certs, tmp_path_factory):
     
     # Wait for server to be fully ready by checking /state endpoint
     import urllib.request
+    http_ready = False
     for i in range(max_retries):
         try:
             url = f"https://{TEST_SERVER_HOST}:{port}/state"
@@ -139,12 +162,15 @@ def running_server(test_certs, tmp_path_factory):
             ctx = create_ssl_context()
             with urllib.request.urlopen(req, context=ctx, timeout=2) as resp:
                 if resp.status == 200:
+                    http_ready = True
                     break
         except Exception:
             time.sleep(0.5)
-    else:
+    
+    if not http_ready:
         # Server didn't respond to HTTP requests
-        process.terminate()
+        kill_process_tree(process.pid, timeout=2.0)
+        untrack_test_process(process.pid)
         stdout, _ = process.communicate(timeout=5)
         raise RuntimeError(
             f"Server started but not responding to HTTP requests.\n"
@@ -161,17 +187,27 @@ def running_server(test_certs, tmp_path_factory):
         "key_path": key_path,
         "process": process,
         "static_dir": static_dir,
+        "_test_id": test_id,
     }
     
     yield server_info
     
-    # Teardown: terminate server
-    process.terminate()
+    # Teardown: robust cleanup with process tree kill
     try:
-        process.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        process.kill()
-        process.wait()
+        # Use process tree kill which handles children and escalation
+        success = kill_process_tree(process.pid, timeout=5.0)
+        if not success:
+            print(f"Warning: Could not kill process {process.pid} gracefully", file=sys.stderr)
+            # Last resort - direct SIGKILL
+            try:
+                os.kill(process.pid, signal.SIGKILL)
+            except (OSError, ProcessLookupError):
+                pass
+    except Exception as e:
+        print(f"Warning: Error during server teardown: {e}", file=sys.stderr)
+    finally:
+        # Always untrack, even if kill failed
+        untrack_test_process(process.pid)
 
 
 class TestSyncRemotePdfSubprocess:

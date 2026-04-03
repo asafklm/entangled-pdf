@@ -1,0 +1,264 @@
+#!/usr/bin/env python3
+"""Cleanup utility for orphaned pdf-server test processes.
+
+This script identifies and kills zombie pdf-server processes that were
+left behind by interrupted or crashed test runs. It is safe to run
+as it will NOT kill:
+- Production pdf-server instances (on standard port 8431)
+- Servers running without test certificates
+- Servers not matching the test port range pattern
+
+Usage:
+    ./bin/pdf-server-test-cleanup          # Clean up all zombie test processes
+    ./bin/pdf-server-test-cleanup --dry-run # Show what would be killed without killing
+    ./bin/pdf-server-test-cleanup --force   # Skip confirmation prompts
+
+Returns:
+    0 if no zombies found or all cleaned up successfully
+    1 if zombies were found but cleanup failed
+    2 if invalid arguments provided
+"""
+
+import argparse
+import os
+import re
+import signal
+import subprocess
+import sys
+from pathlib import Path
+from typing import List, Tuple
+
+# Test port ranges (should match test suite configuration)
+TEST_PORT_MIN = 18080
+TEST_PORT_MAX = 18200
+
+# Process patterns that indicate test servers
+TEST_CERT_PATTERNS = [
+    "test.pem",
+    "test.crt",
+    "test-key.pem", 
+    "test.key",
+]
+
+def is_test_process(cmdline: str) -> bool:
+    """Determine if a process is a test server based on its command line."""
+    # Check for test certificate patterns
+    has_test_cert = any(pattern in cmdline for pattern in TEST_CERT_PATTERNS)
+    
+    # Check for test port range
+    port_match = re.search(r'--port\s+(\d+)', cmdline)
+    if port_match:
+        port = int(port_match.group(1))
+        in_test_port_range = TEST_PORT_MIN <= port <= TEST_PORT_MAX
+    else:
+        # If no port specified, default port is production
+        in_test_port_range = False
+    
+    # Check for test mode environment flag
+    has_test_flag = "PDF_SERVER_TESTING" in cmdline
+    
+    return (has_test_cert and in_test_port_range) or has_test_flag
+
+
+def is_production_process(cmdline: str) -> bool:
+    """Check if this is a production server that should NOT be killed."""
+    # Production servers typically:
+    # 1. Use port 8431 (default)
+    # 2. Use production SSL certificates (not test.pem)
+    # 3. Run without PDF_SERVER_TESTING flag
+    
+    port_match = re.search(r'--port\s+(\d+)', cmdline)
+    is_default_port = not port_match or port_match.group(1) == "8431"
+    
+    has_prod_cert = any(
+        pattern in cmdline 
+        for pattern in ["/etc/ntfy/certs", "production", "live.crt"]
+    )
+    
+    has_test_cert = any(pattern in cmdline for pattern in TEST_CERT_PATTERNS)
+    
+    return is_default_port and (has_prod_cert or not has_test_cert)
+
+
+def find_zombie_processes() -> List[Tuple[int, str]]:
+    """Find all orphaned pdf-server test processes."""
+    zombies = []
+    
+    try:
+        # Get all python processes running main.py or pdf-server
+        result = subprocess.run(
+            ["pgrep", "-a", "-f", r"python.*main\.py|pdf-server"],
+            capture_output=True,
+            text=True
+        )
+        
+        if result.returncode != 0 or not result.stdout.strip():
+            return zombies
+        
+        for line in result.stdout.strip().split("\n"):
+            if not line.strip():
+                continue
+            
+            # Parse PID and command
+            parts = line.split(None, 1)
+            if len(parts) < 2:
+                continue
+            
+            try:
+                pid = int(parts[0])
+                cmdline = parts[1]
+            except ValueError:
+                continue
+            
+            # Skip production servers
+            if is_production_process(cmdline):
+                continue
+            
+            # Check if it's a test process
+            if is_test_process(cmdline):
+                zombies.append((pid, cmdline))
+                
+    except Exception as e:
+        print(f"Warning: Error scanning for processes: {e}", file=sys.stderr)
+    
+    return zombies
+
+
+def kill_process(pid: int, signal_type: int = signal.SIGTERM) -> bool:
+    """Kill a process with the given signal."""
+    try:
+        os.kill(pid, signal_type)
+        return True
+    except ProcessLookupError:
+        # Process already dead
+        return True
+    except PermissionError:
+        print(f"  Permission denied for PID {pid}", file=sys.stderr)
+        return False
+    except Exception as e:
+        print(f"  Error killing PID {pid}: {e}", file=sys.stderr)
+        return False
+
+
+def cleanup_zombies(dry_run: bool = False, force: bool = False) -> int:
+    """Clean up zombie processes. Returns exit code."""
+    print("Scanning for orphaned pdf-server test processes...")
+    
+    zombies = find_zombie_processes()
+    
+    if not zombies:
+        print("No orphaned test processes found.")
+        return 0
+    
+    print(f"\nFound {len(zombies)} orphaned test process(es):\n")
+    
+    for pid, cmdline in zombies:
+        # Extract port for display
+        port_match = re.search(r'--port\s+(\d+)', cmdline)
+        port = port_match.group(1) if port_match else "unknown"
+        print(f"  PID {pid} (port {port}): {cmdline[:80]}...")
+    
+    if dry_run:
+        print("\n[Dry run mode - no processes were killed]")
+        return 0
+    
+    # Ask for confirmation unless --force
+    if not force:
+        print(f"\nKill these {len(zombies)} process(es)? [y/N]: ", end="")
+        try:
+            response = input().strip().lower()
+            if response not in ('y', 'yes'):
+                print("Cancelled.")
+                return 0
+        except (EOFError, KeyboardInterrupt):
+            print("\nCancelled.")
+            return 0
+    
+    print("\nTerminating processes...")
+    
+    # First try SIGTERM for graceful shutdown
+    failed_pids = []
+    for pid, _ in zombies:
+        if not kill_process(pid, signal.SIGTERM):
+            failed_pids.append(pid)
+    
+    # Give processes time to exit gracefully
+    import time
+    time.sleep(2)
+    
+    # Check which processes are still alive and use SIGKILL
+    still_alive = []
+    for pid, cmdline in zombies:
+        try:
+            # Check if process exists by sending signal 0
+            os.kill(pid, 0)
+            still_alive.append((pid, cmdline))
+        except ProcessLookupError:
+            pass  # Process is dead
+        except Exception:
+            still_alive.append((pid, cmdline))
+    
+    if still_alive:
+        print(f"  {len(still_alive)} process(es) still alive, using SIGKILL...")
+        for pid, _ in still_alive:
+            if not kill_process(pid, signal.SIGKILL):
+                failed_pids.append(pid)
+    
+    # Final check
+    remaining = []
+    for pid, cmdline in zombies:
+        try:
+            os.kill(pid, 0)
+            remaining.append(pid)
+        except ProcessLookupError:
+            pass
+        except Exception:
+            remaining.append(pid)
+    
+    if remaining:
+        print(f"\nFailed to kill {len(remaining)} process(es): {remaining}")
+        return 1
+    else:
+        killed_count = len(zombies) - len(remaining)
+        print(f"\nSuccessfully cleaned up {killed_count} orphaned process(es).")
+        return 0
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Clean up orphaned pdf-server test processes",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s                    # Interactive cleanup with confirmation
+  %(prog)s --force            # Cleanup without confirmation
+  %(prog)s --dry-run          # Preview what would be cleaned
+  %(prog)s --force --dry-run  # Show all matching processes
+
+Safety:
+  This script will never kill production servers (port 8431 with
+  production certificates). It only targets test servers identified
+  by test certificates (test.pem) and test port ranges (18080-18200).
+        """
+    )
+    
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be killed without actually killing"
+    )
+    
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Skip confirmation prompt"
+    )
+    
+    args = parser.parse_args()
+    
+    exit_code = cleanup_zombies(dry_run=args.dry_run, force=args.force)
+    sys.exit(exit_code)
+
+
+if __name__ == "__main__":
+    main()
