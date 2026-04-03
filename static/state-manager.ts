@@ -220,6 +220,6 @@ export function createStateManager(config: PDFConfig): StateManager {
   return new StateManager({
     pdfLoaded: config.filename !== 'no-pdf-loaded',
     pdfMtime: config.mtime,
-    lastSyncTime: config.mtime,
+    lastSyncTime: 0,  // Start at 0, will be updated on first sync
   });
 }

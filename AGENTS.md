@@ -4,6 +4,28 @@
 
 Python-based PDF server using FastAPI, WebSockets, and TypeScript for real-time PDF synchronization with SyncTeX support for LaTeX **forward search** (Editor → PDF) and **inverse search** (PDF → Editor via Shift+Click).
 
+## First Principles
+
+### When Debugging Complex Issues
+
+**ALWAYS map the data flow before proposing fixes.**
+
+For bugs involving:
+- Timing issues
+- WebSocket/HTTP synchronization
+- Race conditions
+- State management problems
+
+**Required approach:**
+1. Write failing test
+2. **Map data flow** (server → client, what data, when)
+3. **Scenario analysis** (what if X before Y? Y before X?)
+4. Identify root cause
+5. Propose fix + verify with scenarios
+6. Implement with logging
+
+See [Debugging Process for Complex Issues](#debugging-process-for-complex-issues) for detailed workflow.
+
 ## Build / Test / Run Commands
 
 ```bash
@@ -201,8 +223,11 @@ class ConnectionManager:
 │   └── ...
 ├── examples/                   # Test PDF and LaTeX files
 │   ├── example.pdf             # Sample PDF for testing
-│   ├── example.tex             # Sample LaTeX source
-│   └── example.synctex.gz      # SyncTeX data for testing
+│   ├── example.tex             # Sample LaTeX source  
+│   ├── example.synctex.gz      # SyncTeX data for testing
+│   ├── test-pdf2.pdf           # Second PDF for switch testing
+│   ├── test-pdf2.tex           # Second LaTeX source
+│   └── test-pdf2.synctex.gz    # SyncTeX data for second PDF
 ├── tests/
 │   ├── test_inverse_search.py  # Inverse search tests
 │   └── ...
@@ -234,6 +259,201 @@ class ConnectionManager:
 **TypeScript**: typescript, vitest, happy-dom, @types/node, pdfjs-dist, @playwright/test
 
 When adding deps, prefer packages already in use.
+
+## E2E Testing with Console Log Capture
+
+### Capturing Browser Console Logs in Tests
+
+For debugging complex WebSocket/frontend issues, use the `captureConsoleLogs()` helper:
+
+```typescript
+import { captureConsoleLogs, formatConsoleLogs } from './fixtures';
+
+test('example with console debugging', async ({ page }) => {
+  const consoleLogs: ConsoleLog[] = [];
+  const stopCapture = captureConsoleLogs(page, consoleLogs);
+  
+  try {
+    // ... test code ...
+  } catch (e) {
+    // On failure, log all captured console messages
+    console.log('\n=== Browser Console Logs ===');
+    console.log(formatConsoleLogs(consoleLogs));
+    console.log('=== End Console Logs ===\n');
+    throw e;
+  } finally {
+    stopCapture();
+  }
+});
+```
+
+The helper captures:
+- All `console.log/info/warn/error` calls
+- Page errors (JavaScript exceptions)
+- Location information (file:line:column)
+
+Logs are automatically printed to the test runner output with `[Browser Console]` prefix.
+
+## Debugging Process for Complex Issues
+
+When investigating bugs involving timing, WebSocket messages, or client-server synchronization:
+
+### Required Steps (in order)
+
+#### 1. Write Failing Test First
+```typescript
+test('descriptive test name showing scenario', async ({ page }) => {
+  // Setup initial state
+  // Trigger action
+  // Verify expected behavior
+});
+```
+- Verify the test fails for the RIGHT reason
+- Ensure test is deterministic (not flaky)
+
+#### 2. Map the Data Flow
+**Before proposing ANY fix:**
+
+```
+Server                    Client
+  │                         │
+  ├─ broadcasts ───────────►├─ receives
+  │   (what fields?)        │   (updates what state?)
+  │                         │
+  ├─ API response ────────►├─ uses
+  │   (what data?)          │   (updates what state?)
+```
+
+- List ALL data dependencies
+- Identify where each piece of state originates
+- Note async boundaries (WebSocket, HTTP, timeouts)
+
+#### 3. Scenario Analysis (REQUIRED for race conditions)
+
+For each timing-sensitive code path, document:
+
+**Scenario A: Event X before Event Y**
+```
+Timeline:
+T0: Server sends message A
+T1: Client receives A → updates State
+T2: Event B occurs → what sees State?
+
+Questions:
+- What does handleMessageA() see in State?
+- What does processEventB() see in State?
+- Do they see consistent data?
+```
+
+**Scenario B: Event Y before Event X**
+```
+Timeline:
+T0: Event B occurs
+T1: Server sends message A
+T2: Client receives A
+
+Questions:
+- What state does Event B check?
+- Is it the same state after Message A?
+```
+
+**Create diagrams showing:**
+- Message sequence (which direction, when)
+- State changes at each point
+- Decision points (if-statements that depend on state)
+
+#### 4. Identify Root Cause
+
+Ask these questions:
+- Is data missing at decision point?
+- Is state outdated when checked?
+- Are we checking the wrong state variable?
+- Is there an async gap where state changes?
+
+**Common issues:**
+- Server sends message without field X → client makes wrong decision
+- Client checks State A → Server updates to B → Client uses stale A
+- Two code paths update same state differently
+
+#### 5. Propose Fix + Impact Analysis
+
+For proposed fix, re-run scenarios:
+
+```
+Fix: Add pdf_file to broadcast message
+
+Scenario A (WebSocket first):
+T0: Broadcast with pdf_file → CONFIG.filename updated
+T1: Poll /state → sees updated filename
+Result: ✅ Consistent
+
+Scenario B (Polling first):
+T0: Poll /state → sees old filename
+T1: Broadcast arrives → updates CONFIG.filename
+T2: Next poll → sees updated filename
+Result: ✅ Eventually consistent
+```
+
+Check edge cases:
+- Initial load (no prior state)
+- Rapid successive changes
+- Network delays
+- Error conditions
+
+#### 6. Implementation Checklist
+
+- [ ] Add logging FIRST (before fix code)
+- [ ] Implement minimal fix
+- [ ] Run failing test - should pass
+- [ ] Run ALL related tests
+- [ ] Check for regressions
+- [ ] Remove debug logging (or convert to proper logs)
+
+### Example: Race Condition in PDF [Switching](Switching)
+
+**Initial investigation revealed:**
+- Test: Load PDF1 via API, then sync to PDF2
+- Expected: Show "Reload" button
+- Actual: Auto-reloaded PDF2
+
+**Data flow mapping:**
+```
+/api/load-pdf ──┬─► Server state updated
+                ├─► Broadcast reload ──► Client reloads
+                │                        (no filename!)
+                └─► Returns filename
+
+WebSocket synctex ──► Client handles
+                      Checks CONFIG.filename
+                      Sees "no-pdf-loaded" ❌
+```
+
+**Scenario analysis:**
+```
+T0: /api/load-pdf updates server state
+T1: Broadcast reload → client reloads PDF1
+    (but CONFIG.filename = "no-pdf-loaded"!)
+T2: WebSocket synctex for PDF2 arrives
+T3: handleSyncTeXMessage checks CONFIG.filename
+    Still "no-pdf-loaded" → treats as initial load
+    → auto-reloads PDF2 ❌
+```
+
+**Root cause:** Missing `pdf_file` in reload broadcast
+
+**Fix:** Add `pdf_file` to broadcast, update client handler
+
+**Impact verified:**
+- Scenario A: ✅ Client knows filename before synctex
+- Scenario B: ✅ Data flows correctly
+
+### Key Principles
+
+1. **Never fix before understanding** - Map first, fix second
+2. **Scenario analysis is mandatory** - For timing-sensitive code
+3. **Server-side first** - Often the root cause is server not sending data
+4. **Log then fix** - Logging reveals actual behavior
+5. **Test verifies understanding** - If test passes, your model is correct
 
 ## Distribution Strategy
 

@@ -131,6 +131,7 @@ async def load_pdf(
     # Broadcast reload to all connected clients
     await manager.broadcast({
         "action": "reload",
+        "pdf_file": pdf_path.name,
         "pdf_mtime": pdf_state.pdf_mtime
     })
     
