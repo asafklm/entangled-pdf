@@ -17,6 +17,7 @@ __pycache__/
 
 # pytest cache
 .pytest_cache/
+.pytest-pids.json
 
 # Coverage
 .coverage
