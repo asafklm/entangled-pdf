@@ -409,7 +409,7 @@ Check edge cases:
 - [ ] Check for regressions
 - [ ] Remove debug logging (or convert to proper logs)
 
-### Example: Race Condition in PDF Switching
+### Example: Race Condition in PDF [Switching](Switching)
 
 **Initial investigation revealed:**
 - Test: Load PDF1 via API, then sync to PDF2
