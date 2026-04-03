@@ -42,7 +42,8 @@ export interface MockCanvas {
  */
 export interface StateUpdate {
   pdf_loaded?: boolean;
-  pdf_file?: string;
+  pdf_file?: string;  // Full path from /state endpoint
+  pdf_basename?: string;  // Basename from /state endpoint
   pdf_mtime?: number;
   page: number;
   x?: number;
@@ -125,6 +126,7 @@ export interface WebSocketMessage {
   y?: number;
   last_sync_time?: number;  // When last forward sync occurred
   pdf_mtime?: number;
+  pdf_file?: string;  // PDF filename (basename) for reload/synctex messages
   message?: string;
   timestamp?: number;  // Used only for ping/pong RTT calculation
 }

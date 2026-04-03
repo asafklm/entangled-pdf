@@ -96,6 +96,7 @@ class PDFState:
             "x": self.current_x,
             "last_sync_time": self.last_sync_time,
             "pdf_file": str(self.pdf_file) if self.pdf_file else None,
+            "pdf_basename": self.pdf_file.name if self.pdf_file else None,
             "pdf_mtime": self.pdf_mtime,
             "pdf_loaded": self.pdf_file is not None
         }

@@ -190,13 +190,17 @@ async def receive_webhook(
         
         # Broadcast to all connected clients
         logger.info(f"Synctex: line {line} → page {page} @ (x={x:.2f}, y={y:.2f})")
-        await manager.broadcast({
+        broadcast_data = {
             "action": "synctex",
             "page": page,
             "y": y,
             "x": x,
-            "last_sync_time": pdf_state.last_sync_time
-        })
+            "last_sync_time": pdf_state.last_sync_time,
+            "pdf_file": pdf_path.name,  # Send basename only
+            "pdf_mtime": pdf_state.pdf_mtime
+        }
+        logger.debug(f"Broadcasting synctex: {broadcast_data}")
+        await manager.broadcast(broadcast_data)
         
         return JSONResponse(content={
             "status": "success",

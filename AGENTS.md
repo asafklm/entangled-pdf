@@ -201,8 +201,11 @@ class ConnectionManager:
 │   └── ...
 ├── examples/                   # Test PDF and LaTeX files
 │   ├── example.pdf             # Sample PDF for testing
-│   ├── example.tex             # Sample LaTeX source
-│   └── example.synctex.gz      # SyncTeX data for testing
+│   ├── example.tex             # Sample LaTeX source  
+│   ├── example.synctex.gz      # SyncTeX data for testing
+│   ├── test-pdf2.pdf           # Second PDF for switch testing
+│   ├── test-pdf2.tex           # Second LaTeX source
+│   └── test-pdf2.synctex.gz    # SyncTeX data for second PDF
 ├── tests/
 │   ├── test_inverse_search.py  # Inverse search tests
 │   └── ...
@@ -234,6 +237,40 @@ class ConnectionManager:
 **TypeScript**: typescript, vitest, happy-dom, @types/node, pdfjs-dist, @playwright/test
 
 When adding deps, prefer packages already in use.
+
+## E2E Testing with Console Log Capture
+
+### Capturing Browser Console Logs in Tests
+
+For debugging complex WebSocket/frontend issues, use the `captureConsoleLogs()` helper:
+
+```typescript
+import { captureConsoleLogs, formatConsoleLogs } from './fixtures';
+
+test('example with console debugging', async ({ page }) => {
+  const consoleLogs: ConsoleLog[] = [];
+  const stopCapture = captureConsoleLogs(page, consoleLogs);
+  
+  try {
+    // ... test code ...
+  } catch (e) {
+    // On failure, log all captured console messages
+    console.log('\n=== Browser Console Logs ===');
+    console.log(formatConsoleLogs(consoleLogs));
+    console.log('=== End Console Logs ===\n');
+    throw e;
+  } finally {
+    stopCapture();
+  }
+});
+```
+
+The helper captures:
+- All `console.log/info/warn/error` calls
+- Page errors (JavaScript exceptions)
+- Location information (file:line:column)
+
+Logs are automatically printed to the test runner output with `[Browser Console]` prefix.
 
 ## Distribution Strategy
 

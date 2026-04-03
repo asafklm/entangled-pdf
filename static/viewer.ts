@@ -85,6 +85,12 @@ const wsManager = new WebSocketManager(window.location.hostname, CONFIG.port, CO
 // Track PDF loading state to prevent concurrent reloads
 let isLoadingPDF = false;
 
+// Track whether PDF has changed and needs reload
+let pdfChangedPending = false;
+
+// Track whether connection details panel is visible
+let detailsPanelVisible = false;
+
 // Attach logger to WebSocket
 clientLogger.attachWebSocket(wsManager);
 
@@ -93,19 +99,114 @@ wsManager.on('synctex', handleSyncTeXMessage as MessageHandler);
 wsManager.on('reload', handleReloadMessage as MessageHandler);
 wsManager.on('error', handleErrorMessage as MessageHandler);
 
+// Get DOM element for connection details panel
+const connectionDetails = document.getElementById('connection-details');
+
 // Connection status indicator functions
 function updateConnectionStatus(connected: boolean): void {
   if (!connectionStatus || !CONFIG.inverse_search_enabled) return;
   
-  if (connected) {
-    connectionStatus.className = 'connected';
-    connectionStatus.querySelector('.status-text')!.textContent = 'Connected';
-    connectionStatus.style.display = 'flex';
+  // Determine the state: connected, disconnected, or reload-needed
+  let stateClass: string;
+  let statusText: string;
+  
+  if (!connected) {
+    stateClass = 'disconnected';
+    statusText = 'Reconnect';
+  } else if (pdfChangedPending) {
+    stateClass = 'reload-needed';
+    statusText = 'Reload';
   } else {
-    connectionStatus.className = 'disconnected';
-    connectionStatus.querySelector('.status-text')!.textContent = 'Reconnect';
-    connectionStatus.style.display = 'flex';
+    stateClass = 'connected';
+    statusText = 'Connected';
   }
+  
+  connectionStatus.className = stateClass;
+  connectionStatus.querySelector('.status-text')!.textContent = statusText;
+  connectionStatus.style.display = 'flex';
+  
+  // Update details panel content
+  updateConnectionDetails(connected);
+}
+
+function updateConnectionDetails(connected: boolean): void {
+  if (!connectionDetails) return;
+  
+  // Update status
+  const statusEl = document.getElementById('detail-status');
+  if (statusEl) {
+    if (wsManager.connectionState === 'connecting') {
+      statusEl.textContent = 'Connecting...';
+      statusEl.className = 'detail-value status-connecting';
+    } else if (connected) {
+      statusEl.textContent = 'Connected';
+      statusEl.className = 'detail-value status-connected';
+    } else {
+      statusEl.textContent = 'Disconnected';
+      statusEl.className = 'detail-value status-disconnected';
+    }
+  }
+  
+  // Update reconnect attempts (exposed via WebSocketManager)
+  const reconnectsEl = document.getElementById('detail-reconnects');
+  if (reconnectsEl) {
+    const attempts = (wsManager as any).reconnectAttempts || 0;
+    reconnectsEl.textContent = attempts > 0 ? attempts.toString() : '-';
+  }
+  
+  // Update last ping time
+  const lastPingEl = document.getElementById('detail-last-ping');
+  if (lastPingEl) {
+    const lastPing = (wsManager as any).lastPingTime;
+    if (lastPing) {
+      const seconds = Math.floor((Date.now() - lastPing) / 1000);
+      if (seconds < 60) {
+        lastPingEl.textContent = `${seconds}s ago`;
+      } else {
+        const minutes = Math.floor(seconds / 60);
+        lastPingEl.textContent = `${minutes}m ago`;
+      }
+    } else {
+      lastPingEl.textContent = '-';
+    }
+  }
+  
+  // Update filename
+  const filenameEl = document.getElementById('detail-filename');
+  if (filenameEl) {
+    filenameEl.textContent = CONFIG.filename || '-';
+    filenameEl.title = CONFIG.filename || '';
+  }
+  
+  // Update modified time
+  const modifiedEl = document.getElementById('detail-modified');
+  if (modifiedEl) {
+    if (CONFIG.mtime && CONFIG.mtime > 0) {
+      const date = new Date(CONFIG.mtime * 1000);
+      modifiedEl.textContent = date.toLocaleString();
+    } else {
+      modifiedEl.textContent = '-';
+    }
+  }
+}
+
+function toggleDetailsPanel(): void {
+  if (!connectionDetails) return;
+  
+  detailsPanelVisible = !detailsPanelVisible;
+  if (detailsPanelVisible) {
+    connectionDetails.classList.add('visible');
+    // Refresh the data when opening
+    updateConnectionDetails(wsManager.isConnected);
+  } else {
+    connectionDetails.classList.remove('visible');
+  }
+}
+
+function hideDetailsPanel(): void {
+  if (!connectionDetails) return;
+  detailsPanelVisible = false;
+  connectionDetails.classList.remove('visible');
 }
 
 function hideConnectionStatus(): void {
@@ -120,6 +221,14 @@ if (connectionStatus) {
     if (connectionStatus.classList.contains('disconnected')) {
       // Navigate to auth page to get new token
       window.location.href = '/view';
+    } else if (connectionStatus.classList.contains('reload-needed')) {
+      // PDF has changed - trigger reload
+      pdfChangedPending = false;
+      updateConnectionStatus(true);
+      reloadPDF();
+    } else {
+      // Connected state - toggle details panel
+      toggleDetailsPanel();
     }
   });
 }
@@ -232,6 +341,14 @@ document.addEventListener('click', (event: MouseEvent) => {
   if (isClickOutsideTooltip(event.clientX, event.clientY)) {
     hideActiveTooltip();
   }
+  
+  // Hide connection details panel if clicking outside
+  if (detailsPanelVisible && connectionDetails && connectionStatus) {
+    const target = event.target as HTMLElement;
+    if (!connectionDetails.contains(target) && !connectionStatus.contains(target)) {
+      hideDetailsPanel();
+    }
+  }
 });
 
 // Simple visibility change handler - just reconnects WebSocket
@@ -266,7 +383,74 @@ window.addEventListener('pageshow', (event: PageTransitionEvent) => {
  * Handle SyncTeX message from WebSocket
  */
 function handleSyncTeXMessage(data: WebSocketMessage): void {
-  if (!data.page) return;
+  console.log('[handleSyncTeXMessage] Received:', {
+    page: data.page,
+    pdf_file: data.pdf_file,
+    pdf_mtime: data.pdf_mtime,
+    action: data.action
+  });
+  
+  if (!data.page) {
+    console.log('[handleSyncTeXMessage] No page data, returning');
+    return;
+  }
+  
+  // Check if the PDF file has changed in this sync message
+  const serverBasename = data.pdf_file;  // Now always basename from server
+  const serverMtime = data.pdf_mtime;
+  
+  // Capture old values before updating
+  const oldFilename = CONFIG.filename;
+  const oldMtime = CONFIG.mtime;
+  
+  console.log('[handleSyncTeXMessage] Change detection:', {
+    oldFilename,
+    oldMtime,
+    serverBasename,
+    serverMtime,
+    pdfChangedPending_before: pdfChangedPending
+  });
+  
+  // Always update CONFIG with new values
+  if (serverBasename) {
+    CONFIG.filename = serverBasename;
+  }
+  if (serverMtime) {
+    CONFIG.mtime = serverMtime;
+  }
+  
+  // Determine what changed
+  const filenameChanged = serverBasename && serverBasename !== oldFilename;
+  const mtimeChanged = serverMtime && serverMtime !== oldMtime;
+  
+  console.log('[handleSyncTeXMessage] Change results:', {
+    filenameChanged,
+    mtimeChanged,
+    'oldFilename === no-pdf-loaded': oldFilename === 'no-pdf-loaded'
+  });
+  
+  if (filenameChanged) {
+    // Different PDF file - show reload button
+    // Only exception: initial load (no PDF loaded yet)
+    if (oldFilename === 'no-pdf-loaded') {
+      console.log('[handleSyncTeXMessage] Initial load - calling reloadPDF()');
+      reloadPDF();
+    } else {
+      console.log('[handleSyncTeXMessage] Different PDF - setting pdfChangedPending=true');
+      pdfChangedPending = true;
+      updateConnectionStatus(wsManager.isConnected);
+    }
+    return;
+  }
+  
+  if (mtimeChanged) {
+    console.log('[handleSyncTeXMessage] Same file modified - calling reloadPDF()');
+    reloadPDF();
+    return;
+  }
+  
+  console.log('[handleSyncTeXMessage] PDF unchanged - applying sync position');
+  // PDF unchanged - apply the sync position
   applyStateUpdate({
     page: data.page,
     x: data.x,
@@ -328,13 +512,27 @@ function applyStateUpdate(data: StateUpdate, delay = 0, attempt = 0, isForwardSy
  * Handle reload message from WebSocket
  */
 function handleReloadMessage(data: WebSocketMessage): void {
+  console.log('[handleReloadMessage] Received:', {
+    pdf_file: data.pdf_file,
+    pdf_mtime: data.pdf_mtime
+  });
+  
   const reloadMtime = data.pdf_mtime;
+  const reloadFilename = data.pdf_file;
+  
   if (reloadMtime && reloadMtime > 0) {
     CONFIG.mtime = reloadMtime;
     // Update state manager immediately to prevent race condition with syncState
     // This ensures syncState() won't trigger another reload for the same mtime
     stateManager.updatePdfMtime(reloadMtime);
   }
+  
+  // Update filename if provided (from /api/load-pdf broadcast)
+  if (reloadFilename) {
+    console.log('[handleReloadMessage] Updating filename:', reloadFilename);
+    CONFIG.filename = reloadFilename;
+  }
+  
   reloadPDF();
 }
 
@@ -379,6 +577,12 @@ async function reloadPDF(): Promise<void> {
     // Log PDF load
     clientLogger.logPdfLoad(CONFIG.filename, CONFIG.mtime);
     
+    // Clear PDF changed flag since we've reloaded
+    pdfChangedPending = false;
+    
+    // Update state manager with new PDF mtime to prevent showing reload button again
+    stateManager.updatePdfMtime(CONFIG.mtime);
+    
     // Apply pending state update if exists (from syncState during reload)
     const pending = stateManager.pendingUpdate;
     if (pending) {
@@ -401,59 +605,115 @@ async function reloadPDF(): Promise<void> {
  * Tracks two separate timestamps:
  * - pdf_mtime: when the PDF file was last modified (requires reload)
  * - last_sync_time: when last forward sync occurred (requires scroll)
+ * 
+ * TODO: Refactor duplicate change detection logic with handleSyncTeXMessage.
+ * Both functions share ~15 lines of identical change detection logic.
+ * Consider extracting to a shared helper that returns {action: 'reload' | 'button' | 'none'}.
+ * However, this requires handling async/sync divergence and careful testing.
  */
 async function syncState(): Promise<void> {
+  console.log('[syncState] Starting, pdfChangedPending:', pdfChangedPending);
+  
+  // If WebSocket already detected this change, don't duplicate the action
+  if (pdfChangedPending) {
+    console.log('[syncState] pdfChangedPending is true, returning early');
+    return;  // Change already being handled by handleSyncTeXMessage
+  }
+  
   try {
     const res = await fetch('/state');
     const data: StateUpdate = await res.json();
     
-    // Check if PDF file has changed
-    const pdfChanged = stateManager.isPdfChanged(data);
+    console.log('[syncState] Received state:', {
+      pdf_basename: data.pdf_basename,
+      pdf_file: data.pdf_file,
+      pdf_mtime: data.pdf_mtime
+    });
     
-    // Check if there's a newer forward sync (scroll) to apply
-    const newSync = stateManager.isNewerSync(data);
+    // Get server values
+    const serverBasename = data.pdf_basename || data.pdf_file;
+    const serverMtime = data.pdf_mtime;
     
-    // Update file tracking info if changed
-    if (data.pdf_file && data.pdf_file !== CONFIG.filename) {
-      CONFIG.filename = data.pdf_file;
+    // Capture old values before updating
+    const oldFilename = CONFIG.filename;
+    const oldMtime = CONFIG.mtime;
+    
+    console.log('[syncState] Change detection:', {
+      oldFilename,
+      oldMtime,
+      serverBasename,
+      serverMtime,
+      noPdfMessage_visible: noPdfMessage?.style.display
+    });
+    
+    // Always update CONFIG with new values
+    if (serverBasename) {
+      CONFIG.filename = serverBasename;
+    }
+    if (serverMtime) {
+      CONFIG.mtime = serverMtime;
     }
     
-    if (pdfChanged && data.pdf_mtime) {
-      CONFIG.mtime = data.pdf_mtime;
-    }
+    // Determine what changed
+    const filenameChanged = serverBasename && serverBasename !== oldFilename;
+    const mtimeChanged = serverMtime && serverMtime !== oldMtime;
     
-    if (pdfChanged) {
-      // PDF has changed - need to reload
-      if (isLoadingPDF) {
-        // PDF is already loading, just store pending scroll for when it completes
-        if (newSync) {
-          stateManager.setPendingUpdate(data);
-        }
-        // Still update timestamps so we don't check again
-      } else {
-        // Not currently loading, proceed with reload
-        if (newSync) {
-          // Both PDF changed AND new sync exists: store scroll info for after reload
-          stateManager.setPendingUpdate(data);
-        }
-        stateManager.setPdfLoaded(true);
+    console.log('[syncState] Change results:', {
+      filenameChanged,
+      mtimeChanged,
+      'oldFilename === no-pdf-loaded': oldFilename === 'no-pdf-loaded'
+    });
+    
+    if (filenameChanged) {
+      // Different PDF file
+      // Check if this is the initial PDF load (no PDF loaded yet)
+      const noPdfPageShowing = noPdfMessage && noPdfMessage.style.display !== 'none';
+      if (noPdfPageShowing || oldFilename === 'no-pdf-loaded') {
+        console.log('[syncState] Initial load or no PDF showing - calling reloadPDF()');
         await reloadPDF();
+      } else {
+        console.log('[syncState] Different PDF - setting pdfChangedPending=true');
+        pdfChangedPending = true;
+        updateConnectionStatus(wsManager.isConnected);
       }
-    } else if (newSync) {
-      // Only scroll changed, PDF is same: just scroll to new position
+      
+      // Always update stateManager so we don't detect same change again
+      if (serverMtime) {
+        stateManager.updatePdfMtime(serverMtime);
+      }
+      return;
+    }
+    
+    if (mtimeChanged) {
+      console.log('[syncState] Same file modified - calling reloadPDF()');
+      await reloadPDF();
+      
+      // Update stateManager
+      if (serverMtime) {
+        stateManager.updatePdfMtime(serverMtime);
+      }
+      return;
+    }
+    
+    // PDF unchanged - check for newer forward sync to apply
+    const newSync = stateManager.isNewerSync(data);
+    console.log('[syncState] PDF unchanged, newSync:', newSync);
+    
+    if (newSync) {
+      console.log('[syncState] Applying newer sync position');
       stateManager.setPdfLoaded(true);
       applyStateUpdate(data, 0, 0, true);
     }
     
     // Update our tracked timestamps
-    if (data.pdf_mtime) {
-      stateManager.updatePdfMtime(data.pdf_mtime);
+    if (serverMtime) {
+      stateManager.updatePdfMtime(serverMtime);
     }
     if (data.last_sync_time) {
       stateManager.updateSyncTime(data);
     }
   } catch (e) {
-    console.error('Sync error', e);
+    console.error('[syncState] Error:', e);
   }
 }
 

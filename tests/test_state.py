@@ -64,7 +64,7 @@ class TestPDFState:
         assert result["pdf_mtime"] == 1234567890.5
 
     def test_to_dict_includes_pdf_file(self):
-        """Test that to_dict includes pdf_file field."""
+        """Test that to_dict includes pdf_file field (full path)."""
         state = PDFState()
         state.pdf_file = Path("/path/to/test.pdf")
         
@@ -72,6 +72,26 @@ class TestPDFState:
         
         assert "pdf_file" in result
         assert result["pdf_file"] == "/path/to/test.pdf"
+
+    def test_to_dict_includes_pdf_basename(self):
+        """Test that to_dict includes pdf_basename field."""
+        state = PDFState()
+        state.pdf_file = Path("/path/to/test.pdf")
+        
+        result = state.to_dict()
+        
+        assert "pdf_basename" in result
+        assert result["pdf_basename"] == "test.pdf"
+
+    def test_to_dict_pdf_basename_none_when_no_file(self):
+        """Test that pdf_basename is None when no PDF file is set."""
+        state = PDFState()
+        state.pdf_file = None
+        
+        result = state.to_dict()
+        
+        assert "pdf_basename" in result
+        assert result["pdf_basename"] is None
 
     def test_to_dict_includes_pdf_loaded(self):
         """Test that to_dict includes pdf_loaded field."""
