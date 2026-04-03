@@ -41,12 +41,12 @@ tests/js/*.d.ts.map
 # Keep vitest config (needed for tests)
 !vitest.config.js
 
-# LaTeX build artifacts
+# LaTeX build artifacts (except examples folder synctex files)
 *.aux
 *.fdb_latexmk
 *.fls
 *.log
-*.synctex.gz
+!examples/*.synctex.gz
 *.synctex(busy)
 *.out
 *.toc
