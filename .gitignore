@@ -48,7 +48,6 @@ tests/js/*.d.ts.map
 *.fdb_latexmk
 *.fls
 *.log
-*.synctex.gz
 *.synctex(busy)
 *.out
 *.toc
