@@ -31,7 +31,7 @@ Complete guide for using EntangledPdf to view and synchronize PDFs with LaTeX ed
 pip install entangledpdf
 ```
 
-This installs the `pdf-server` command globally.
+This installs the `entangle-pdf` command globally.
 
 #### Method 2: Install from Source (For Development)
 
@@ -61,7 +61,7 @@ npm install
 npm run build
 ```
 
-Then use `./bin/pdf-server` instead of `pdf-server`.
+Then use `./bin/entangle-pdf` instead of `entangle-pdf`.
 
 ---
 
@@ -119,7 +119,7 @@ nvim() {
 **Neovim Configuration** (init.lua):
 ```lua
 vim.g.vimtex_view_method = 'general'
-vim.g.vimtex_view_general_viewer = 'pdf-server'
+vim.g.vimtex_view_general_viewer = 'entangle-pdf'
 vim.g.vimtex_view_general_options = 'sync @pdf @line:@col:@tex'
 ```
 
@@ -139,7 +139,7 @@ vim() {
 **Vim Configuration** (.vimrc):
 ```vim
 let g:vimtex_view_method = 'general'
-let g:vimtex_view_general_viewer = 'pdf-server'
+let g:vimtex_view_general_viewer = 'entangle-pdf'
 let g:vimtex_view_general_options = 'sync @pdf @line:@col:@tex'
 ```
 
@@ -156,7 +156,7 @@ EntangledPdf uses HTTPS by default with self-signed certificates. For production
 
 **Using your own certificates:**
 ```bash
-pdf-server start \
+entangle-pdf start \
   --ssl-cert /path/to/cert.pem \
   --ssl-key /path/to/key.pem
 ```
@@ -170,14 +170,14 @@ python -m entangledpdf.certs generate \
 
 **Example with Let's Encrypt:**
 ```bash
-pdf-server start \
+entangle-pdf start \
   --ssl-cert /etc/letsencrypt/live/yourdomain.com/fullchain.pem \
   --ssl-key /etc/letsencrypt/live/yourdomain.com/privkey.pem
 ```
 
 **Example with Tailscale:**
 ```bash
-pdf-server start --inverse-search-nvim \
+entangle-pdf start --inverse-search-nvim \
   --ssl-cert /etc/ntfy/certs/yourmachine.your-tailnet.ts.net.crt \
   --ssl-key /etc/ntfy/certs/yourmachine.your-tailnet.ts.net.key
 ```
@@ -191,19 +191,19 @@ pdf-server start --inverse-search-nvim \
 **Basic usage:**
 ```bash
 # HTTPS mode, no inverse search
-pdf-server start
+entangle-pdf start
 
 # With inverse search for Neovim
-pdf-server start --inverse-search-nvim
+entangle-pdf start --inverse-search-nvim
 
 # With inverse search for Vim
-pdf-server start --inverse-search-vim
+entangle-pdf start --inverse-search-vim
 
 # Custom port
-pdf-server start --port 9000
+entangle-pdf start --port 9000
 
 # Debug mode (verbose logging)
-pdf-server start --verbose
+entangle-pdf start --verbose
 ```
 
 **On startup, you'll see:**
@@ -228,17 +228,17 @@ Copy the token to your browser to enable inverse search
 
 **Basic PDF loading:**
 ```bash
-pdf-server sync document.pdf
+entangle-pdf sync document.pdf
 ```
 
 **With forward search (jump to specific location):**
 ```bash
-pdf-server sync document.pdf 42:5:chapter.tex
+entangle-pdf sync document.pdf 42:5:chapter.tex
 ```
 
 **Custom port:**
 ```bash
-pdf-server sync document.pdf --port 9000
+entangle-pdf sync document.pdf --port 9000
 ```
 
 **Using VimTeX:**
@@ -347,7 +347,7 @@ Jump from the PDF back to your editor:
 
 **Solution:** This is expected! You need to load a PDF from your editor or CLI:
 ```bash
-pdf-server sync your-document.pdf
+entangle-pdf sync your-document.pdf
 ```
 
 ### "nvr: no server found" / Inverse Search Not Working
@@ -394,13 +394,13 @@ pdf-server sync your-document.pdf
    ```
 
 2. **Mismatched keys:** Server and client must use the same key
-   - Check server: `pdf-server status`
+   - Check server: `entangle-pdf status`
    - Check client: `echo $PDF_SERVER_API_KEY`
 
 3. **Server not restarted:** After setting the environment variable:
    ```bash
-   pdf-server stop
-   pdf-server start --inverse-search-nvim
+   entangle-pdf stop
+   entangle-pdf start --inverse-search-nvim
    ```
 
 ### SSL Certificate Warnings
@@ -414,7 +414,7 @@ pdf-server sync your-document.pdf
 
 2. **Use proper certificates** (recommended):
    ```bash
-   pdf-server start \
+   entangle-pdf start \
      --ssl-cert /path/to/valid-cert.pem \
      --ssl-key /path/to/valid-key.pem
    ```
@@ -468,11 +468,11 @@ Then restart your editor with the socket configuration.
 1. **Check network stability**
 2. **Increase timeout** (if behind proxy):
    ```bash
-   pdf-server start --websocket-timeout 60
+   entangle-pdf start --websocket-timeout 60
    ```
 3. **Use HTTP mode** (less secure, for testing only):
    ```bash
-   pdf-server start --http
+   entangle-pdf start --http
    ```
 
 ---
@@ -484,7 +484,7 @@ Then restart your editor with the socket configuration.
 For local-only development without HTTPS:
 
 ```bash
-pdf-server start --http
+entangle-pdf start --http
 ```
 
 **Limitations:**
@@ -693,7 +693,7 @@ Send forward search update.
 
 ### Q: Why does the browser show "No PDF loaded"?
 
-**A:** This is normal! You need to load a PDF from your editor or CLI. The browser viewer waits for a PDF to be loaded via `pdf-server sync`.
+**A:** This is normal! You need to load a PDF from your editor or CLI. The browser viewer waits for a PDF to be loaded via `entangle-pdf sync`.
 
 ### Q: Can I use EntangledPdf with Emacs?
 
@@ -716,13 +716,13 @@ Send forward search update.
 
 **A:** Yes, but inverse search will be disabled for security reasons:
 ```bash
-pdf-server start --http
+entangle-pdf start --http
 ```
 
 ### Q: How do I debug connection issues?
 
 **A:** 
-1. Start server with verbose logging: `pdf-server start --verbose`
+1. Start server with verbose logging: `entangle-pdf start --verbose`
 2. Open browser console (F12) to see WebSocket messages
 3. Check the connection status button in the PDF viewer
 4. Verify `PDF_SERVER_API_KEY` is set on both sides
@@ -751,11 +751,11 @@ pdf-server start --http
 
 **A:**
 ```bash
-pdf-server stop
+entangle-pdf stop
 # Kill any remaining processes
-killall -f "pdf-server"
+killall -f "entangle-pdf"
 # Restart
-pdf-server start --inverse-search-nvim
+entangle-pdf start --inverse-search-nvim
 ```
 
 ### Q: Where are the log files?

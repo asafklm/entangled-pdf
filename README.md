@@ -46,7 +46,7 @@ npm install
 npm run build  # Compile TypeScript to JavaScript
 ```
 
-> **Note:** After `pip install .`, the command `pdf-server` will be available in your PATH. If using the development approach (without pip install), use `./bin/pdf-server` instead.
+> **Note:** After `pip install .`, the command `entangle-pdf` will be available in your PATH. If using the development approach (without pip install), use `./bin/entangle-pdf` instead.
 
 ### Setup
 
@@ -112,14 +112,14 @@ vim() {
 **Neovim** (init.lua):
 ```lua
 vim.g.vimtex_view_method = 'general'
-vim.g.vimtex_view_general_viewer = 'pdf-server'
+vim.g.vimtex_view_general_viewer = 'entangle-pdf'
 vim.g.vimtex_view_general_options = 'sync @pdf @line:@col:@tex'
 ```
 
 **Vim** (.vimrc):
 ```vim
 let g:vimtex_view_method = 'general'
-let g:vimtex_view_general_viewer = 'pdf-server'
+let g:vimtex_view_general_viewer = 'entangle-pdf'
 let g:vimtex_view_general_options = 'sync @pdf @line:@col:@tex'
 ```
 
@@ -136,19 +136,19 @@ source ~/.bashrc  # or ~/.zshrc
 
 ```bash
 # Basic start (HTTPS mode, no inverse search)
-pdf-server start
+entangle-pdf start
 
 # Start with inverse search for Neovim
-pdf-server start --inverse-search-nvim
+entangle-pdf start --inverse-search-nvim
 
 # Start with inverse search for Vim
-pdf-server start --inverse-search-vim
+entangle-pdf start --inverse-search-vim
 
 # Start on different port
-pdf-server start --port 9000
+entangle-pdf start --port 9000
 
 # Start in foreground (for debugging)
-pdf-server start --verbose
+entangle-pdf start --verbose
 ```
 
 When you start the server, you'll see:
@@ -182,7 +182,7 @@ EntangledPdf uses HTTPS by default with self-signed certificates. To use your ow
 
 ```bash
 # Specify certificates at runtime
-pdf-server start --ssl-cert /path/to/cert.pem --ssl-key /path/to/key.pem
+entangle-pdf start --ssl-cert /path/to/cert.pem --ssl-key /path/to/key.pem
 
 # Or install certificates to default location
 python -m entangledpdf.certs generate --cert /path/to/cert.pem --key /path/to/key.pem
@@ -190,7 +190,7 @@ python -m entangledpdf.certs generate --cert /path/to/cert.pem --key /path/to/ke
 
 **Example with Tailscale certificates:**
 ```bash
-pdf-server start --inverse-search-nvim \
+entangle-pdf start --inverse-search-nvim \
   --ssl-cert /etc/ntfy/certs/elul.asymptote-cirius.ts.net.crt \
   --ssl-key /etc/ntfy/certs/elul.asymptote-cirius.ts.net.key
 ```
@@ -201,7 +201,7 @@ You can obtain certificates from [Let's Encrypt](https://letsencrypt.org/) or [T
 
 For local-only development without HTTPS:
 ```bash
-pdf-server start --http
+entangle-pdf start --http
 ```
 
 Note: Inverse search is disabled in HTTP mode for security.
@@ -243,12 +243,12 @@ Trigger inverse search at the current position to jump to the corresponding sour
 
 ### VimTeX Integration
 
-EntangledPdf integrates seamlessly with VimTeX using the `pdf-server sync` CLI tool.
+EntangledPdf integrates seamlessly with VimTeX using the `entangle-pdf sync` CLI tool.
 
 **How It Works:**
 
 When you press `<leader>lv`:
-1. VimTeX calls: `pdf-server sync @pdf @line:@col:@tex`
+1. VimTeX calls: `entangle-pdf sync @pdf @line:@col:@tex`
 2. Server converts line:column to PDF coordinates via SyncTeX
 3. Browser scrolls to position and shows red dot marker
 4. When you Shift+Click in the PDF, browser sends coordinates to server
@@ -260,23 +260,23 @@ When you press `<leader>lv`:
 
 ```bash
 # Load PDF without forward search
-pdf-server sync document.pdf
+entangle-pdf sync document.pdf
 
 # Load PDF with forward search (line:column:texfile)
-pdf-server sync document.pdf 42:5:chapter.tex
+entangle-pdf sync document.pdf 42:5:chapter.tex
 
 # Custom port
-pdf-server sync document.pdf --port 9000
+entangle-pdf sync document.pdf --port 9000
 
 # Custom API key (if not using env var)
-pdf-server sync document.pdf --api-key "your-secret-key"
+entangle-pdf sync document.pdf --api-key "your-secret-key"
 ```
 
 **Server Management:**
 
 ```bash
 # Check server status
-pdf-server status
+entangle-pdf status
 ```
 
 ### Inverse Search (Backward Search)
@@ -450,7 +450,7 @@ killall nvim  # Warning: closes ALL nvim instances
 EntangledPdf/
 ├── main.py                 # Server entry point
 ├── bin/
-│   └── pdf-server         # Server lifecycle management
+│   └── entangle-pdf         # Server lifecycle management
 ├── entangledpdf/
 │   ├── config.py          # Configuration management
 │   ├── connection_manager.py  # WebSocket connections
@@ -478,7 +478,7 @@ python -m pytest tests/ -v
 python -m pytest tests/test_config.py -v                              # Configuration tests
 python -m pytest tests/test_sync_unit.py -v                           # sync.py unit tests  
 python -m pytest tests/test_sync_e2e_subprocess.py -v                 # E2E tests with real server
-python -m pytest tests/test_sync_client_utils.py -v                   # pdf-server sync client tests
+python -m pytest tests/test_sync_client_utils.py -v                   # entangle-pdf sync client tests
 
 # Run specific test
 python -m pytest tests/test_config.py::TestSettings::test_default_values -v

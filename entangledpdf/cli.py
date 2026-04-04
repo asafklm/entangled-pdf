@@ -1,6 +1,6 @@
-"""CLI entry point for pdf-server command.
+"""CLI entry point for entangle-pdf command.
 
-This module provides the main entry point for the pdf-server CLI tool,
+This module provides the main entry point for the entangle-pdf CLI tool,
 which manages the PDF server lifecycle.
 """
 
@@ -80,7 +80,7 @@ def cmd_start(args):
     # Check if server already running
     if is_server_running(port):
         print(f"Error: Server already running on port {port}", file=sys.stderr)
-        print(f"Use 'pdf-server status --port {port}' to see details", file=sys.stderr)
+        print(f"Use 'entangle-pdf status --port {port}' to see details", file=sys.stderr)
         print(f"Press Ctrl+C to stop the running server", file=sys.stderr)
         return 1
     
@@ -270,7 +270,7 @@ def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
         description="EntangledPdf management tool (foreground mode only)",
-        prog="pdf-server"
+        prog="entangle-pdf"
     )
     
     parser.add_argument(

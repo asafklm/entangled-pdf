@@ -51,7 +51,7 @@ dev = [
 ]
 
 [project.scripts]
-pdf-server = "entangledpdf.cli:main"
+entangle-pdf = "entangledpdf.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/yourusername/pdfserver"

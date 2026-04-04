@@ -1,6 +1,6 @@
-"""End-to-end integration tests for pdf-server sync CLI with real server subprocess.
+"""End-to-end integration tests for entangle-pdf sync CLI with real server subprocess.
 
-These tests spawn actual pdf-server and pdf-server sync processes to test real-world
+These tests spawn actual entangle-pdf and entangle-pdf sync processes to test real-world
 usage without any mocking. Uses self-signed SSL certificates on port 18080.
 
 Environment Variables:
@@ -68,7 +68,7 @@ def test_certs(tmp_path_factory) -> Generator[tuple[Path, Path], None, None]:
 
 @pytest.fixture(scope="module")
 def running_server(test_certs, tmp_path_factory, request):
-    """Start a real pdf-server process for end-to-end testing.
+    """Start a real entangle-pdf process for end-to-end testing.
     
     This fixture now includes robust cleanup:
     - Tracks process in temp file for zombie detection
@@ -211,10 +211,10 @@ def running_server(test_certs, tmp_path_factory, request):
 
 
 class TestSyncRemotePdfSubprocess:
-    """End-to-end tests using real subprocesses for pdf-server sync."""
+    """End-to-end tests using real subprocesses for entangle-pdf sync."""
 
     def test_sync_remote_pdf_loads_pdf_successfully(self, running_server, tmp_path):
-        """Real pdf-server sync call loads PDF into real server."""
+        """Real entangle-pdf sync call loads PDF into real server."""
         # Create a test PDF file
         pdf_file = tmp_path / "test_document.pdf"
         pdf_file.write_bytes(b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n>>\nendobj\n")
@@ -229,7 +229,7 @@ class TestSyncRemotePdfSubprocess:
             "--api-key", running_server["api_key"],
         ]
         
-        # Run pdf-server sync
+        # Run entangle-pdf sync
         result = subprocess.run(
             cmd,
             capture_output=True,
@@ -253,7 +253,7 @@ class TestSyncRemotePdfSubprocess:
         assert Path(response["pdf_file"]).name == pdf_file.name
 
     def test_sync_remote_pdf_with_synctex_forward(self, running_server, tmp_path):
-        """Real pdf-server sync with synctex info performs search."""
+        """Real entangle-pdf sync with synctex info performs search."""
         # Use the example PDF which has synctex data
         project_root = Path(__file__).parent.parent
         example_pdf = project_root / "examples" / "example.pdf"
@@ -663,7 +663,7 @@ class TestParseSynctexForwardInE2E:
         assert result.returncode == 0
         
         # Use parsed values in forward search
-        # Note: pdf-server sync takes synctex info as positional arg
+        # Note: entangle-pdf sync takes synctex info as positional arg
         synctex_arg = f"{line}:{col}:{tex}"
         
         forward_cmd = [

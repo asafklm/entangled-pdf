@@ -1,4 +1,4 @@
-"""Unit tests for pdf-server sync client utility functions.
+"""Unit tests for entangle-pdf sync client utility functions.
 
 Tests the utility functions from entangledpdf/sync that support the 
 CLI client functionality (argument parsing, URL construction, etc.).

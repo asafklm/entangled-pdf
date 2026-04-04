@@ -2,7 +2,7 @@
 
 This module provides utility functions for loading PDFs and performing
 forward search via SyncTeX. These functions are used by the 
-pdf-server sync CLI command.
+entangle-pdf sync CLI command.
 """
 
 import http.client

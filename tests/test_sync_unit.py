@@ -1,6 +1,6 @@
 """Unit tests for entangledpdf/sync.py client functions.
 
-Tests the pdf-server sync CLI client functions without requiring a running server.
+Tests the entangle-pdf sync CLI client functions without requiring a running server.
 Uses mocking to verify correct HTTP requests are constructed.
 """
 
@@ -317,7 +317,7 @@ class TestMainArgumentParsing:
         # Clear environment variable
         monkeypatch.delenv("PDF_SERVER_API_KEY", raising=False)
 
-        with patch('sys.argv', ['pdf-server', 'sync', str(pdf_file)]):
+        with patch('sys.argv', ['entangle-pdf', 'sync', str(pdf_file)]):
             result = main()
             assert result == 1
 
@@ -331,7 +331,7 @@ class TestMainArgumentParsing:
         with patch('entangledpdf.cli.load_pdf') as mock_load:
             mock_load.return_value = {"pdf_file": str(pdf_file)}
 
-            with patch('sys.argv', ['pdf-server', 'sync', str(pdf_file)]):
+            with patch('sys.argv', ['entangle-pdf', 'sync', str(pdf_file)]):
                 result = main()
                 assert result == 0
                 mock_load.assert_called_once()
@@ -344,7 +344,7 @@ class TestMainArgumentParsing:
         with patch('entangledpdf.cli.load_pdf') as mock_load:
             mock_load.return_value = {"pdf_file": str(pdf_file)}
 
-            with patch('sys.argv', ['pdf-server', 'sync', '--api-key', 'flag-key', str(pdf_file)]):
+            with patch('sys.argv', ['entangle-pdf', 'sync', '--api-key', 'flag-key', str(pdf_file)]):
                 result = main()
                 assert result == 0
                 mock_load.assert_called_once()
@@ -362,7 +362,7 @@ class TestMainArgumentParsing:
         with patch('entangledpdf.cli.load_pdf') as mock_load:
             mock_load.return_value = {"pdf_file": str(pdf_file)}
 
-            with patch('sys.argv', ['pdf-server', 'sync', '--port', '9000', str(pdf_file)]):
+            with patch('sys.argv', ['entangle-pdf', 'sync', '--port', '9000', str(pdf_file)]):
                 result = main()
                 assert result == 0
                 mock_load.assert_called_once()
@@ -382,7 +382,7 @@ class TestMainArgumentParsing:
         with patch('entangledpdf.cli.load_pdf') as mock_load:
             mock_load.return_value = {"pdf_file": str(pdf_file)}
 
-            with patch('sys.argv', ['pdf-server', 'sync', '--http', str(pdf_file)]):
+            with patch('sys.argv', ['entangle-pdf', 'sync', '--http', str(pdf_file)]):
                 result = main()
                 assert result == 0
                 mock_load.assert_called_once()
@@ -406,7 +406,7 @@ class TestMainArgumentParsing:
             mock_forward.return_value = {"status": "success"}
 
             with patch('sys.argv', [
-                'pdf-server',
+                'entangle-pdf',
                 'sync',
                 str(pdf_file),
                 f'42:5:{tex_file}'
@@ -428,7 +428,7 @@ class TestMainArgumentParsing:
 
         monkeypatch.setenv("PDF_SERVER_API_KEY", "test-key")
 
-        with patch('sys.argv', ['pdf-server', 'sync', str(nonexistent)]):
+        with patch('sys.argv', ['entangle-pdf', 'sync', str(nonexistent)]):
             result = main()
             assert result == 1
 
@@ -440,7 +440,7 @@ class TestMainArgumentParsing:
         monkeypatch.setenv("PDF_SERVER_API_KEY", "test-key")
 
         with patch('entangledpdf.cli.load_pdf', side_effect=Exception("Network error")):
-            with patch('sys.argv', ['pdf-server', 'sync', str(pdf_file)]):
+            with patch('sys.argv', ['entangle-pdf', 'sync', str(pdf_file)]):
                 result = main()
                 assert result == 1
 
@@ -454,7 +454,7 @@ class TestMainArgumentParsing:
         with patch('entangledpdf.cli.load_pdf') as mock_load:
             mock_load.return_value = {"pdf_file": str(pdf_file), "status": "loaded"}
 
-            with patch('sys.argv', ['pdf-server', 'sync', '-v', str(pdf_file)]):
+            with patch('sys.argv', ['entangle-pdf', 'sync', '-v', str(pdf_file)]):
                 result = main()
                 captured = capsys.readouterr()
                 assert result == 0

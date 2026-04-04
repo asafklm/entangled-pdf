@@ -31,16 +31,16 @@ See [Debugging Process for Complex Issues](#debugging-process-for-complex-issues
 ```bash
 # Python (using project venv)
 # Start server with inverse search for Neovim
-./bin/pdf-server start --inverse-search-nvim
+./bin/entangle-pdf start --inverse-search-nvim
 
 # Start server on custom port
-./bin/pdf-server start --port 9000
+./bin/entangle-pdf start --port 9000
 
 # Check server status (also shows authentication token)
-./bin/pdf-server status
+./bin/entangle-pdf status
 
 # Load PDF with forward search
-./bin/pdf-server sync document.pdf 42:5:chapter.tex
+./bin/entangle-pdf sync document.pdf 42:5:chapter.tex
 
 # Run server directly (foreground mode for debugging)
 ./bin/python main.py --inverse-search-nvim --foreground
@@ -81,7 +81,7 @@ Server running on port 8431
   URL: https://localhost:8431/view
 ```
 
-The token is displayed by the server on startup and can also be retrieved via `pdf-server status`.
+The token is displayed by the server on startup and can also be retrieved via `entangle-pdf status`.
 
 ## Python Code Style
 
@@ -204,7 +204,7 @@ class ConnectionManager:
 ./
 ├── main.py                    # Server entry point
 ├── bin/
-│   └── pdf-server            # Server lifecycle management (start/stop/status/sync)
+│   └── entangle-pdf            # Server lifecycle management (start/stop/status/sync)
 ├── src/
 │   ├── config.py              # Pydantic settings
 │   ├── connection_manager.py   # WebSocket connections

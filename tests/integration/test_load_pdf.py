@@ -126,7 +126,7 @@ class TestLoadPdfEndpoint:
 
         try:
             # Create a relative path from CWD to the temp file
-            # This simulates what pdf-server sync would do
+            # This simulates what entangle-pdf sync would do
             import os
             rel_path = os.path.relpath(temp_pdf_file, os.getcwd())
 

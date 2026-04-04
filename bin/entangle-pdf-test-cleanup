@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Cleanup utility for orphaned pdf-server test processes.
+"""Cleanup utility for orphaned entangle-pdf test processes.
 
-This script identifies and kills zombie pdf-server processes that were
+This script identifies and kills zombie entangle-pdf processes that were
 left behind by interrupted or crashed test runs. It is safe to run
 as it will NOT kill:
-- Production pdf-server instances (on standard port 8431)
+- Production entangle-pdf instances (on standard port 8431)
 - Servers running without test certificates
 - Servers not matching the test port range pattern
 
 Usage:
-    ./bin/pdf-server-test-cleanup          # Clean up all zombie test processes
-    ./bin/pdf-server-test-cleanup --dry-run # Show what would be killed without killing
-    ./bin/pdf-server-test-cleanup --force   # Skip confirmation prompts
+    ./bin/entangle-pdf-test-cleanup          # Clean up all zombie test processes
+    ./bin/entangle-pdf-test-cleanup --dry-run # Show what would be killed without killing
+    ./bin/entangle-pdf-test-cleanup --force   # Skip confirmation prompts
 
 Returns:
     0 if no zombies found or all cleaned up successfully
@@ -81,13 +81,13 @@ def is_production_process(cmdline: str) -> bool:
 
 
 def find_zombie_processes() -> List[Tuple[int, str]]:
-    """Find all orphaned pdf-server test processes."""
+    """Find all orphaned entangle-pdf test processes."""
     zombies = []
     
     try:
-        # Get all python processes running main.py or pdf-server
+        # Get all python processes running main.py or entangle-pdf
         result = subprocess.run(
-            ["pgrep", "-a", "-f", r"python.*main\.py|pdf-server"],
+            ["pgrep", "-a", "-f", r"python.*main\.py|entangle-pdf"],
             capture_output=True,
             text=True
         )
@@ -142,7 +142,7 @@ def kill_process(pid: int, signal_type: int = signal.SIGTERM) -> bool:
 
 def cleanup_zombies(dry_run: bool = False, force: bool = False) -> int:
     """Clean up zombie processes. Returns exit code."""
-    print("Scanning for orphaned pdf-server test processes...")
+    print("Scanning for orphaned entangle-pdf test processes...")
     
     zombies = find_zombie_processes()
     
@@ -226,7 +226,7 @@ def cleanup_zombies(dry_run: bool = False, force: bool = False) -> int:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Clean up orphaned pdf-server test processes",
+        description="Clean up orphaned entangle-pdf test processes",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

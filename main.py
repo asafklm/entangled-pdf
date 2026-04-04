@@ -128,7 +128,7 @@ def parse_args() -> argparse.Namespace:
     """
     parser = argparse.ArgumentParser(
         description="EntangledPdf - Real-time PDF synchronization server",
-        epilog="PDF files are loaded dynamically via the pdf-server sync command. "
+        epilog="PDF files are loaded dynamically via the entangle-pdf sync command. "
                "Server can be started without a PDF file."
     )
     
@@ -297,7 +297,7 @@ def main() -> None:
         pdf_state.inverse_search_enabled = False
     
     logger.info(f"Starting EntangledPdf on {settings.host}:{settings.port}")
-    logger.info("No PDF loaded - waiting for pdf-server sync to load a PDF")
+    logger.info("No PDF loaded - waiting for entangle-pdf sync to load a PDF")
     
     # Print startup banner to stdout (visible before daemonization)
     if ssl_config and pdf_state.inverse_search_enabled:

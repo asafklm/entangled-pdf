@@ -7,7 +7,7 @@ pyvenv.cfg
 
 # But keep the remote_pdf CLI tool (not part of venv)
 !bin/remote_pdf
-!bin/pdf-server-test-cleanup
+!bin/entangle-pdf-test-cleanup
 
 # Python cache
 __pycache__/

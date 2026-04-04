@@ -13,10 +13,10 @@ EntangledPdf implements a **hybrid HTTP/WebSocket protocol** for LaTeX PDF synch
 
 ### Editor → Server: HTTP POST `/webhook/update`
 
-The `pdf-server sync` command sends forward sync requests via HTTP:
+The `entangle-pdf sync` command sends forward sync requests via HTTP:
 
 ```bash
-pdf-server sync document.pdf 42:5:chapter.tex
+entangle-pdf sync document.pdf 42:5:chapter.tex
 ```
 
 **Why HTTP for Editor Communication?**
