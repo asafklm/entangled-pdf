@@ -95,7 +95,7 @@ from fastapi import FastAPI, HTTPException
 from pathlib import Path
 from typing import Set, Optional
 
-from src.config import init_settings
+from entangledpdf.config import init_settings
 ```
 - Group: stdlib → third-party → local
 - Use absolute imports, alphabetical within groups
@@ -205,7 +205,7 @@ class ConnectionManager:
 ├── main.py                    # Server entry point
 ├── bin/
 │   └── entangle-pdf            # Server lifecycle management (start/stop/status/sync)
-├── src/
+├── entangledpdf/
 │   ├── config.py              # Pydantic settings
 │   ├── connection_manager.py   # WebSocket connections
 │   ├── logging_config.py       # XDG-compliant logging setup
