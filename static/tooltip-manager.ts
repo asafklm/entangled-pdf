@@ -1,5 +1,5 @@
 /**
- * PdfServer Viewer - Tooltip Manager
+ * EntangledPdf Viewer - Tooltip Manager
  *
  * Manages tooltip creation, positioning, and lifecycle.
  */

@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from pdfserver.config import get_settings
+from entangledpdf.config import get_settings
 from tests.integration.helpers import MockWebSocket
 
 
@@ -210,7 +210,7 @@ class TestTypeScriptInterfaceContracts:
     @pytest.mark.asyncio
     async def test_websocket_message_format_matches_interface(self, test_client, reset_state, reset_connections, mock_synctex):
         """Test that WebSocket message format matches StateUpdate interface."""
-        from pdfserver.connection_manager import manager
+        from entangledpdf.connection_manager import manager
         
         client = MockWebSocket()
         

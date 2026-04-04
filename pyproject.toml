@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pdfserver"
+name = "entangledpdf"
 version = "1.0.0"
 description = "FastAPI-based PDF server with real-time sync and SyncTeX integration for LaTeX workflows"
 readme = "README.md"
@@ -51,7 +51,7 @@ dev = [
 ]
 
 [project.scripts]
-pdf-server = "pdfserver.cli:main"
+pdf-server = "entangledpdf.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/yourusername/pdfserver"
@@ -60,7 +60,7 @@ Issues = "https://github.com/yourusername/pdfserver/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["pdfserver*"]
+include = ["entangledpdf*"]
 
 [tool.setuptools.package-data]
 "*" = ["*.html", "*.js", "*.css", "*.ico", "*.json"]

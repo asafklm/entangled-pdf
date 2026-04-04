@@ -3,7 +3,7 @@
 import time
 from pathlib import Path
 
-from pdfserver.state import PDFState, pdf_state
+from entangledpdf.state import PDFState, pdf_state
 
 
 class TestPDFState:

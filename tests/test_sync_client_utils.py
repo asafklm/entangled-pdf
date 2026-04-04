@@ -1,13 +1,13 @@
 """Unit tests for pdf-server sync client utility functions.
 
-Tests the utility functions from pdfserver/sync that support the 
+Tests the utility functions from entangledpdf/sync that support the 
 CLI client functionality (argument parsing, URL construction, etc.).
 """
 
 import pytest
 from pathlib import Path
 
-from pdfserver.sync import parse_synctex_forward, get_server_url
+from entangledpdf.sync import parse_synctex_forward, get_server_url
 
 
 class TestParseSynctexForward:

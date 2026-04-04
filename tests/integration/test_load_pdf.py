@@ -11,9 +11,9 @@ import pytest
 import pytest_asyncio
 from pathlib import Path
 
-from pdfserver.config import get_settings
-from pdfserver.state import pdf_state
-from pdfserver.connection_manager import manager
+from entangledpdf.config import get_settings
+from entangledpdf.state import pdf_state
+from entangledpdf.connection_manager import manager
 from tests.integration.helpers import MockWebSocket
 
 

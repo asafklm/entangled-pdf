@@ -12,9 +12,9 @@ from typing import Optional
 from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import JSONResponse
 
-from pdfserver.config import get_settings
-from pdfserver.connection_manager import manager
-from pdfserver.state import pdf_state
+from entangledpdf.config import get_settings
+from entangledpdf.connection_manager import manager
+from entangledpdf.state import pdf_state
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

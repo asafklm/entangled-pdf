@@ -1,5 +1,5 @@
 /**
- * PdfServer Viewer JavaScript
+ * EntangledPdf Viewer JavaScript
  *
  * Handles PDF rendering, WebSocket communication, and SyncTeX synchronization.
  * Refactored version using modular architecture.

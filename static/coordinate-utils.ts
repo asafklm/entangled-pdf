@@ -1,5 +1,5 @@
 /**
- * PdfServer Viewer - Coordinate Utilities
+ * EntangledPdf Viewer - Coordinate Utilities
  *
  * PDF/CSS coordinate conversion utilities.
  */

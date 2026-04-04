@@ -1,6 +1,6 @@
-# PdfServer User Manual
+# EntangledPdf User Manual
 
-Complete guide for using PdfServer to view and synchronize PDFs with LaTeX editing workflows.
+Complete guide for using EntangledPdf to view and synchronize PDFs with LaTeX editing workflows.
 
 ## Table of Contents
 
@@ -28,7 +28,7 @@ Complete guide for using PdfServer to view and synchronize PDFs with LaTeX editi
 #### Method 1: Install from PyPI (Recommended for Users)
 
 ```bash
-pip install pdfserver
+pip install entangledpdf
 ```
 
 This installs the `pdf-server` command globally.
@@ -37,8 +37,8 @@ This installs the `pdf-server` command globally.
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/pdfserver.git
-cd pdfserver
+git clone https://github.com/yourusername/entangledpdf.git
+cd entangledpdf
 
 # Install Python package
 pip install .
@@ -69,7 +69,7 @@ Then use `./bin/pdf-server` instead of `pdf-server`.
 
 ### 1. API Key Configuration (Required)
 
-PdfServer requires an API key for authentication between the server and client.
+EntangledPdf requires an API key for authentication between the server and client.
 
 **Generate a secure key:**
 
@@ -152,7 +152,7 @@ source ~/.bashrc  # or ~/.zshrc
 
 ### 3. SSL Certificates (Optional)
 
-PdfServer uses HTTPS by default with self-signed certificates. For production use or to avoid browser warnings, use proper certificates:
+EntangledPdf uses HTTPS by default with self-signed certificates. For production use or to avoid browser warnings, use proper certificates:
 
 **Using your own certificates:**
 ```bash
@@ -163,7 +163,7 @@ pdf-server start \
 
 **Installing certificates to default location:**
 ```bash
-python -m pdfserver.certs generate \
+python -m entangledpdf.certs generate \
   --cert /path/to/cert.pem \
   --key /path/to/key.pem
 ```
@@ -268,7 +268,7 @@ When the button shows "Connected", clicking it reveals:
 
 ### PDF Switching Behavior
 
-PdfServer intelligently handles PDF changes:
+EntangledPdf intelligently handles PDF changes:
 
 **Different PDF file:**
 - Shows yellow "Reload" button
@@ -695,9 +695,9 @@ Send forward search update.
 
 **A:** This is normal! You need to load a PDF from your editor or CLI. The browser viewer waits for a PDF to be loaded via `pdf-server sync`.
 
-### Q: Can I use PdfServer with Emacs?
+### Q: Can I use EntangledPdf with Emacs?
 
-**A:** Not directly. PdfServer currently supports Neovim and Vim. Emacs support would require implementing a new inverse search command handler.
+**A:** Not directly. EntangledPdf currently supports Neovim and Vim. Emacs support would require implementing a new inverse search command handler.
 
 ### Q: How do I view the PDF on my iPad?
 
@@ -727,7 +727,7 @@ pdf-server start --http
 3. Check the connection status button in the PDF viewer
 4. Verify `PDF_SERVER_API_KEY` is set on both sides
 
-### Q: Does PdfServer support multiple simultaneous PDFs?
+### Q: Does EntangledPdf support multiple simultaneous PDFs?
 
 **A:** One PDF at a time per server instance. Start multiple servers on different ports for multiple PDFs.
 

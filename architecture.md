@@ -1,10 +1,10 @@
 # Architecture
 
-This document describes the architecture of the PdfServer, focusing on the communication protocols and design rationale.
+This document describes the architecture of the EntangledPdf, focusing on the communication protocols and design rationale.
 
 ## Overview
 
-PdfServer implements a **hybrid HTTP/WebSocket protocol** for LaTeX PDF synchronization. The server mediates between:
+EntangledPdf implements a **hybrid HTTP/WebSocket protocol** for LaTeX PDF synchronization. The server mediates between:
 
 - **Editor**: Sends forward sync requests via HTTP (trigger only)
 - **Browsers**: Bidirectional real-time communication via WebSocket (receives sync + sends interactions)
@@ -132,7 +132,7 @@ When the user shift+clicks on the PDF, the browser sends an inverse search reque
 
 ## Connection Keepalive (Unified Ping/Pong Protocol)
 
-PdfServer implements a **client-authoritative ping/pong protocol** for connection keepalive:
+EntangledPdf implements a **client-authoritative ping/pong protocol** for connection keepalive:
 
 ### Design Rationale
 
@@ -222,5 +222,5 @@ Using HTTP polling for browser updates would be inefficient:
 | `src/routes/webhook.py` | HTTP endpoint, SyncTeX forward search |
 | `src/routes/websocket.py` | WebSocket handler, inverse search execution |
 | `src/connection_manager.py` | Connection pooling, broadcasting |
-| `pdfserver/sync.py` | Editor-side HTTP client library |
+| `entangledpdf/sync.py` | Editor-side HTTP client library |
 | `static/websocket-manager.ts` | Browser-side WebSocket client |

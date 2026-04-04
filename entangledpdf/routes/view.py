@@ -10,8 +10,8 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from pdfserver.config import get_settings
-from pdfserver.state import pdf_state
+from entangledpdf.config import get_settings
+from entangledpdf.state import pdf_state
 
 router = APIRouter()
 

@@ -1,4 +1,4 @@
-"""PdfServer - FastAPI-based PDF synchronization server.
+"""EntangledPdf - FastAPI-based PDF synchronization server.
 
 A PDF server with real-time synchronization and SyncTeX integration
 for LaTeX forward and inverse search.

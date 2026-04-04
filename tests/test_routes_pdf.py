@@ -6,8 +6,8 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 
-from pdfserver.routes import pdf as pdf_route
-from pdfserver.config import Settings
+from entangledpdf.routes import pdf as pdf_route
+from entangledpdf.config import Settings
 
 
 @pytest.fixture
@@ -33,7 +33,7 @@ def client(mock_settings):
     app = FastAPI()
     app.include_router(pdf_route.router)
     
-    with patch("pdfserver.routes.pdf.get_settings", return_value=mock_settings):
+    with patch("entangledpdf.routes.pdf.get_settings", return_value=mock_settings):
         yield TestClient(app)
 
 
@@ -90,7 +90,7 @@ class TestGetPdf:
         app = FastAPI()
         app.include_router(pdf_route.router)
         
-        with patch("pdfserver.routes.pdf.get_settings", return_value=settings):
+        with patch("entangledpdf.routes.pdf.get_settings", return_value=settings):
             client = TestClient(app)
             response = client.get("/get-pdf")
             
@@ -117,7 +117,7 @@ class TestGetPdf:
         app = FastAPI()
         app.include_router(pdf_route.router)
         
-        with patch("pdfserver.routes.pdf.get_settings", return_value=settings):
+        with patch("entangledpdf.routes.pdf.get_settings", return_value=settings):
             client = TestClient(app)
             response = client.get("/get-pdf")
             
@@ -142,7 +142,7 @@ class TestGetPdf:
         app = FastAPI()
         app.include_router(pdf_route.router)
         
-        with patch("pdfserver.routes.pdf.get_settings", return_value=settings):
+        with patch("entangledpdf.routes.pdf.get_settings", return_value=settings):
             client = TestClient(app)
             response = client.get("/get-pdf")
             

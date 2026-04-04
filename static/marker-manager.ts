@@ -1,5 +1,5 @@
 /**
- * PdfServer Viewer - Marker Manager
+ * EntangledPdf Viewer - Marker Manager
  *
  * Handles creation, positioning, and lifecycle of red dot markers.
  */

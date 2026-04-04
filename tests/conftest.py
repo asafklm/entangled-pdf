@@ -216,9 +216,9 @@ def real_test_client():
     and static files, not the minimal test fixtures.
     """
     from main import create_app
-    from pdfserver.config import Settings, settings as global_settings
-    from pdfserver.state import pdf_state
-    from pdfserver.connection_manager import manager
+    from entangledpdf.config import Settings, settings as global_settings
+    from entangledpdf.state import pdf_state
+    from entangledpdf.connection_manager import manager
     
     project_root = Path(__file__).parent.parent
     static_dir = project_root / "static"
@@ -239,12 +239,12 @@ def real_test_client():
     )
     
     # Patch the global settings before creating the app
-    with patch("pdfserver.config.settings", settings):
+    with patch("entangledpdf.config.settings", settings):
         app = create_app()
         
-        with patch("pdfserver.routes.view.get_settings", return_value=settings):
-            with patch("pdfserver.routes.pdf.get_settings", return_value=settings):
-                with patch("pdfserver.routes.state.get_settings", return_value=settings):
+        with patch("entangledpdf.routes.view.get_settings", return_value=settings):
+            with patch("entangledpdf.routes.pdf.get_settings", return_value=settings):
+                with patch("entangledpdf.routes.state.get_settings", return_value=settings):
                     with TestClient(app) as client:
                         yield client
     

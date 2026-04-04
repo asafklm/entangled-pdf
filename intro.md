@@ -1,12 +1,12 @@
 
-# PdfServer
+# EntangledPdf
 
-I compile pdf files on my remote server, pdfserver lets me view them in my local browser.
+I compile pdf files on my remote server, entangledpdf lets me view them in my local browser.
 Supports synctex for latex files: **forward sync** (editor → PDF) and **inverse sync** (PDF → editor).
 
 ## Main Idea
 
-PdfServer allows you to:
+EntangledPdf allows you to:
 - View PDFs in a web browser with smooth scrolling and high-quality rendering
 - Synchronize PDF position across multiple devices (desktop, tablet, phone)
 - Jump to specific locations in the PDF from your Neovim editor using SyncTeX (forward search)

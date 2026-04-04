@@ -1,4 +1,4 @@
-"""WebSocket connection management for PdfServer.
+"""WebSocket connection management for EntangledPdf.
 
 Provides a ConnectionManager class to handle WebSocket connections,
 broadcasting messages, and connection lifecycle management.
@@ -9,7 +9,7 @@ from typing import Set
 
 from fastapi import WebSocket
 
-from pdfserver.websocket_monitor import monitor as ws_monitor
+from entangledpdf.websocket_monitor import monitor as ws_monitor
 
 # Configure logging
 logger = logging.getLogger(__name__)

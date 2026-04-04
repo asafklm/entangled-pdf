@@ -10,10 +10,10 @@ from pathlib import Path
 from fastapi import FastAPI
 from unittest.mock import patch, AsyncMock, MagicMock, mock_open
 
-from pdfserver.routes import websocket as websocket_route, auth as auth_route, load_pdf as load_pdf_route
-from pdfserver.routes import view as view_route
-from pdfserver.state import pdf_state, generate_websocket_token
-from pdfserver.connection_manager import ConnectionManager
+from entangledpdf.routes import websocket as websocket_route, auth as auth_route, load_pdf as load_pdf_route
+from entangledpdf.routes import view as view_route
+from entangledpdf.state import pdf_state, generate_websocket_token
+from entangledpdf.connection_manager import ConnectionManager
 
 
 @pytest.fixture(autouse=True)
@@ -191,8 +191,8 @@ class TestViewPageAuthCheck:
         mock_request.cookies = {}  # No token cookie
         
         with patch.object(view_route, '_templates', None), \
-             patch('pdfserver.routes.view.get_settings') as mock_settings, \
-             patch('pdfserver.routes.view.Jinja2Templates') as mock_templates_class:
+             patch('entangledpdf.routes.view.get_settings') as mock_settings, \
+             patch('entangledpdf.routes.view.Jinja2Templates') as mock_templates_class:
             
             mock_settings.return_value.pdf_file = None
             mock_settings.return_value.port = 8431
@@ -222,8 +222,8 @@ class TestViewPageAuthCheck:
         mock_request.cookies = {"pdf_token": "test_token"}  # Valid token
         
         with patch.object(view_route, '_templates', None), \
-             patch('pdfserver.routes.view.get_settings') as mock_settings, \
-             patch('pdfserver.routes.view.Jinja2Templates') as mock_templates_class:
+             patch('entangledpdf.routes.view.get_settings') as mock_settings, \
+             patch('entangledpdf.routes.view.Jinja2Templates') as mock_templates_class:
             
             mock_settings.return_value.pdf_file = None
             mock_settings.return_value.port = 8431
@@ -247,10 +247,10 @@ class TestLoadPdfWithInverseSearch:
     @pytest.mark.asyncio
     async def test_load_pdf_with_inverse_search_enables_feature(self):
         """Test that loading PDF with inverse search command enables feature."""
-        from pdfserver.config import Settings
+        from entangledpdf.config import Settings
         
-        with patch('pdfserver.routes.load_pdf.get_settings') as mock_settings, \
-             patch('pdfserver.routes.load_pdf.manager') as mock_manager:
+        with patch('entangledpdf.routes.load_pdf.get_settings') as mock_settings, \
+             patch('entangledpdf.routes.load_pdf.manager') as mock_manager:
             
             mock_settings.return_value = MagicMock(spec=Settings)
             mock_settings.return_value.api_key = "test_secret"
@@ -270,7 +270,7 @@ class TestLoadPdfWithInverseSearch:
             with patch.object(Path, 'exists', return_value=True), \
                  patch.object(Path, 'resolve', return_value=Path(pdf_path)), \
                  patch.object(Path, 'stat') as mock_stat, \
-                 patch('pdfserver.routes.load_pdf.validate_pdf_file', return_value=(True, "")):
+                 patch('entangledpdf.routes.load_pdf.validate_pdf_file', return_value=(True, "")):
                 
                 mock_stat_result = MagicMock()
                 mock_stat_result.st_mtime = 12345
@@ -287,10 +287,10 @@ class TestLoadPdfWithInverseSearch:
     @pytest.mark.asyncio
     async def test_load_pdf_http_does_not_enable_inverse_search(self):
         """Test that loading PDF via HTTP does not enable inverse search."""
-        from pdfserver.config import Settings
+        from entangledpdf.config import Settings
         
-        with patch('pdfserver.routes.load_pdf.get_settings') as mock_settings, \
-             patch('pdfserver.routes.load_pdf.manager') as mock_manager:
+        with patch('entangledpdf.routes.load_pdf.get_settings') as mock_settings, \
+             patch('entangledpdf.routes.load_pdf.manager') as mock_manager:
             
             mock_settings.return_value = MagicMock(spec=Settings)
             mock_settings.return_value.api_key = "test_secret"
@@ -310,7 +310,7 @@ class TestLoadPdfWithInverseSearch:
             with patch.object(Path, 'exists', return_value=True), \
                  patch.object(Path, 'resolve', return_value=Path(pdf_path)), \
                  patch.object(Path, 'stat') as mock_stat, \
-                 patch('pdfserver.routes.load_pdf.validate_pdf_file', return_value=(True, "")):
+                 patch('entangledpdf.routes.load_pdf.validate_pdf_file', return_value=(True, "")):
                 
                 mock_stat_result = MagicMock()
                 mock_stat_result.st_mtime = 12345

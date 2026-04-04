@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Dict, Any
 
 import pytest
-from pdfserver.config import get_settings
+from entangledpdf.config import get_settings
 from tests.integration.helpers import MockWebSocket
 
 
@@ -202,7 +202,7 @@ class TestTypeScriptNullHandling:
     @pytest.mark.asyncio
     async def test_nullish_coalescing_in_state(self, test_client, reset_state, reset_connections, mock_synctex):
         """Test that TypeScript nullish coalescing (??) works correctly at runtime."""
-        from pdfserver.connection_manager import manager
+        from entangledpdf.connection_manager import manager
         
         client = MockWebSocket()
         
@@ -246,7 +246,7 @@ class TestViewerHTMLTypes:
     
     def test_pdf_config_port_is_number(self, test_client, temp_pdf_file):
         """Test that port in PDF_CONFIG is a number, not string."""
-        from pdfserver.config import get_settings
+        from entangledpdf.config import get_settings
         
         response = test_client.get("/view")
         assert response.status_code == 200

@@ -8,7 +8,7 @@ import time
 from fastapi import APIRouter, Form, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 
-from pdfserver.state import pdf_state
+from entangledpdf.state import pdf_state
 
 router = APIRouter()
 

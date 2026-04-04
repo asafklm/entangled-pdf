@@ -24,8 +24,8 @@ from unittest.mock import patch
 
 import pytest
 
-from pdfserver.certs import generate_self_signed_cert
-from pdfserver.sync import (
+from entangledpdf.certs import generate_self_signed_cert
+from entangledpdf.sync import (
     create_ssl_context,
     forward_search,
     load_pdf,
@@ -222,7 +222,7 @@ class TestSyncRemotePdfSubprocess:
         # Build command using new CLI structure
         cmd = [
             sys.executable,
-            "-m", "pdfserver.cli",
+            "-m", "entangledpdf.cli",
             "sync",
             str(pdf_file),
             "--port", str(running_server["port"]),
@@ -265,7 +265,7 @@ class TestSyncRemotePdfSubprocess:
         # First load the PDF
         load_cmd = [
             sys.executable,
-            "-m", "pdfserver.cli",
+            "-m", "entangledpdf.cli",
             "sync",
             str(example_pdf),
             "--port", str(running_server["port"]),
@@ -283,7 +283,7 @@ class TestSyncRemotePdfSubprocess:
         # Now run with synctex info as positional arg
         synctex_cmd = [
             sys.executable,
-            "-m", "pdfserver.cli",
+            "-m", "entangledpdf.cli",
             "sync",
             str(example_pdf),
             f"42:5:{example_tex}",
@@ -321,7 +321,7 @@ class TestSyncRemotePdfSubprocess:
         
         cmd = [
             sys.executable,
-            "-m", "pdfserver.cli",
+            "-m", "entangledpdf.cli",
             "sync",
             str(pdf_file),
             "--port", str(running_server["port"]),
@@ -346,7 +346,7 @@ class TestSyncRemotePdfSubprocess:
         
         cmd = [
             sys.executable,
-            "-m", "pdfserver.cli",
+            "-m", "entangledpdf.cli",
             "sync",
             str(nonexistent),
             "--port", str(running_server["port"]),
@@ -372,7 +372,7 @@ class TestSyncRemotePdfSubprocess:
         
         cmd = [
             sys.executable,
-            "-m", "pdfserver.cli",
+            "-m", "entangledpdf.cli",
             "sync",
             "-v",
             str(pdf_file),
@@ -402,7 +402,7 @@ class TestSyncRemotePdfSubprocess:
         
         cmd = [
             sys.executable,
-            "-m", "pdfserver.cli",
+            "-m", "entangledpdf.cli",
             "sync",
             str(pdf_file),
             "--port", str(unused_port),
@@ -434,7 +434,7 @@ class TestSyncRemotePdfSubprocess:
         # Load first PDF
         cmd1 = [
             sys.executable,
-            "-m", "pdfserver.cli",
+            "-m", "entangledpdf.cli",
             "sync",
             str(pdf1),
             "--port", str(running_server["port"]),
@@ -459,7 +459,7 @@ class TestSyncRemotePdfSubprocess:
         # Load second PDF
         cmd2 = [
             sys.executable,
-            "-m", "pdfserver.cli",
+            "-m", "entangledpdf.cli",
             "sync",
             str(pdf2),
             "--port", str(running_server["port"]),
@@ -505,7 +505,7 @@ class TestSyncRemotePdfSubprocess:
         
         cmd = [
             sys.executable,
-            "-m", "pdfserver.cli",
+            "-m", "entangledpdf.cli",
             "sync",
             str(pdf_file),
             "--port", str(running_server["port"]),
@@ -647,7 +647,7 @@ class TestParseSynctexForwardInE2E:
         # Load PDF first
         load_cmd = [
             sys.executable,
-            "-m", "pdfserver.cli",
+            "-m", "entangledpdf.cli",
             "sync",
             str(example_pdf),
             "--port", str(running_server["port"]),
@@ -668,7 +668,7 @@ class TestParseSynctexForwardInE2E:
         
         forward_cmd = [
             sys.executable,
-            "-m", "pdfserver.cli",
+            "-m", "entangledpdf.cli",
             "sync",
             str(example_pdf),
             synctex_arg,

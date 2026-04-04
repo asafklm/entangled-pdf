@@ -5,8 +5,8 @@ from types import SimpleNamespace
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from pdfserver.routes import auth
-from pdfserver.state import pdf_state
+from entangledpdf.routes import auth
+from entangledpdf.state import pdf_state
 
 
 def _make_app() -> FastAPI:

@@ -1,4 +1,4 @@
-"""Sync client library for PdfServer.
+"""Sync client library for EntangledPdf.
 
 This module provides utility functions for loading PDFs and performing
 forward search via SyncTeX. These functions are used by the 

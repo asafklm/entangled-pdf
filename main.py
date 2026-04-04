@@ -1,4 +1,4 @@
-"""Main entry point for PdfServer.
+"""Main entry point for EntangledPdf.
 
 Initializes the FastAPI application, configures settings, and starts the server.
 Server can be started without a PDF file (PDF is loaded dynamically via API).
@@ -17,12 +17,12 @@ from fastapi import FastAPI
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from pdfserver.certs import get_cert_paths, validate_certificate
-from pdfserver.config import init_settings, ConfigError
-from pdfserver.logging_sanitizer import SensitiveDataFilter
-from pdfserver.routes import auth, load_pdf, pdf, state, static_files, test_utils, view, webhook, websocket
-from pdfserver.state import pdf_state
-from pdfserver.websocket_monitor import monitor as ws_monitor
+from entangledpdf.certs import get_cert_paths, validate_certificate
+from entangledpdf.config import init_settings, ConfigError
+from entangledpdf.logging_sanitizer import SensitiveDataFilter
+from entangledpdf.routes import auth, load_pdf, pdf, state, static_files, test_utils, view, webhook, websocket
+from entangledpdf.state import pdf_state
+from entangledpdf.websocket_monitor import monitor as ws_monitor
 
 
 # Configure logging for foreground mode
@@ -61,7 +61,7 @@ def validate_ssl_config(settings) -> Optional[dict]:
             f"  Certificate: {cert_path}\n"
             f"  Private key: {key_path}\n\n"
             f"To generate certificates, run:\n"
-            f"  python -m pdfserver.certs generate\n\n"
+            f"  python -m entangledpdf.certs generate\n\n"
             f"To use custom certificates:\n"
             f"  python main.py --ssl-cert /path/to/cert.pem --ssl-key /path/to/key.pem\n\n"
             f"To bypass HTTPS (not recommended):\n"
@@ -75,7 +75,7 @@ def validate_ssl_config(settings) -> Optional[dict]:
             f"SSL certificate has expired ({cert_path})\n\n"
             f"Expired on: {info.get('expires_at')}\n\n"
             f"To regenerate:\n"
-            f"  python -m pdfserver.certs generate --force\n\n"
+            f"  python -m entangledpdf.certs generate --force\n\n"
             f"To bypass HTTPS (not recommended):\n"
             f"  python main.py --http"
         )
@@ -84,7 +84,7 @@ def validate_ssl_config(settings) -> Optional[dict]:
         raise RuntimeError(
             f"Certificate validation failed: {info['error']}\n\n"
             f"To regenerate:\n"
-            f"  python -m pdfserver.certs generate --force\n\n"
+            f"  python -m entangledpdf.certs generate --force\n\n"
             f"To bypass HTTPS (not recommended):\n"
             f"  python main.py --http"
         )
@@ -99,7 +99,7 @@ def create_app() -> FastAPI:
         FastAPI: Configured application instance
     """
     app = FastAPI(
-        title="PdfServer",
+        title="EntangledPdf",
         description="Real-time PDF synchronization server with SyncTeX support",
         version="1.0.0"
     )
@@ -127,7 +127,7 @@ def parse_args() -> argparse.Namespace:
         argparse.Namespace: Parsed arguments
     """
     parser = argparse.ArgumentParser(
-        description="PdfServer - Real-time PDF synchronization server",
+        description="EntangledPdf - Real-time PDF synchronization server",
         epilog="PDF files are loaded dynamically via the pdf-server sync command. "
                "Server can be started without a PDF file."
     )
@@ -296,7 +296,7 @@ def main() -> None:
     else:
         pdf_state.inverse_search_enabled = False
     
-    logger.info(f"Starting PdfServer on {settings.host}:{settings.port}")
+    logger.info(f"Starting EntangledPdf on {settings.host}:{settings.port}")
     logger.info("No PDF loaded - waiting for pdf-server sync to load a PDF")
     
     # Print startup banner to stdout (visible before daemonization)

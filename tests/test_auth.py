@@ -1,4 +1,4 @@
-"""Tests for pdfserver.routes.auth.authenticate."""
+"""Tests for entangledpdf.routes.auth.authenticate."""
 
 import asyncio
 
@@ -7,8 +7,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from fastapi import HTTPException
 
-from pdfserver.routes import auth as auth_route
-from pdfserver.state import pdf_state
+from entangledpdf.routes import auth as auth_route
+from entangledpdf.state import pdf_state
 
 
 @pytest.fixture

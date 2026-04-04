@@ -1,5 +1,5 @@
 /**
- * PdfServer Viewer - Testable Module
+ * EntangledPdf Viewer - Testable Module
  *
  * Extracted functions from viewer.js for unit testing
  */

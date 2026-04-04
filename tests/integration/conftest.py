@@ -1,4 +1,4 @@
-"""Integration test fixtures for PdfServer.
+"""Integration test fixtures for EntangledPdf.
 
 This module provides fixtures for testing the complete
 webhook → state → broadcast → WebSocket flow.
@@ -26,9 +26,9 @@ from httpx import AsyncClient
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from main import create_app, init_settings
-from pdfserver.config import get_settings, settings as global_settings
-from pdfserver.connection_manager import ConnectionManager, manager
-from pdfserver.state import PDFState, pdf_state
+from entangledpdf.config import get_settings, settings as global_settings
+from entangledpdf.connection_manager import ConnectionManager, manager
+from entangledpdf.state import PDFState, pdf_state
 
 
 @pytest.fixture(scope="session")
@@ -89,7 +89,7 @@ def test_app(test_settings):
     # Reset connection manager
     manager.active_connections.clear()
     
-    with patch("pdfserver.config.settings", test_settings):
+    with patch("entangledpdf.config.settings", test_settings):
         app = create_app()
         yield app
 
@@ -281,7 +281,7 @@ def mock_synctex():
             "v": str(y)   # vertical position
         }
     
-    with patch("pdfserver.routes.webhook.run_synctex_view", side_effect=mock_run_synctex):
+    with patch("entangledpdf.routes.webhook.run_synctex_view", side_effect=mock_run_synctex):
         yield mock_run_synctex
 
 

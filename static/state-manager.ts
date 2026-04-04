@@ -1,5 +1,5 @@
 /**
- * PdfServer Viewer - State Manager
+ * EntangledPdf Viewer - State Manager
  *
  * Centralized viewer state management.
  */

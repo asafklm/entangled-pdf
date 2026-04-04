@@ -1,5 +1,5 @@
 /**
- * PdfServer Viewer - Core Types
+ * EntangledPdf Viewer - Core Types
  *
  * Shared type definitions for the PDF viewer modules.
  */

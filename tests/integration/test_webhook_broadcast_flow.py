@@ -12,7 +12,7 @@ from unittest.mock import patch
 import pytest
 import pytest_asyncio
 
-from pdfserver.config import get_settings
+from entangledpdf.config import get_settings
 from tests.integration.helpers import MockWebSocket
 
 
@@ -24,8 +24,8 @@ class TestWebhookBroadcastFlow:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test that webhook updates state and broadcasts to WebSocket clients."""
-        from pdfserver.state import pdf_state
-        from pdfserver.connection_manager import manager
+        from entangledpdf.state import pdf_state
+        from entangledpdf.connection_manager import manager
         
         # Create mock WebSocket client
         mock_ws = MockWebSocket()
@@ -62,8 +62,8 @@ class TestWebhookBroadcastFlow:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test multiple sequential webhook updates."""
-        from pdfserver.state import pdf_state
-        from pdfserver.connection_manager import manager
+        from entangledpdf.state import pdf_state
+        from entangledpdf.connection_manager import manager
         
         mock_ws = MockWebSocket()
         
@@ -100,7 +100,7 @@ class TestWebhookBroadcastFlow:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test that one webhook reaches multiple WebSocket clients."""
-        from pdfserver.connection_manager import manager
+        from entangledpdf.connection_manager import manager
         
         # Create multiple mock clients
         clients = []
@@ -133,8 +133,8 @@ class TestWebhookBroadcastFlow:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test complete flow with y-coordinate (page + scroll position)."""
-        from pdfserver.state import pdf_state
-        from pdfserver.connection_manager import manager
+        from entangledpdf.state import pdf_state
+        from entangledpdf.connection_manager import manager
         
         mock_ws = MockWebSocket()
         
@@ -168,8 +168,8 @@ class TestWebhookBroadcastFlow:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test complete flow with page only (no scroll position)."""
-        from pdfserver.state import pdf_state
-        from pdfserver.connection_manager import manager
+        from entangledpdf.state import pdf_state
+        from entangledpdf.connection_manager import manager
         
         mock_ws = MockWebSocket()
         

@@ -1,5 +1,5 @@
 /**
- * PdfServer Viewer - Keyboard Handler
+ * EntangledPdf Viewer - Keyboard Handler
  *
  * Vim-style keyboard navigation for the PDF viewer.
  */

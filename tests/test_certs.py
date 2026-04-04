@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from pdfserver import certs
+from entangledpdf import certs
 
 
 def test_validate_certificate_not_found():
@@ -25,7 +25,7 @@ def test_copy_existing_cert_not_found_raises():
 
 
 class TestCertsGenerateCommand:
-    """Tests for `python -m pdfserver.certs generate` command."""
+    """Tests for `python -m entangledpdf.certs generate` command."""
 
     def test_certs_generate_creates_cert_and_key_at_custom_path(self, tmp_path: Path):
         """Test that generate command can create cert at specified path."""
@@ -133,7 +133,7 @@ class TestCertsGenerateCommand:
             [
                 sys.executable,
                 "-m",
-                "pdfserver.certs",
+                "entangledpdf.certs",
                 "status",
             ],
             capture_output=True,

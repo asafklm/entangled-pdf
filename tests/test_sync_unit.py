@@ -1,4 +1,4 @@
-"""Unit tests for pdfserver/sync.py client functions.
+"""Unit tests for entangledpdf/sync.py client functions.
 
 Tests the pdf-server sync CLI client functions without requiring a running server.
 Uses mocking to verify correct HTTP requests are constructed.
@@ -12,14 +12,14 @@ from urllib.error import HTTPError
 
 import pytest
 
-from pdfserver.sync import (
+from entangledpdf.sync import (
     create_ssl_context,
     forward_search,
     load_pdf,
     parse_synctex_forward,
     send_request,
 )
-from pdfserver.cli import main
+from entangledpdf.cli import main
 
 
 class TestCreateSslContext:
@@ -143,7 +143,7 @@ class TestLoadPdfFieldName:
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_text("dummy pdf content")
 
-        with patch('pdfserver.sync.send_request') as mock_send:
+        with patch('entangledpdf.sync.send_request') as mock_send:
             mock_send.return_value = {"status": "success"}
 
             # Call load_pdf
@@ -169,7 +169,7 @@ class TestLoadPdfFieldName:
         pdf_file.write_text("dummy pdf content")
         rel_path = Path("test.pdf")
 
-        with patch('pdfserver.sync.send_request') as mock_send:
+        with patch('entangledpdf.sync.send_request') as mock_send:
             mock_send.return_value = {"status": "success"}
 
             # Change to temp directory and use relative path
@@ -206,7 +206,7 @@ class TestLoadPdfUsesCorrectEndpoint:
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_text("dummy pdf content")
 
-        with patch('pdfserver.sync.send_request') as mock_send:
+        with patch('entangledpdf.sync.send_request') as mock_send:
             mock_send.return_value = {"status": "success"}
 
             load_pdf(pdf_file, port=8431, api_key="test-key")
@@ -226,7 +226,7 @@ class TestForwardSearch:
 
     def test_forward_search_sends_correct_data(self):
         """Test that forward_search sends correct data structure with all required fields."""
-        with patch('pdfserver.sync.send_request') as mock_send:
+        with patch('entangledpdf.sync.send_request') as mock_send:
             mock_send.return_value = {"status": "success"}
 
             forward_search(
@@ -251,7 +251,7 @@ class TestForwardSearch:
 
     def test_forward_search_uses_webhook_endpoint(self):
         """Test that forward_search uses /webhook/update endpoint."""
-        with patch('pdfserver.sync.send_request') as mock_send:
+        with patch('entangledpdf.sync.send_request') as mock_send:
             mock_send.return_value = {"status": "success"}
 
             forward_search(10, 0, "main.tex", "/path/to/file.pdf", 8431)
@@ -328,7 +328,7 @@ class TestMainArgumentParsing:
 
         monkeypatch.setenv("PDF_SERVER_API_KEY", "test-key")
 
-        with patch('pdfserver.cli.load_pdf') as mock_load:
+        with patch('entangledpdf.cli.load_pdf') as mock_load:
             mock_load.return_value = {"pdf_file": str(pdf_file)}
 
             with patch('sys.argv', ['pdf-server', 'sync', str(pdf_file)]):
@@ -341,7 +341,7 @@ class TestMainArgumentParsing:
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_text("dummy pdf content")
 
-        with patch('pdfserver.cli.load_pdf') as mock_load:
+        with patch('entangledpdf.cli.load_pdf') as mock_load:
             mock_load.return_value = {"pdf_file": str(pdf_file)}
 
             with patch('sys.argv', ['pdf-server', 'sync', '--api-key', 'flag-key', str(pdf_file)]):
@@ -359,7 +359,7 @@ class TestMainArgumentParsing:
 
         monkeypatch.setenv("PDF_SERVER_API_KEY", "test-key")
 
-        with patch('pdfserver.cli.load_pdf') as mock_load:
+        with patch('entangledpdf.cli.load_pdf') as mock_load:
             mock_load.return_value = {"pdf_file": str(pdf_file)}
 
             with patch('sys.argv', ['pdf-server', 'sync', '--port', '9000', str(pdf_file)]):
@@ -379,7 +379,7 @@ class TestMainArgumentParsing:
 
         monkeypatch.setenv("PDF_SERVER_API_KEY", "test-key")
 
-        with patch('pdfserver.cli.load_pdf') as mock_load:
+        with patch('entangledpdf.cli.load_pdf') as mock_load:
             mock_load.return_value = {"pdf_file": str(pdf_file)}
 
             with patch('sys.argv', ['pdf-server', 'sync', '--http', str(pdf_file)]):
@@ -400,8 +400,8 @@ class TestMainArgumentParsing:
 
         monkeypatch.setenv("PDF_SERVER_API_KEY", "test-key")
 
-        with patch('pdfserver.cli.load_pdf') as mock_load, \
-             patch('pdfserver.cli.forward_search') as mock_forward:
+        with patch('entangledpdf.cli.load_pdf') as mock_load, \
+             patch('entangledpdf.cli.forward_search') as mock_forward:
             mock_load.return_value = {"pdf_file": str(pdf_file)}
             mock_forward.return_value = {"status": "success"}
 
@@ -439,7 +439,7 @@ class TestMainArgumentParsing:
 
         monkeypatch.setenv("PDF_SERVER_API_KEY", "test-key")
 
-        with patch('pdfserver.cli.load_pdf', side_effect=Exception("Network error")):
+        with patch('entangledpdf.cli.load_pdf', side_effect=Exception("Network error")):
             with patch('sys.argv', ['pdf-server', 'sync', str(pdf_file)]):
                 result = main()
                 assert result == 1
@@ -451,7 +451,7 @@ class TestMainArgumentParsing:
 
         monkeypatch.setenv("PDF_SERVER_API_KEY", "test-key")
 
-        with patch('pdfserver.cli.load_pdf') as mock_load:
+        with patch('entangledpdf.cli.load_pdf') as mock_load:
             mock_load.return_value = {"pdf_file": str(pdf_file), "status": "loaded"}
 
             with patch('sys.argv', ['pdf-server', 'sync', '-v', str(pdf_file)]):
@@ -535,34 +535,34 @@ class TestPatchPathValidation:
     """
     
     def test_webhook_patch_path_exists(self):
-        """Verify that pdfserver.routes.webhook module exists for patching."""
+        """Verify that entangledpdf.routes.webhook module exists for patching."""
         try:
-            import pdfserver.routes.webhook
-            assert hasattr(pdfserver.routes.webhook, 'get_settings')
-            assert hasattr(pdfserver.routes.webhook, 'run_synctex_view')
+            import entangledpdf.routes.webhook
+            assert hasattr(entangledpdf.routes.webhook, 'get_settings')
+            assert hasattr(entangledpdf.routes.webhook, 'run_synctex_view')
         except ImportError:
-            pytest.fail("pdfserver.routes.webhook module not found - tests may be patching wrong path")
+            pytest.fail("entangledpdf.routes.webhook module not found - tests may be patching wrong path")
     
     def test_config_patch_path_exists(self):
-        """Verify that pdfserver.config module exists for patching."""
+        """Verify that entangledpdf.config module exists for patching."""
         try:
-            import pdfserver.config
-            assert hasattr(pdfserver.config, 'get_settings')
+            import entangledpdf.config
+            assert hasattr(entangledpdf.config, 'get_settings')
         except ImportError:
-            pytest.fail("pdfserver.config module not found - tests may be patching wrong path")
+            pytest.fail("entangledpdf.config module not found - tests may be patching wrong path")
     
     def test_connection_manager_patch_path_exists(self):
-        """Verify that pdfserver.connection_manager module exists for patching."""
+        """Verify that entangledpdf.connection_manager module exists for patching."""
         try:
-            import pdfserver.connection_manager
-            assert hasattr(pdfserver.connection_manager, 'manager')
+            import entangledpdf.connection_manager
+            assert hasattr(entangledpdf.connection_manager, 'manager')
         except ImportError:
-            pytest.fail("pdfserver.connection_manager module not found - tests may be patching wrong path")
+            pytest.fail("entangledpdf.connection_manager module not found - tests may be patching wrong path")
     
     def test_src_routes_webhook_does_not_exist(self):
         """Verify that old 'src.routes.webhook' path no longer exists.
         
-        This ensures tests have been updated after the src/ -> pdfserver/ refactor.
+        This ensures tests have been updated after the src/ -> entangledpdf/ refactor.
         """
         with pytest.raises(ImportError):
             import src.routes.webhook

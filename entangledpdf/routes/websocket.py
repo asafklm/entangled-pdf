@@ -12,9 +12,9 @@ from typing import Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from pdfserver.connection_manager import manager
-from pdfserver.state import pdf_state
-from pdfserver.websocket_monitor import monitor as ws_monitor
+from entangledpdf.connection_manager import manager
+from entangledpdf.state import pdf_state
+from entangledpdf.websocket_monitor import monitor as ws_monitor
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

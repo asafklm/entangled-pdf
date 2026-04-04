@@ -1,5 +1,5 @@
 /**
- * PdfServer Viewer - Client Logger
+ * EntangledPdf Viewer - Client Logger
  *
  * Logs browser-initiated events (scrolls, PDF loads) and sends to server via WebSocket.
  * Rate limited to prevent log spam (max 100 logs per second).

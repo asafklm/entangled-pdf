@@ -1,4 +1,4 @@
--- Enhanced VimTeX integration with PdfServer SyncTeX support
+-- Enhanced VimTeX integration with EntangledPdf SyncTeX support
 -- Add this to your Neovim config (init.lua) for the new remote_pdf CLI tool.
 -- This replaces the old 248-line Lua integration with a simple 2-line configuration.
 
@@ -17,4 +17,4 @@ vim.g.vimtex_view_general_viewer = 'remote_pdf'
 -- - Server lifecycle: Managed by remote_pdf automatically
 
 -- NOTE: Make sure remote_pdf is in your PATH. It's located at:
---       ~/PdfServer/bin/remote_pdf (or wherever you installed PdfServer)
+--       ~/EntangledPdf/bin/remote_pdf (or wherever you installed EntangledPdf)

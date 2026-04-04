@@ -1,10 +1,10 @@
-# PdfServer
+# EntangledPdf
 
 A FastAPI-based PDF synchronization server with TypeScript frontend that enables real-time PDF viewing across multiple devices with SyncTeX integration for LaTeX **forward search** (editor → PDF) and **inverse search** (PDF → editor via Shift+Click).
 
 ## Main Idea
 
-PdfServer allows you to:
+EntangledPdf allows you to:
 - View PDFs in a web browser with smooth scrolling and high-quality rendering
 - Synchronize PDF position across multiple devices (desktop, tablet, phone)
 - Jump to specific locations in the PDF from your Neovim editor using SyncTeX (forward search)
@@ -21,8 +21,8 @@ The server uses WebSockets for real-time updates with automatic fallback to HTTP
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/pdfserver.git
-cd pdfserver
+git clone https://github.com/yourusername/entangledpdf.git
+cd entangledpdf
 
 # Install the package (includes Python dependencies)
 pip install .
@@ -178,14 +178,14 @@ In Neovim/Vim with VimTeX:
 
 ### SSL Certificates
 
-PdfServer uses HTTPS by default with self-signed certificates. To use your own certificates:
+EntangledPdf uses HTTPS by default with self-signed certificates. To use your own certificates:
 
 ```bash
 # Specify certificates at runtime
 pdf-server start --ssl-cert /path/to/cert.pem --ssl-key /path/to/key.pem
 
 # Or install certificates to default location
-python -m pdfserver.certs generate --cert /path/to/cert.pem --key /path/to/key.pem
+python -m entangledpdf.certs generate --cert /path/to/cert.pem --key /path/to/key.pem
 ```
 
 **Example with Tailscale certificates:**
@@ -243,7 +243,7 @@ Trigger inverse search at the current position to jump to the corresponding sour
 
 ### VimTeX Integration
 
-PdfServer integrates seamlessly with VimTeX using the `pdf-server sync` CLI tool.
+EntangledPdf integrates seamlessly with VimTeX using the `pdf-server sync` CLI tool.
 
 **How It Works:**
 
@@ -447,11 +447,11 @@ killall nvim  # Warning: closes ALL nvim instances
 ### Project Structure
 
 ```
-PdfServer/
+EntangledPdf/
 ├── main.py                 # Server entry point
 ├── bin/
 │   └── pdf-server         # Server lifecycle management
-├── pdfserver/
+├── entangledpdf/
 │   ├── config.py          # Configuration management
 │   ├── connection_manager.py  # WebSocket connections
 │   ├── state.py           # PDF state tracking

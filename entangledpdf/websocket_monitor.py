@@ -1,4 +1,4 @@
-"""WebSocket traffic monitoring for PdfServer.
+"""WebSocket traffic monitoring for EntangledPdf.
 
 Logs all WebSocket messages in a concise one-line format.
 Enabled via --monitor=ws command line flag.

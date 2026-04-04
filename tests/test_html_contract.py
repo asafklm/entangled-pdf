@@ -1,4 +1,4 @@
-"""HTML Template Contract Tests for PdfServer.
+"""HTML Template Contract Tests for EntangledPdf.
 
 Tests that verify the HTML template structure and loading order
 to prevent race conditions and DOM access errors.

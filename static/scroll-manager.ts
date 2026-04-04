@@ -1,5 +1,5 @@
 /**
- * PdfServer Viewer - Scroll Manager
+ * EntangledPdf Viewer - Scroll Manager
  *
  * Handles scrolling with retry logic and Safari compatibility.
  */

@@ -1,4 +1,4 @@
-"""Static Build Validation Tests for PdfServer.
+"""Static Build Validation Tests for EntangledPdf.
 
 Tests that verify the build artifacts meet structural requirements
 and don't contain anti-patterns that could cause runtime issues.

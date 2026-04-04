@@ -24,7 +24,7 @@ permission:
     "npm run build": allow
 ---
 
-You are a code reviewer for the PdfServer project. Focus on finding actual bugs.
+You are a code reviewer for the EntangledPdf project. Focus on finding actual bugs.
 
 **Review Process:**
 1. Identify what to review (diff, commit, or branch)

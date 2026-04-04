@@ -1,4 +1,4 @@
-"""Configuration management for PdfServer.
+"""Configuration management for EntangledPdf.
 
 Uses Pydantic Settings for type-safe configuration with environment variable support.
 """

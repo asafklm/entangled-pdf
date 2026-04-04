@@ -1,1 +1,1 @@
-"""Integration tests package for PdfServer."""
+"""Integration tests package for EntangledPdf."""

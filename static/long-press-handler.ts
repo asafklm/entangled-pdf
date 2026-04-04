@@ -1,5 +1,5 @@
 /**
- * PdfServer Viewer - Long Press Handler
+ * EntangledPdf Viewer - Long Press Handler
  *
  * Unified long-press detection for both mouse and touch input.
  */

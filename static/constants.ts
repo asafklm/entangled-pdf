@@ -1,5 +1,5 @@
 /**
- * PdfServer Viewer - Constants
+ * EntangledPdf Viewer - Constants
  *
  * Centralized constants for the PDF viewer.
  */

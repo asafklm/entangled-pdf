@@ -1,5 +1,5 @@
 /**
- * PdfServer Viewer - WebSocket Manager
+ * EntangledPdf Viewer - WebSocket Manager
  *
  * Manages WebSocket connection, reconnection, and message dispatch.
  */

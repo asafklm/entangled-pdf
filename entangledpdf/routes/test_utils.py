@@ -8,8 +8,8 @@ import os
 
 from fastapi import APIRouter, HTTPException
 
-from pdfserver.config import get_settings
-from pdfserver.state import PDFState, pdf_state
+from entangledpdf.config import get_settings
+from entangledpdf.state import PDFState, pdf_state
 
 router = APIRouter()
 

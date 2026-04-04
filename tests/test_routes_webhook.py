@@ -5,8 +5,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from pdfserver.routes import webhook
-from pdfserver.config import Settings
+from entangledpdf.routes import webhook
+from entangledpdf.config import Settings
 
 
 @pytest.fixture
@@ -32,8 +32,8 @@ def client(mock_settings):
     app = FastAPI()
     app.include_router(webhook.router)
     
-    with patch("pdfserver.routes.webhook.get_settings", return_value=mock_settings):
-        with patch("pdfserver.config.settings", mock_settings):
+    with patch("entangledpdf.routes.webhook.get_settings", return_value=mock_settings):
+        with patch("entangledpdf.config.settings", mock_settings):
             yield TestClient(app)
 
 
@@ -42,18 +42,18 @@ class TestWebhookAuthentication:
     
     def test_webhook_success_valid_api_key(self, client, mock_settings):
         """Test successful webhook with valid API key and valid synctex result."""
-        with patch("pdfserver.routes.webhook.run_synctex_view", new_callable=AsyncMock) as mock_synctex:
+        with patch("entangledpdf.routes.webhook.run_synctex_view", new_callable=AsyncMock) as mock_synctex:
             mock_synctex.return_value = {
                 "Page": "5",
                 "y": "150.5",
                 "x": "100.0"
             }
             
-            with patch("pdfserver.routes.webhook.manager") as mock_manager:
+            with patch("entangledpdf.routes.webhook.manager") as mock_manager:
                 mock_manager.broadcast = AsyncMock()
                 mock_manager.broadcast.return_value = None
                 
-                with patch("pdfserver.routes.webhook.pdf_state") as mock_state:
+                with patch("entangledpdf.routes.webhook.pdf_state") as mock_state:
                     mock_state.update = MagicMock()
                     mock_state.last_sync_time = 1234567890
                     
@@ -139,7 +139,7 @@ class TestWebhookSynctexFailure:
     
     def test_webhook_synctex_lookup_fails(self, client, mock_settings):
         """Test webhook when synctex lookup fails returns HTTP 400 error."""
-        with patch("pdfserver.routes.webhook.run_synctex_view", new_callable=AsyncMock) as mock_synctex:
+        with patch("entangledpdf.routes.webhook.run_synctex_view", new_callable=AsyncMock) as mock_synctex:
             mock_synctex.return_value = None
             
             response = client.post(
@@ -163,18 +163,18 @@ class TestWebhookBroadcasting:
     
     def test_webhook_broadcasts_synctex_result(self, client, mock_settings):
         """Test that webhook broadcasts synctex result to connected clients."""
-        with patch("pdfserver.routes.webhook.run_synctex_view", new_callable=AsyncMock) as mock_synctex:
+        with patch("entangledpdf.routes.webhook.run_synctex_view", new_callable=AsyncMock) as mock_synctex:
             mock_synctex.return_value = {
                 "Page": "3",
                 "y": "150.0",
                 "x": "50.0"
             }
             
-            with patch("pdfserver.routes.webhook.manager") as mock_manager:
+            with patch("entangledpdf.routes.webhook.manager") as mock_manager:
                 mock_manager.broadcast = AsyncMock()
                 mock_manager.broadcast.return_value = None
                 
-                with patch("pdfserver.routes.webhook.pdf_state") as mock_state:
+                with patch("entangledpdf.routes.webhook.pdf_state") as mock_state:
                     mock_state.update = MagicMock()
                     mock_state.last_sync_time = 1234567890
                     
@@ -202,18 +202,18 @@ class TestWebhookBroadcasting:
     
     def test_webhook_updates_global_state(self, client, mock_settings):
         """Test that webhook updates the global PDF state."""
-        with patch("pdfserver.routes.webhook.run_synctex_view", new_callable=AsyncMock) as mock_synctex:
+        with patch("entangledpdf.routes.webhook.run_synctex_view", new_callable=AsyncMock) as mock_synctex:
             mock_synctex.return_value = {
                 "Page": "7",
                 "y": "200.5",
                 "x": "100.0"
             }
             
-            with patch("pdfserver.routes.webhook.manager") as mock_manager:
+            with patch("entangledpdf.routes.webhook.manager") as mock_manager:
                 mock_manager.broadcast = AsyncMock()
                 mock_manager.broadcast.return_value = None
                 
-                with patch("pdfserver.routes.webhook.pdf_state") as mock_state:
+                with patch("entangledpdf.routes.webhook.pdf_state") as mock_state:
                     mock_state.update = MagicMock()
                     mock_state.last_sync_time = 1234567890
                     
@@ -233,7 +233,7 @@ class TestWebhookBroadcasting:
     
     def test_webhook_no_scroll_when_synctex_fails(self, client, mock_settings):
         """Test that webhook returns success with page=None when synctex fails."""
-        with patch("pdfserver.routes.webhook.run_synctex_view", new_callable=AsyncMock) as mock_synctex:
+        with patch("entangledpdf.routes.webhook.run_synctex_view", new_callable=AsyncMock) as mock_synctex:
             mock_synctex.return_value = None  # synctex fails
             
             response = client.post(

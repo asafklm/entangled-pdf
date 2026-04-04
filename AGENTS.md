@@ -1,4 +1,4 @@
-# AGENTS.md - Coding Guidelines for PdfServer
+# AGENTS.md - Coding Guidelines for EntangledPdf
 
 ## Project Overview
 
@@ -464,7 +464,7 @@ T3: handleSyncTeXMessage checks CONFIG.filename
 
 **Future (Post-Maturation):**
 - Publish to PyPI
-- Recommend pipx for end-user installation: `pipx install pdfserver`
+- Recommend pipx for end-user installation: `pipx install entangledpdf`
 - pipx provides isolated environments perfect for CLI tools
 - Avoid pip for end-users (can cause dependency conflicts)
 

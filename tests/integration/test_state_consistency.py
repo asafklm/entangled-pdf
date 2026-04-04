@@ -9,7 +9,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
-from pdfserver.config import get_settings
+from entangledpdf.config import get_settings
 from tests.integration.helpers import MockWebSocket
 
 
@@ -21,8 +21,8 @@ class TestStateConsistency:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test that webhook updates are visible via /state endpoint."""
-        from pdfserver.state import pdf_state
-        from pdfserver.connection_manager import manager
+        from entangledpdf.state import pdf_state
+        from entangledpdf.connection_manager import manager
         
         # Initial state
         response = test_client.get("/state")
@@ -53,7 +53,7 @@ class TestStateConsistency:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test that timestamp changes on each update."""
-        from pdfserver.state import pdf_state
+        from entangledpdf.state import pdf_state
         
         timestamps = []
         
@@ -80,8 +80,8 @@ class TestStateConsistency:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test race condition: multiple simultaneous webhooks."""
-        from pdfserver.state import pdf_state
-        from pdfserver.connection_manager import manager
+        from entangledpdf.state import pdf_state
+        from entangledpdf.connection_manager import manager
         
         mock_ws = MockWebSocket()
         
@@ -122,8 +122,8 @@ class TestStateConsistency:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test that state persists when clients disconnect and reconnect."""
-        from pdfserver.state import pdf_state
-        from pdfserver.connection_manager import manager
+        from entangledpdf.state import pdf_state
+        from entangledpdf.connection_manager import manager
         
         # First client connects
         client1 = MockWebSocket()
@@ -167,7 +167,7 @@ class TestStateConsistency:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test /state called while webhook is updating."""
-        from pdfserver.state import pdf_state
+        from entangledpdf.state import pdf_state
         
         results = []
         

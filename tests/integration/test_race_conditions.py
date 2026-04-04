@@ -9,7 +9,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
-from pdfserver.config import get_settings
+from entangledpdf.config import get_settings
 from tests.integration.helpers import MockWebSocket
 
 
@@ -21,8 +21,8 @@ class TestRaceConditions:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test that 100 updates/sec don't cause inconsistent state."""
-        from pdfserver.state import pdf_state
-        from pdfserver.connection_manager import manager
+        from entangledpdf.state import pdf_state
+        from entangledpdf.connection_manager import manager
         
         mock_ws = MockWebSocket()
         
@@ -64,7 +64,7 @@ class TestRaceConditions:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test broadcast sent while client is connecting."""
-        from pdfserver.connection_manager import manager
+        from entangledpdf.connection_manager import manager
         
         # Start a connection process (but don't await it fully)
         mock_ws = MockWebSocket()
@@ -103,7 +103,7 @@ class TestRaceConditions:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test that sequential broadcasts arrive in order."""
-        from pdfserver.connection_manager import manager
+        from entangledpdf.connection_manager import manager
         
         mock_ws = MockWebSocket()
         
@@ -136,7 +136,7 @@ class TestRaceConditions:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test client reconnects during broadcast."""
-        from pdfserver.connection_manager import manager
+        from entangledpdf.connection_manager import manager
         
         # Client 1 connects and disconnects
         client1 = MockWebSocket()
@@ -175,7 +175,7 @@ class TestRaceConditions:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test multiple clients connecting simultaneously."""
-        from pdfserver.connection_manager import manager
+        from entangledpdf.connection_manager import manager
         
         # Create 10 clients that will connect simultaneously
         clients = []
@@ -210,7 +210,7 @@ class TestRaceConditions:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test broadcast continues even if one client fails."""
-        from pdfserver.connection_manager import manager
+        from entangledpdf.connection_manager import manager
         
         # Working client
         good_client = MockWebSocket()
@@ -248,7 +248,7 @@ class TestRaceConditions:
         self, test_client, reset_state, reset_connections, mock_synctex
     ):
         """Test concurrent reads and writes to state."""
-        from pdfserver.state import pdf_state
+        from entangledpdf.state import pdf_state
         
         results = []
         

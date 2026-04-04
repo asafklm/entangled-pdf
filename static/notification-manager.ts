@@ -1,5 +1,5 @@
 /**
- * PdfServer Viewer - Notification Manager
+ * EntangledPdf Viewer - Notification Manager
  *
  * Centralized error and notification display system.
  */

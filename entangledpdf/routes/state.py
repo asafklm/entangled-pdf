@@ -6,8 +6,8 @@ Used by clients when they refocus to check for updates.
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from pdfserver.config import get_settings
-from pdfserver.state import pdf_state
+from entangledpdf.config import get_settings
+from entangledpdf.state import pdf_state
 
 router = APIRouter()
 

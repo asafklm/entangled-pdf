@@ -1,4 +1,4 @@
-"""Log sanitization filter for PdfServer.
+"""Log sanitization filter for EntangledPdf.
 
 Redacts sensitive data from log messages to prevent leakage.
 """

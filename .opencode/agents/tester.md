@@ -19,7 +19,7 @@ permission:
     "npm test": allow
 ---
 
-You are a test writer for the PdfServer project. Generate comprehensive tests for new code.
+You are a test writer for the EntangledPdf project. Generate comprehensive tests for new code.
 
 **Test Locations (from AGENTS.md):**
 - Python: `tests/` directory

@@ -1,10 +1,10 @@
-"""Certificate management for PdfServer.
+"""Certificate management for EntangledPdf.
 
 Can be used as a library or run as a CLI script:
-    python -m pdfserver.certs generate              # Generate new cert
-    python -m pdfserver.certs status                  # Check cert status
-    python -m pdfserver.certs generate --force        # Regenerate expired cert
-    python -m pdfserver.certs generate --cert PATH --key PATH  # Use existing
+    python -m entangledpdf.certs generate              # Generate new cert
+    python -m entangledpdf.certs status                  # Check cert status
+    python -m entangledpdf.certs generate --force        # Regenerate expired cert
+    python -m entangledpdf.certs generate --cert PATH --key PATH  # Use existing
 """
 
 import argparse
@@ -81,7 +81,7 @@ def generate_self_signed_cert(
             x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
             x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "Local"),
             x509.NameAttribute(NameOID.LOCALITY_NAME, "Local"),
-            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "PdfServer"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "EntangledPdf"),
             x509.NameAttribute(NameOID.COMMON_NAME, hostname),
         ])
         
@@ -274,7 +274,7 @@ def cmd_generate(args: argparse.Namespace) -> int:
         logger.info(f"Private key: {key_path}")
         logger.info("\nFirst-time browser access:")
         logger.info("You'll see a certificate warning - click 'Advanced' → 'Accept'")
-        logger.info("\nTo use PdfServer:")
+        logger.info("\nTo use EntangledPdf:")
         logger.info("  python main.py document.pdf")
         
         return 0
@@ -306,7 +306,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     if not info["exists"]:
         logger.info("\nStatus: NOT FOUND")
         logger.info("\nTo generate certificates:")
-        logger.info("  python -m pdfserver.certs generate")
+        logger.info("  python -m entangledpdf.certs generate")
         return 1
     
     logger.info(f"\nStatus: {'VALID' if info['valid'] else 'INVALID'}")
@@ -316,7 +316,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     if info["expired"]:
         logger.info("\n⚠️  Certificate has EXPIRED")
         logger.info("To regenerate:")
-        logger.info("  python -m pdfserver.certs generate --force")
+        logger.info("  python -m entangledpdf.certs generate --force")
         return 1
     elif info["error"]:
         logger.info(f"\n⚠️  Issue: {info['error']}")
@@ -334,8 +334,8 @@ def main() -> int:
     )
     
     parser = argparse.ArgumentParser(
-        description="PdfServer certificate management",
-        prog="python -m pdfserver.certs"
+        description="EntangledPdf certificate management",
+        prog="python -m entangledpdf.certs"
     )
     
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -344,8 +344,8 @@ def main() -> int:
     gen_parser = subparsers.add_parser("generate", help="Generate or install SSL certificates")
     gen_parser.add_argument(
         "--hostname",
-        default="pdfserver.local",
-        help="Hostname for generated certificate (default: pdfserver.local)"
+        default="entangledpdf.local",
+        help="Hostname for generated certificate (default: entangledpdf.local)"
     )
     gen_parser.add_argument(
         "--cert",

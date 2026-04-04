@@ -1,5 +1,5 @@
 /**
- * PdfServer Viewer - PDF Renderer
+ * EntangledPdf Viewer - PDF Renderer
  *
  * Handles loading and rendering PDF documents using PDF.js.
  */

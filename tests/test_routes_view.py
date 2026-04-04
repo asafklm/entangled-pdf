@@ -6,9 +6,9 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 
-from pdfserver.routes import view as view_route
-from pdfserver.config import Settings
-from pdfserver.state import pdf_state
+from entangledpdf.routes import view as view_route
+from entangledpdf.config import Settings
+from entangledpdf.state import pdf_state
 
 
 @pytest.fixture(autouse=True)
@@ -77,7 +77,7 @@ def client(mock_settings):
     app = FastAPI()
     app.include_router(view_route.router)
     
-    with patch("pdfserver.routes.view.get_settings", return_value=mock_settings):
+    with patch("entangledpdf.routes.view.get_settings", return_value=mock_settings):
         with patch.object(view_route, "_templates", None):  # Reset templates cache
             yield TestClient(app)
 
@@ -140,7 +140,7 @@ class TestViewPage:
         app = FastAPI()
         app.include_router(view_route.router)
         
-        with patch("pdfserver.routes.view.get_settings", return_value=settings):
+        with patch("entangledpdf.routes.view.get_settings", return_value=settings):
             with patch.object(view_route, "_templates", None):
                 # Disable inverse search for this test
                 pdf_state.inverse_search_enabled = False
@@ -175,7 +175,7 @@ class TestViewPage:
         app = FastAPI()
         app.include_router(view_route.router)
         
-        with patch("pdfserver.routes.view.get_settings", return_value=settings):
+        with patch("entangledpdf.routes.view.get_settings", return_value=settings):
             with patch.object(view_route, "_templates", None):
                 # Disable inverse search for this test
                 pdf_state.inverse_search_enabled = False
@@ -208,7 +208,7 @@ class TestViewPage:
         app = FastAPI()
         app.include_router(view_route.router)
         
-        with patch("pdfserver.routes.view.get_settings", return_value=settings):
+        with patch("entangledpdf.routes.view.get_settings", return_value=settings):
             with patch.object(view_route, "_templates", None):
                 # Disable inverse search for this test
                 pdf_state.inverse_search_enabled = False
@@ -257,7 +257,7 @@ class TestViewPage:
         app = FastAPI()
         app.include_router(view_route.router)
         
-        with patch("pdfserver.routes.view.get_settings", return_value=settings):
+        with patch("entangledpdf.routes.view.get_settings", return_value=settings):
             with patch.object(view_route, "_templates", None):
                 # Disable inverse search for this test
                 pdf_state.inverse_search_enabled = False

@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 
-from pdfserver.routes import state as state_route
+from entangledpdf.routes import state as state_route
 
 
 @pytest.fixture
@@ -28,7 +28,7 @@ class TestGetState:
         app = FastAPI()
         app.include_router(state_route.router)
         
-        with patch("pdfserver.routes.state.get_settings", return_value=mock_settings):
+        with patch("entangledpdf.routes.state.get_settings", return_value=mock_settings):
             yield TestClient(app)
     
     def test_get_state_returns_current_state(self, client_with_mock, mock_settings):
@@ -44,7 +44,7 @@ class TestGetState:
         mock_state.inverse_search_enabled = False
         mock_state.websocket_token = "test-token"
         
-        with patch("pdfserver.routes.state.pdf_state", mock_state):
+        with patch("entangledpdf.routes.state.pdf_state", mock_state):
             response = client_with_mock.get("/state")
             
             assert response.status_code == 200
@@ -68,7 +68,7 @@ class TestGetState:
         mock_state.inverse_search_enabled = False
         mock_state.websocket_token = "test-token"
         
-        with patch("pdfserver.routes.state.pdf_state", mock_state):
+        with patch("entangledpdf.routes.state.pdf_state", mock_state):
             response = client_with_mock.get("/state")
             
             assert response.status_code == 200
@@ -95,7 +95,7 @@ class TestGetState:
         mock_state.inverse_search_enabled = False
         mock_state.websocket_token = "test-token"
         
-        with patch("pdfserver.routes.state.pdf_state", mock_state):
+        with patch("entangledpdf.routes.state.pdf_state", mock_state):
             response = client_with_mock.get("/state")
             
             assert response.status_code == 200
@@ -117,7 +117,7 @@ class TestGetState:
         mock_state1.inverse_search_enabled = False
         mock_state1.websocket_token = "test-token"
         
-        with patch("pdfserver.routes.state.pdf_state", mock_state1):
+        with patch("entangledpdf.routes.state.pdf_state", mock_state1):
             response = client_with_mock.get("/state")
             data = response.json()
             assert data["page"] == 3
@@ -135,7 +135,7 @@ class TestGetState:
         mock_state2.inverse_search_enabled = False
         mock_state2.websocket_token = "test-token"
         
-        with patch("pdfserver.routes.state.pdf_state", mock_state2):
+        with patch("entangledpdf.routes.state.pdf_state", mock_state2):
             response = client_with_mock.get("/state")
             data = response.json()
             assert data["page"] == 7
@@ -155,7 +155,7 @@ class TestGetState:
         mock_state.inverse_search_enabled = False
         mock_state.websocket_token = "test-token"
         
-        with patch("pdfserver.routes.state.pdf_state", mock_state):
+        with patch("entangledpdf.routes.state.pdf_state", mock_state):
             response = client_with_mock.get("/state")
             
             assert response.status_code == 200
@@ -176,7 +176,7 @@ class TestGetState:
         mock_state.inverse_search_enabled = False
         mock_state.websocket_token = "test-token"
         
-        with patch("pdfserver.routes.state.pdf_state", mock_state):
+        with patch("entangledpdf.routes.state.pdf_state", mock_state):
             response = client_with_mock.get("/state")
             
             assert response.status_code == 200
@@ -197,7 +197,7 @@ class TestGetState:
         mock_state.inverse_search_enabled = False
         mock_state.websocket_token = "test-token"
         
-        with patch("pdfserver.routes.state.pdf_state", mock_state):
+        with patch("entangledpdf.routes.state.pdf_state", mock_state):
             response = client_with_mock.get("/state")
             
             assert response.status_code == 200

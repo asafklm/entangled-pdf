@@ -15,7 +15,7 @@ import argcomplete
 import requests
 import urllib3
 
-from pdfserver.sync import load_pdf, forward_search, parse_synctex_forward
+from entangledpdf.sync import load_pdf, forward_search, parse_synctex_forward
 
 # Suppress urllib3 warnings for self-signed certificates
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -28,9 +28,9 @@ def get_server_dir() -> Path:
     """Get the server directory (parent of package)."""
     # When installed via pip, the package is in site-packages
     # We need to find where static files and certs are stored
-    import pdfserver
+    import entangledpdf
     
-    package_dir = Path(pdfserver.__file__).parent.resolve()
+    package_dir = Path(entangledpdf.__file__).parent.resolve()
     # The server root is one level up from the package
     server_dir = package_dir.parent
     
@@ -86,20 +86,20 @@ def cmd_start(args):
     
     # Find the main.py file
     try:
-        import pdfserver
-        package_dir = Path(pdfserver.__file__).parent
+        import entangledpdf
+        package_dir = Path(entangledpdf.__file__).parent
         main_py = package_dir.parent / "main.py"
         
         # If main.py is not next to the package, try to find it
         if not main_py.exists():
-            # When installed via pip -e, main.py should be in the same dir as pdfserver
+            # When installed via pip -e, main.py should be in the same dir as entangledpdf
             main_py = package_dir.parent / "main.py"
         
         if not main_py.exists():
             print("Error: Could not find main.py. Are you in development mode?", file=sys.stderr)
             return 1
     except ImportError:
-        print("Error: Could not import pdfserver package", file=sys.stderr)
+        print("Error: Could not import entangledpdf package", file=sys.stderr)
         return 1
     
     python_cmd = get_python_cmd()
@@ -144,7 +144,7 @@ def cmd_start(args):
     env["PDF_SERVER_PORT"] = str(port)
     
     # Run server in foreground - this will block until Ctrl+C
-    print(f"Starting PdfServer on port {port}...")
+    print(f"Starting EntangledPdf on port {port}...")
     print("Press Ctrl+C to stop the server\n")
     
     try:
@@ -269,7 +269,7 @@ def cmd_sync(args):
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="PdfServer management tool (foreground mode only)",
+        description="EntangledPdf management tool (foreground mode only)",
         prog="pdf-server"
     )
     
