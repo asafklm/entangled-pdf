@@ -23,7 +23,7 @@ A standalone utility script for manually cleaning up orphaned test processes:
 - Safely identifies test processes by:
   - Test certificate patterns (`test.pem`, `test.crt`, etc.)
   - Test port ranges (18080-18200)
-  - Test mode flag (`PDF_SERVER_TESTING`)
+  - Test mode flag (`ENTANGLEDPDF_TESTING`)
 - **Never kills production servers** (port 8431 with production certificates)
 - Graceful termination (SIGTERM) followed by force kill (SIGKILL) if needed
 

@@ -75,14 +75,14 @@ EntangledPdf requires an API key for authentication between the server and clien
 
 ```bash
 # Add to your shell configuration
-echo "export PDF_SERVER_API_KEY=\"$(openssl rand -hex 32)\"" >> ~/.bashrc
+echo "export ENTANGLEDPDF_API_KEY=\"$(openssl rand -hex 32)\"" >> ~/.bashrc
 source ~/.bashrc
 ```
 
 **Or use your own password:**
 
 ```bash
-echo 'export PDF_SERVER_API_KEY="my-secure-password-123"' >> ~/.bashrc
+echo 'export ENTANGLEDPDF_API_KEY="my-secure-password-123"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -91,7 +91,7 @@ source ~/.bashrc
 **Verify the key is set:**
 
 ```bash
-echo $PDF_SERVER_API_KEY
+echo $ENTANGLEDPDF_API_KEY
 ```
 
 ### 2. Editor Integration (Optional - for Inverse Search)
@@ -389,13 +389,13 @@ entangle-pdf sync your-document.pdf
 
 1. **Missing API key:**
    ```bash
-   echo $PDF_SERVER_API_KEY
-   # If empty, set it: export PDF_SERVER_API_KEY="your-key"
+   echo $ENTANGLEDPDF_API_KEY
+   # If empty, set it: export ENTANGLEDPDF_API_KEY="your-key"
    ```
 
 2. **Mismatched keys:** Server and client must use the same key
    - Check server: `entangle-pdf status`
-   - Check client: `echo $PDF_SERVER_API_KEY`
+   - Check client: `echo $ENTANGLEDPDF_API_KEY`
 
 3. **Server not restarted:** After setting the environment variable:
    ```bash
@@ -496,14 +496,14 @@ entangle-pdf start --http
 
 **Project A (Terminal 1):**
 ```bash
-export PDF_SERVER_PORT=9000
+export ENTANGLEDPDF_PORT=9000
 export NVIM_LISTEN_ADDRESS="/tmp/nvim-project-a.sock"
 nvim project-a/main.tex
 ```
 
 **Project B (Terminal 2):**
 ```bash
-export PDF_SERVER_PORT=9001
+export ENTANGLEDPDF_PORT=9001
 export NVIM_LISTEN_ADDRESS="/tmp/nvim-project-b.sock"
 nvim project-b/main.tex
 ```
@@ -545,11 +545,11 @@ response = requests.post(
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PDF_SERVER_PORT` | 8431 | Server port |
-| `PDF_SERVER_API_KEY` | (required) | API key for authentication |
+| `ENTANGLEDPDF_PORT` | 8431 | Server port |
+| `ENTANGLEDPDF_API_KEY` | (required) | API key for authentication |
 | `NVIM_LISTEN_ADDRESS` | (none) | Neovim socket path |
 | `VIM_SERVERNAME` | (none) | Vim server name |
-| `PDF_SERVER_TEST_PORT` | 18080 | Port for E2E tests |
+| `ENTANGLEDPDF_TEST_PORT` | 18080 | Port for E2E tests |
 
 ---
 
@@ -725,7 +725,7 @@ entangle-pdf start --http
 1. Start server with verbose logging: `entangle-pdf start --verbose`
 2. Open browser console (F12) to see WebSocket messages
 3. Check the connection status button in the PDF viewer
-4. Verify `PDF_SERVER_API_KEY` is set on both sides
+4. Verify `ENTANGLEDPDF_API_KEY` is set on both sides
 
 ### Q: Does EntangledPdf support multiple simultaneous PDFs?
 

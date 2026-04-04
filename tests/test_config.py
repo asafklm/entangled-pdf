@@ -45,7 +45,7 @@ class TestSettings:
         
         # Ensure env var is not set
         import os
-        os.environ.pop("PDF_SERVER_API_KEY", None)
+        os.environ.pop("ENTANGLEDPDF_API_KEY", None)
         
         with pytest.raises(ConfigError, match="API key is required"):
             init_settings(pdf_file=pdf_file)
@@ -62,8 +62,8 @@ class TestSettings:
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_text("dummy pdf content")
         
-        monkeypatch.setenv("PDF_SERVER_PORT", "9090")
-        monkeypatch.setenv("PDF_SERVER_API_KEY", "env-secret")
+        monkeypatch.setenv("ENTANGLEDPDF_PORT", "9090")
+        monkeypatch.setenv("ENTANGLEDPDF_API_KEY", "env-secret")
         
         settings = Settings(pdf_file=pdf_file)
         
@@ -75,7 +75,7 @@ class TestSettings:
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_text("dummy pdf content")
         
-        monkeypatch.setenv("PDF_SERVER_API_KEY", "env-api-key")
+        monkeypatch.setenv("ENTANGLEDPDF_API_KEY", "env-api-key")
         
         settings = init_settings(pdf_file=pdf_file)
         
@@ -123,7 +123,7 @@ class TestApiKeyValidation:
         pdf_file.write_text("dummy pdf content")
         
         # Ensure env var is not set
-        os.environ.pop("PDF_SERVER_API_KEY", None)
+        os.environ.pop("ENTANGLEDPDF_API_KEY", None)
         
         with pytest.raises(ConfigError, match="API key is required"):
             init_settings(pdf_file=pdf_file)
@@ -134,7 +134,7 @@ class TestApiKeyValidation:
         pdf_file.write_text("dummy pdf content")
         
         # Don't set env var, pass directly
-        os.environ.pop("PDF_SERVER_API_KEY", None)
+        os.environ.pop("ENTANGLEDPDF_API_KEY", None)
         
         settings = Settings(pdf_file=pdf_file, api_key="arg-api-key")
         assert settings.api_key == "arg-api-key"

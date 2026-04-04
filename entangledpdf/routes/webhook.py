@@ -143,7 +143,7 @@ async def receive_webhook(
     if x_api_key != settings.api_key:
         raise HTTPException(
             status_code=403,
-            detail="Authentication failed. Ensure PDF_SERVER_API_KEY is set and server was restarted."
+            detail="Authentication failed. Ensure ENTANGLEDPDF_API_KEY is set and server was restarted."
         )
     
     logger.debug(f"Webhook received: {data}")

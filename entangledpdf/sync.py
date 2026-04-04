@@ -108,7 +108,7 @@ def send_request(
             # Provide actionable error message for authentication failures
             raise Exception(
                 f"Authentication failed (HTTP 403). "
-                f"Ensure PDF_SERVER_API_KEY matches on both client and server. "
+                f"Ensure ENTANGLEDPDF_API_KEY matches on both client and server. "
                 f"Restart server after setting the environment variable."
             )
         raise Exception(f"HTTP {e.code}: {error_body}")

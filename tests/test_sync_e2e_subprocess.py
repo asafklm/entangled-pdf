@@ -4,11 +4,11 @@ These tests spawn actual entangle-pdf and entangle-pdf sync processes to test re
 usage without any mocking. Uses self-signed SSL certificates on port 18080.
 
 Environment Variables:
-    PDF_SERVER_TEST_PORT: Override default test port (default: 18080)
-    PDF_SERVER_TEST_DIR: Override temp directory for test artifacts
+    ENTANGLEDPDF_TEST_PORT: Override default test port (default: 18080)
+    ENTANGLEDPDF_TEST_DIR: Override temp directory for test artifacts
 
 Example:
-    PDF_SERVER_TEST_PORT=28080 pytest tests/test_sync_e2e_subprocess.py -v
+    ENTANGLEDPDF_TEST_PORT=28080 pytest tests/test_sync_e2e_subprocess.py -v
 """
 
 import os
@@ -41,7 +41,7 @@ from tests.conftest import (
 )
 
 # Default test port (can be overridden via env var)
-TEST_SERVER_PORT = int(os.getenv("PDF_SERVER_TEST_PORT", 18080))
+TEST_SERVER_PORT = int(os.getenv("ENTANGLEDPDF_TEST_PORT", 18080))
 TEST_SERVER_HOST = "localhost"
 TEST_API_KEY = "test-api-key-e2e-12345"
 
@@ -113,8 +113,8 @@ def running_server(test_certs, tmp_path_factory, request):
     
     # Set environment variables
     env = os.environ.copy()
-    env["PDF_SERVER_API_KEY"] = TEST_API_KEY
-    env["PDF_SERVER_TESTING"] = "1"  # Flag to indicate test mode
+    env["ENTANGLEDPDF_API_KEY"] = TEST_API_KEY
+    env["ENTANGLEDPDF_TESTING"] = "1"  # Flag to indicate test mode
     
     # Start server process
     process = subprocess.Popen(
@@ -609,12 +609,12 @@ class TestPortOverride:
     """Test port conflict workaround via environment variable."""
 
     def test_port_override_via_env_var(self, tmp_path, monkeypatch):
-        """PDF_SERVER_TEST_PORT env var overrides default port."""
+        """ENTANGLEDPDF_TEST_PORT env var overrides default port."""
         # This test just verifies the env var is respected in the fixture
         # The actual port override would require restarting the server fixture
         # So we just verify the constant is set correctly
         custom_port = 28080
-        monkeypatch.setenv("PDF_SERVER_TEST_PORT", str(custom_port))
+        monkeypatch.setenv("ENTANGLEDPDF_TEST_PORT", str(custom_port))
         
         # Re-import to pick up new value
         # Note: In real usage, user would run pytest with the env var

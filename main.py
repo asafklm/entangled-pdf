@@ -136,14 +136,14 @@ def parse_args() -> argparse.Namespace:
         "--port",
         type=int,
         default=None,
-        help="Server port (default: 8431 or PDF_SERVER_PORT env var)"
+        help="Server port (default: 8431 or ENTANGLEDPDF_PORT env var)"
     )
     
     parser.add_argument(
         "--api-key",
         type=str,
         default=None,
-        help="API key for authentication (default: PDF_SERVER_API_KEY env var)"
+        help="API key for authentication (default: ENTANGLEDPDF_API_KEY env var)"
     )
     
     parser.add_argument(
@@ -249,8 +249,8 @@ def main() -> None:
     
     # Report API key source
     import os
-    if os.getenv("PDF_SERVER_API_KEY"):
-        print("API key loaded from PDF_SERVER_API_KEY environment variable", flush=True)
+    if os.getenv("ENTANGLEDPDF_API_KEY"):
+        print("API key loaded from ENTANGLEDPDF_API_KEY environment variable", flush=True)
     
     # Set log level based on verbose flag
     if args.verbose:

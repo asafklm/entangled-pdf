@@ -21,7 +21,7 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Set default API key for tests
-os.environ.setdefault("PDF_SERVER_API_KEY", "test-api-key-for-testing")
+os.environ.setdefault("ENTANGLEDPDF_API_KEY", "test-api-key-for-testing")
 
 # Process tracking configuration
 # Store in project directory (not /tmp) to avoid permission issues

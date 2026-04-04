@@ -22,13 +22,13 @@ class ConfigError(ValueError):
 class Settings(BaseSettings):
     """Application settings with environment variable support.
     
-    Environment variables are prefixed with PDF_SERVER_.
-    Example: PDF_SERVER_PORT=8080
+    Environment variables are prefixed with ENTANGLEDPDF_.
+    Example: ENTANGLEDPDF_PORT=8080
     
     Attributes:
         pdf_file: Path to the PDF file to serve (optional - can be loaded dynamically)
         port: Server port number (default: 8431)
-        api_key: API key for webhook authentication (required - set via PDF_SERVER_API_KEY or --api-key)
+        api_key: API key for webhook authentication (required - set via ENTANGLEDPDF_API_KEY or --api-key)
         host: Server host address (default: 0.0.0.0)
         static_dir: Directory containing static files (default: static/)
         use_https: Whether to use HTTPS (default: True)
@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     """
     
     model_config = SettingsConfigDict(
-        env_prefix="PDF_SERVER_",
+        env_prefix="ENTANGLEDPDF_",
         case_sensitive=False,
         extra="ignore"  # Ignore extra env vars
     )
@@ -74,7 +74,7 @@ class Settings(BaseSettings):
         # Validate API key is set
         if not self.api_key:
             raise ValueError(
-                "API key is required. Set PDF_SERVER_API_KEY environment variable "
+                "API key is required. Set ENTANGLEDPDF_API_KEY environment variable "
                 "or use --api-key flag when starting the server."
             )
 
@@ -105,15 +105,15 @@ def init_settings(
         Settings: Initialized settings instance
     
     Raises:
-        ConfigError: If API key is not provided and PDF_SERVER_API_KEY env var is not set
+        ConfigError: If API key is not provided and ENTANGLEDPDF_API_KEY env var is not set
     """
     global settings
     
     # Validate API key before creating Settings (to avoid Pydantic wrapping)
-    final_api_key = api_key or os.getenv("PDF_SERVER_API_KEY")
+    final_api_key = api_key or os.getenv("ENTANGLEDPDF_API_KEY")
     if not final_api_key:
         raise ConfigError(
-            "API key is required. Set PDF_SERVER_API_KEY environment variable "
+            "API key is required. Set ENTANGLEDPDF_API_KEY environment variable "
             "or use --api-key flag when starting the server."
         )
     

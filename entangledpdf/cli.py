@@ -75,7 +75,7 @@ def is_server_running(port: int) -> bool:
 
 def cmd_start(args):
     """Start the PDF server (foreground mode)."""
-    port = args.port or int(os.getenv("PDF_SERVER_PORT", DEFAULT_PORT))
+    port = args.port or int(os.getenv("ENTANGLEDPDF_PORT", DEFAULT_PORT))
     
     # Check if server already running
     if is_server_running(port):
@@ -141,7 +141,7 @@ def cmd_start(args):
     
     # Set environment
     env = os.environ.copy()
-    env["PDF_SERVER_PORT"] = str(port)
+    env["ENTANGLEDPDF_PORT"] = str(port)
     
     # Run server in foreground - this will block until Ctrl+C
     print(f"Starting EntangledPdf on port {port}...")
@@ -160,7 +160,7 @@ def cmd_start(args):
 
 def cmd_status(args):
     """Show server status."""
-    port = args.port or int(os.getenv("PDF_SERVER_PORT", DEFAULT_PORT))
+    port = args.port or int(os.getenv("ENTANGLEDPDF_PORT", DEFAULT_PORT))
     
     state = get_server_state(port)
     
@@ -197,15 +197,15 @@ def cmd_status(args):
 
 def cmd_sync(args):
     """Load PDF and optionally perform forward search."""
-    port = args.port or int(os.getenv("PDF_SERVER_PORT", DEFAULT_PORT))
+    port = args.port or int(os.getenv("ENTANGLEDPDF_PORT", DEFAULT_PORT))
     
     # Check for API key from command line or environment variable
-    api_key = args.api_key or os.getenv("PDF_SERVER_API_KEY")
+    api_key = args.api_key or os.getenv("ENTANGLEDPDF_API_KEY")
     
     if not api_key:
         print("Error: API key required.", file=sys.stderr)
         print("Either:", file=sys.stderr)
-        print("  1. Set PDF_SERVER_API_KEY environment variable", file=sys.stderr)
+        print("  1. Set ENTANGLEDPDF_API_KEY environment variable", file=sys.stderr)
         print("  2. Use --api-key flag", file=sys.stderr)
         return 1
     
@@ -277,7 +277,7 @@ def main():
         "--port",
         type=int,
         default=None,
-        help=f"Server port (default: {DEFAULT_PORT} or PDF_SERVER_PORT env var)"
+        help=f"Server port (default: {DEFAULT_PORT} or ENTANGLEDPDF_PORT env var)"
     )
     
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -324,7 +324,7 @@ def main():
     start_parser.add_argument(
         "--api-key",
         metavar="KEY",
-        help="API key for authentication (default: PDF_SERVER_API_KEY env var)"
+        help="API key for authentication (default: ENTANGLEDPDF_API_KEY env var)"
     )
     
     start_parser.add_argument(
@@ -363,8 +363,8 @@ def main():
     sync_parser.add_argument(
         "--port",
         type=int,
-        default=int(os.getenv("PDF_SERVER_PORT", DEFAULT_PORT)),
-        help=f"Server port (default: {DEFAULT_PORT} or PDF_SERVER_PORT env var)"
+        default=int(os.getenv("ENTANGLEDPDF_PORT", DEFAULT_PORT)),
+        help=f"Server port (default: {DEFAULT_PORT} or ENTANGLEDPDF_PORT env var)"
     )
     
     sync_parser.add_argument(

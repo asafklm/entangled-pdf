@@ -54,7 +54,7 @@ See [Debugging Process for Complex Issues](#debugging-process-for-complex-issues
 ./bin/python -m pytest tests/test_sync_client_utils.py -v           # Client utility tests
 
 # E2E test configuration (optional)
-export PDF_SERVER_TEST_PORT=18080    # Default: 18080
+export ENTANGLEDPDF_TEST_PORT=18080    # Default: 18080
 ./bin/python -m pytest tests/test_sync_e2e_subprocess.py -v
 
 # TypeScript/JavaScript
@@ -235,7 +235,7 @@ class ConnectionManager:
 
 ## Security
 
-- Never hardcode secrets (use env vars: `PDF_SERVER_API_KEY`)
+- Never hardcode secrets (use env vars: `ENTANGLEDPDF_API_KEY`)
 - Validate all input data
 - Use X-API-Key pattern for authentication
 - Escape HTML template variables

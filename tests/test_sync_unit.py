@@ -110,7 +110,7 @@ class TestSendRequest:
                 send_request("GET", "/test", 8431)
 
             assert "Authentication failed" in str(exc_info.value)
-            assert "PDF_SERVER_API_KEY" in str(exc_info.value)
+            assert "ENTANGLEDPDF_API_KEY" in str(exc_info.value)
 
     def test_send_request_other_http_error(self):
         """Test handling of other HTTP errors."""
@@ -315,7 +315,7 @@ class TestMainArgumentParsing:
         pdf_file.write_text("dummy pdf content")
 
         # Clear environment variable
-        monkeypatch.delenv("PDF_SERVER_API_KEY", raising=False)
+        monkeypatch.delenv("ENTANGLEDPDF_API_KEY", raising=False)
 
         with patch('sys.argv', ['entangle-pdf', 'sync', str(pdf_file)]):
             result = main()
@@ -326,7 +326,7 @@ class TestMainArgumentParsing:
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_text("dummy pdf content")
 
-        monkeypatch.setenv("PDF_SERVER_API_KEY", "test-key")
+        monkeypatch.setenv("ENTANGLEDPDF_API_KEY", "test-key")
 
         with patch('entangledpdf.cli.load_pdf') as mock_load:
             mock_load.return_value = {"pdf_file": str(pdf_file)}
@@ -357,7 +357,7 @@ class TestMainArgumentParsing:
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_text("dummy pdf content")
 
-        monkeypatch.setenv("PDF_SERVER_API_KEY", "test-key")
+        monkeypatch.setenv("ENTANGLEDPDF_API_KEY", "test-key")
 
         with patch('entangledpdf.cli.load_pdf') as mock_load:
             mock_load.return_value = {"pdf_file": str(pdf_file)}
@@ -377,7 +377,7 @@ class TestMainArgumentParsing:
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_text("dummy pdf content")
 
-        monkeypatch.setenv("PDF_SERVER_API_KEY", "test-key")
+        monkeypatch.setenv("ENTANGLEDPDF_API_KEY", "test-key")
 
         with patch('entangledpdf.cli.load_pdf') as mock_load:
             mock_load.return_value = {"pdf_file": str(pdf_file)}
@@ -398,7 +398,7 @@ class TestMainArgumentParsing:
         tex_file = tmp_path / "chapter.tex"
         tex_file.write_text("\\documentclass{article}\\begin{document}Test\\end{document}")
 
-        monkeypatch.setenv("PDF_SERVER_API_KEY", "test-key")
+        monkeypatch.setenv("ENTANGLEDPDF_API_KEY", "test-key")
 
         with patch('entangledpdf.cli.load_pdf') as mock_load, \
              patch('entangledpdf.cli.forward_search') as mock_forward:
@@ -426,7 +426,7 @@ class TestMainArgumentParsing:
         """Test that main handles FileNotFoundError gracefully."""
         nonexistent = tmp_path / "nonexistent.pdf"
 
-        monkeypatch.setenv("PDF_SERVER_API_KEY", "test-key")
+        monkeypatch.setenv("ENTANGLEDPDF_API_KEY", "test-key")
 
         with patch('sys.argv', ['entangle-pdf', 'sync', str(nonexistent)]):
             result = main()
@@ -437,7 +437,7 @@ class TestMainArgumentParsing:
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_text("dummy pdf content")
 
-        monkeypatch.setenv("PDF_SERVER_API_KEY", "test-key")
+        monkeypatch.setenv("ENTANGLEDPDF_API_KEY", "test-key")
 
         with patch('entangledpdf.cli.load_pdf', side_effect=Exception("Network error")):
             with patch('sys.argv', ['entangle-pdf', 'sync', str(pdf_file)]):
@@ -449,7 +449,7 @@ class TestMainArgumentParsing:
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_text("dummy pdf content")
 
-        monkeypatch.setenv("PDF_SERVER_API_KEY", "test-key")
+        monkeypatch.setenv("ENTANGLEDPDF_API_KEY", "test-key")
 
         with patch('entangledpdf.cli.load_pdf') as mock_load:
             mock_load.return_value = {"pdf_file": str(pdf_file), "status": "loaded"}

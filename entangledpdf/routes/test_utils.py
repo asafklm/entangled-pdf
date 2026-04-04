@@ -1,7 +1,7 @@
 """Test utilities endpoint for E2E testing.
 
 Provides endpoints to reset server state between tests.
-Only enabled when PDF_SERVER_TEST_MODE environment variable is set.
+Only enabled when ENTANGLEDPDF_TEST_MODE environment variable is set.
 """
 
 import os
@@ -13,7 +13,7 @@ from entangledpdf.state import PDFState, pdf_state
 
 router = APIRouter()
 
-TEST_MODE = os.getenv("PDF_SERVER_TEST_MODE", "").lower() in ("1", "true", "yes")
+TEST_MODE = os.getenv("ENTANGLEDPDF_TEST_MODE", "").lower() in ("1", "true", "yes")
 
 
 @router.post("/api/test/reset", include_in_schema=TEST_MODE)

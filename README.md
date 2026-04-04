@@ -58,7 +58,7 @@ Generate a unique API key and add it to your shell:
 
 ```bash
 # Generate a secure random key and add to ~/.bashrc (or ~/.zshrc)
-echo "export PDF_SERVER_API_KEY=\"$(openssl rand -hex 32)\"" >> ~/.bashrc
+echo "export ENTANGLEDPDF_API_KEY=\"$(openssl rand -hex 32)\"" >> ~/.bashrc
 
 # Reload your shell
 source ~/.bashrc
@@ -67,7 +67,7 @@ source ~/.bashrc
 Alternatively, you can use your own password:
 ```bash
 # Use your own password (must be unique and hard to guess)
-echo 'export PDF_SERVER_API_KEY="my-unique-password-123"' >> ~/.bashrc
+echo 'export ENTANGLEDPDF_API_KEY="my-unique-password-123"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -321,8 +321,8 @@ Parameters:
 
 ### Environment Variables
 
-- `PDF_SERVER_PORT`: Server port (default: 8431, used by both server and client)
-- `PDF_SERVER_API_KEY`: API key for authentication (required)
+- `ENTANGLEDPDF_PORT`: Server port (default: 8431, used by both server and client)
+- `ENTANGLEDPDF_API_KEY`: API key for authentication (required)
 - `NVIM_LISTEN_ADDRESS`: Neovim socket path (for inverse search)
 - `VIM_SERVERNAME`: Vim server name (for inverse search)
 
@@ -357,7 +357,7 @@ The `/state` endpoint is intentionally unauthenticated. It returns:
 - Token is generated per-server-instance (not per-PDF)
 - Token changes when server restarts
 - Re-authentication required after restart for inverse search
-- API key (forward sync) persists across restarts via `PDF_SERVER_API_KEY` env var
+- API key (forward sync) persists across restarts via `ENTANGLEDPDF_API_KEY` env var
 
 **Secure Defaults:**
 
@@ -401,9 +401,9 @@ The `/state` endpoint is intentionally unauthenticated. It returns:
 
 **Problem**: You see "Authentication failed" when loading PDFs.
 
-**Solution**: Ensure the same `PDF_SERVER_API_KEY` is used on both server and client:
-1. Check server has the key: `echo $PDF_SERVER_API_KEY`
-2. Check client has the key: `echo $PDF_SERVER_API_KEY`
+**Solution**: Ensure the same `ENTANGLEDPDF_API_KEY` is used on both server and client:
+1. Check server has the key: `echo $ENTANGLEDPDF_API_KEY`
+2. Check client has the key: `echo $ENTANGLEDPDF_API_KEY`
 3. Restart the server after setting the environment variable
 
 ### Multiple Editor Instances
@@ -484,7 +484,7 @@ python -m pytest tests/test_sync_client_utils.py -v                   # entangle
 python -m pytest tests/test_config.py::TestSettings::test_default_values -v
 
 # E2E tests use port 18080 by default. Override with:
-PDF_SERVER_TEST_PORT=28080 python -m pytest tests/test_sync_e2e_subprocess.py -v
+ENTANGLEDPDF_TEST_PORT=28080 python -m pytest tests/test_sync_e2e_subprocess.py -v
 ```
 
 ### TypeScript Build & Test
