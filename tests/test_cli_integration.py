@@ -12,6 +12,15 @@ from pathlib import Path
 import pytest
 
 
+def get_cli_path() -> Path:
+    """Get the path to the entangle-pdf CLI executable.
+    
+    Returns:
+        Path to the entangle-pdf binary in the virtual environment.
+    """
+    return Path(sys.executable).parent / "entangle-pdf"
+
+
 class TestCLIEntryPoint:
     """Tests for the installed entangle-pdf CLI entry point."""
 
@@ -61,7 +70,7 @@ class TestCLIHelpOutput:
         env = {"ENTANGLEDPDF_API_KEY": "test-key"}
 
         result = subprocess.run(
-            ["entangle-pdf", "--help"],
+            [str(get_cli_path()), "--help"],
             capture_output=True,
             text=True,
             env={**env, **dict(os.environ)},
@@ -82,7 +91,7 @@ class TestCLIHelpOutput:
     def test_start_subcommand_help_shows_correct_name(self):
         """Verify start --help shows correct program name."""
         result = subprocess.run(
-            ["entangle-pdf", "start", "--help"],
+            [str(get_cli_path()), "start", "--help"],
             capture_output=True,
             text=True,
         )
@@ -97,7 +106,7 @@ class TestCLIHelpOutput:
     def test_sync_subcommand_help_shows_correct_name(self):
         """Verify sync --help shows correct program name."""
         result = subprocess.run(
-            ["entangle-pdf", "sync", "--help"],
+            [str(get_cli_path()), "sync", "--help"],
             capture_output=True,
             text=True,
         )
@@ -112,7 +121,7 @@ class TestCLIHelpOutput:
     def test_status_subcommand_help_shows_correct_name(self):
         """Verify status --help shows correct program name."""
         result = subprocess.run(
-            ["entangle-pdf", "status", "--help"],
+            [str(get_cli_path()), "status", "--help"],
             capture_output=True,
             text=True,
         )
@@ -131,7 +140,7 @@ class TestCLISubcommands:
     def test_status_command_runs(self):
         """Verify entangle-pdf status command executes."""
         result = subprocess.run(
-            ["entangle-pdf", "status"],
+            [str(get_cli_path()), "status"],
             capture_output=True,
             text=True,
         )
@@ -151,7 +160,7 @@ class TestCLISubcommands:
         env = {"ENTANGLEDPDF_API_KEY": "test-key"}
 
         result = subprocess.run(
-            ["entangle-pdf", "sync"],
+            [str(get_cli_path()), "sync"],
             capture_output=True,
             text=True,
             env={**env, **dict(os.environ)},
@@ -174,7 +183,7 @@ class TestCLISubcommands:
                if not k.startswith("ENTANGLEDPDF")}
 
         result = subprocess.run(
-            ["entangle-pdf", "start", "--http"],
+            [str(get_cli_path()), "start", "--http"],
             capture_output=True,
             text=True,
             env=env,
@@ -196,7 +205,7 @@ class TestCLISubcommands:
         env = {"ENTANGLEDPDF_API_KEY": "test-key"}
 
         result = subprocess.run(
-            ["entangle-pdf", "--help"],
+            [str(get_cli_path()), "--help"],
             capture_output=True,
             text=True,
             env={**env, **dict(os.environ)},
@@ -237,7 +246,7 @@ class TestCLISubcommandList:
         env = {"ENTANGLEDPDF_API_KEY": "test-key"}
 
         result = subprocess.run(
-            ["entangle-pdf", "--help"],
+            [str(get_cli_path()), "--help"],
             capture_output=True,
             text=True,
             env={**env, **dict(os.environ)},
