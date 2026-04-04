@@ -147,30 +147,6 @@ function updateConnectionDetails(connected: boolean): void {
     }
   }
   
-  // Update reconnect attempts (exposed via WebSocketManager)
-  const reconnectsEl = document.getElementById('detail-reconnects');
-  if (reconnectsEl) {
-    const attempts = (wsManager as any).reconnectAttempts || 0;
-    reconnectsEl.textContent = attempts > 0 ? attempts.toString() : '-';
-  }
-  
-  // Update last ping time
-  const lastPingEl = document.getElementById('detail-last-ping');
-  if (lastPingEl) {
-    const lastPing = (wsManager as any).lastPingTime;
-    if (lastPing) {
-      const seconds = Math.floor((Date.now() - lastPing) / 1000);
-      if (seconds < 60) {
-        lastPingEl.textContent = `${seconds}s ago`;
-      } else {
-        const minutes = Math.floor(seconds / 60);
-        lastPingEl.textContent = `${minutes}m ago`;
-      }
-    } else {
-      lastPingEl.textContent = '-';
-    }
-  }
-  
   // Update filename
   const filenameEl = document.getElementById('detail-filename');
   if (filenameEl) {
