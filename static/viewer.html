@@ -255,71 +255,6 @@
             -webkit-user-select: none;
         }
         
-        #connection-status.connected {
-            background: rgba(34, 197, 94, 0.2);
-            color: rgba(34, 197, 94, 0.8);
-            opacity: 0.4;
-        }
-        
-        #connection-status.connected:hover {
-            opacity: 0.7;
-        }
-        
-        #connection-status.disconnected {
-            background: rgba(239, 68, 68, 0.9);
-            color: white;
-            opacity: 0.9;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        }
-        
-        #connection-status.disconnected:hover {
-            opacity: 1;
-            transform: scale(1.05);
-        }
-        
-        #connection-status.reload-needed {
-            background: rgba(245, 158, 11, 0.9);
-            color: white;
-            opacity: 0.9;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            animation: pulse-reload 2s ease-in-out infinite;
-        }
-        
-        #connection-status.reload-needed:hover {
-            opacity: 1;
-            transform: scale(1.05);
-        }
-        
-        @keyframes pulse-reload {
-            0%, 100% { opacity: 0.9; }
-            50% { opacity: 1; }
-        }
-        
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        
-        #connection-status.connected .status-dot {
-            background: rgba(34, 197, 94, 0.8);
-        }
-        
-        #connection-status.disconnected .status-dot {
-            background: white;
-            animation: pulse-dot 1.5s ease-in-out infinite;
-        }
-        
-        #connection-status.reload-needed .status-dot {
-            background: white;
-        }
-        
-        @keyframes pulse-dot {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        
         /* Connection details panel */
         #connection-details {
             position: fixed;
@@ -381,50 +316,7 @@
             color: rgba(234, 179, 8, 0.9);
         }
         
-        #connection-status.connected {
-            background: rgba(34, 197, 94, 0.2);
-            color: rgba(34, 197, 94, 0.8);
-            opacity: 0.4;
-        }
-        
-        #connection-status.connected:hover {
-            opacity: 0.7;
-        }
-        
-        #connection-status.disconnected {
-            background: rgba(239, 68, 68, 0.9);
-            color: white;
-            opacity: 0.9;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        }
-        
-        #connection-status.disconnected:hover {
-            opacity: 1;
-            transform: scale(1.05);
-        }
-        
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        
-        #connection-status.connected .status-dot {
-            background: rgba(34, 197, 94, 0.8);
-        }
-        
-        #connection-status.disconnected .status-dot {
-            background: white;
-            animation: pulse-dot 1.5s ease-in-out infinite;
-        }
-        
-        @keyframes pulse-dot {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        
-        /* New Connection Status Classes for Refactored UI */
+        /* Connection Status Classes */
         .connection-status-connected {
             background: rgba(34, 197, 94, 0.2);
             color: rgba(34, 197, 94, 0.8);
@@ -459,6 +351,25 @@
         .connection-status-reload-needed:hover {
             opacity: 1;
             transform: scale(1.05);
+        }
+        
+        /* Status dot */
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        /* Keyframe animations */
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        @keyframes pulse-reload {
+            0%, 100% { opacity: 0.9; }
+            50% { opacity: 1; }
         }
         
         /* Visibility utilities */
