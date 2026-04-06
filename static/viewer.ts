@@ -49,6 +49,13 @@ import { LongPressDetector } from './long-press-handler.js';
 import type { PdfPosition, ViewportPosition, StateUpdate, WebSocketMessage } from './types.js';
 import { MARKER_DELAY_AFTER_RELOAD } from './constants.js';
 import { clientLogger } from './client-logger.js';
+import {
+  renderStatusIndicator,
+  renderDetailsPanel,
+  getStatusClass,
+  determineStatus,
+  type ConnectionStatusState,
+} from './connection-status-ui.js';
 
 // Configuration from server
 const CONFIG = window.PDF_CONFIG || { 
@@ -64,6 +71,7 @@ const container = document.getElementById('viewer-container');
 const errorBanner = createErrorBanner(document.getElementById('error-banner'));
 const noPdfMessage = document.getElementById('no-pdf-message');
 const connectionStatus = document.getElementById('connection-status');
+const connectionDetails = document.getElementById('connection-details');
 
 if (!container) {
   throw new Error('Viewer container not found');
@@ -99,105 +107,87 @@ wsManager.on('synctex', handleSyncTeXMessage as MessageHandler);
 wsManager.on('reload', handleReloadMessage as MessageHandler);
 wsManager.on('error', handleErrorMessage as MessageHandler);
 
-// Get DOM element for connection details panel
-const connectionDetails = document.getElementById('connection-details');
-
-// Connection status indicator functions
+/**
+ * Update connection status UI
+ */
 function updateConnectionStatus(connected: boolean): void {
   if (!connectionStatus || !CONFIG.inverse_search_enabled) return;
   
-  // Determine the state: connected, disconnected, or reload-needed
-  let stateClass: string;
-  let statusText: string;
+  const status = determineStatus(connected, pdfChangedPending);
+  const state: ConnectionStatusState = {
+    status,
+    filename: CONFIG.filename,
+    mtime: CONFIG.mtime,
+    connectionState: wsManager.connectionState as any,
+  };
   
-  if (!connected) {
-    stateClass = 'disconnected';
-    statusText = 'Reconnect';
-  } else if (pdfChangedPending) {
-    stateClass = 'reload-needed';
-    statusText = 'Reload';
-  } else {
-    stateClass = 'connected';
-    statusText = 'Connected';
-  }
+  // Update CSS class and content
+  connectionStatus.className = `connection-status-indicator ${getStatusClass(status)}`;
+  connectionStatus.innerHTML = renderStatusIndicator(state);
+  connectionStatus.classList.remove('hidden');
   
-  connectionStatus.className = stateClass;
-  connectionStatus.querySelector('.status-text')!.textContent = statusText;
-  connectionStatus.style.display = 'flex';
-  
-  // Update details panel content
-  updateConnectionDetails(connected);
+  // Update details panel
+  updateConnectionDetails(state);
 }
 
-function updateConnectionDetails(connected: boolean): void {
+/**
+ * Update connection details panel content
+ */
+function updateConnectionDetails(state: ConnectionStatusState): void {
   if (!connectionDetails) return;
   
-  // Update status
-  const statusEl = document.getElementById('detail-status');
-  if (statusEl) {
-    if (wsManager.connectionState === 'connecting') {
-      statusEl.textContent = 'Connecting...';
-      statusEl.className = 'detail-value status-connecting';
-    } else if (connected) {
-      statusEl.textContent = 'Connected';
-      statusEl.className = 'detail-value status-connected';
-    } else {
-      statusEl.textContent = 'Disconnected';
-      statusEl.className = 'detail-value status-disconnected';
-    }
-  }
-  
-  // Update filename
-  const filenameEl = document.getElementById('detail-filename');
-  if (filenameEl) {
-    filenameEl.textContent = CONFIG.filename || '-';
-    filenameEl.title = CONFIG.filename || '';
-  }
-  
-  // Update modified time
-  const modifiedEl = document.getElementById('detail-modified');
-  if (modifiedEl) {
-    if (CONFIG.mtime && CONFIG.mtime > 0) {
-      const date = new Date(CONFIG.mtime * 1000);
-      modifiedEl.textContent = date.toLocaleString();
-    } else {
-      modifiedEl.textContent = '-';
-    }
-  }
+  connectionDetails.innerHTML = renderDetailsPanel(state);
 }
 
+/**
+ * Toggle connection details panel visibility
+ */
 function toggleDetailsPanel(): void {
   if (!connectionDetails) return;
   
   detailsPanelVisible = !detailsPanelVisible;
   if (detailsPanelVisible) {
     connectionDetails.classList.add('visible');
-    // Refresh the data when opening
-    updateConnectionDetails(wsManager.isConnected);
+    // Refresh with current state
+    const state: ConnectionStatusState = {
+      status: determineStatus(wsManager.isConnected, pdfChangedPending),
+      filename: CONFIG.filename,
+      mtime: CONFIG.mtime,
+      connectionState: wsManager.connectionState as any,
+    };
+    updateConnectionDetails(state);
   } else {
     connectionDetails.classList.remove('visible');
   }
 }
 
+/**
+ * Hide connection details panel
+ */
 function hideDetailsPanel(): void {
   if (!connectionDetails) return;
   detailsPanelVisible = false;
   connectionDetails.classList.remove('visible');
 }
 
+/**
+ * Hide connection status indicator
+ */
 function hideConnectionStatus(): void {
   if (connectionStatus) {
-    connectionStatus.style.display = 'none';
+    connectionStatus.classList.add('hidden');
   }
 }
 
 // Setup connection status click handler
 if (connectionStatus) {
   connectionStatus.addEventListener('click', () => {
-    if (connectionStatus.classList.contains('disconnected')) {
+    const status = determineStatus(wsManager.isConnected, pdfChangedPending);
+    
+    if (status === 'disconnected') {
       // Navigate to auth page to get new token
       window.location.href = '/view';
-    } else if (connectionStatus.classList.contains('reload-needed')) {
+    } else if (status === 'reload-needed') {
       // PDF has changed - trigger reload
       pdfChangedPending = false;
       updateConnectionStatus(true);
@@ -222,14 +212,11 @@ wsManager.onConnect(() => {
 wsManager.onDisconnect((code) => {
   // Show disconnected state on indicator
   updateConnectionStatus(false);
-  // Note: No intrusive banner - user can still view PDF
 });
 
 wsManager.onInvalidToken(() => {
   // Server restarted with new token - show disconnected state
   updateConnectionStatus(false);
-  // Note: User can still view PDF and use forward sync
-  // They just can't do inverse search until they re-authenticate
 });
 
 // Show initial connection status only if inverse search is enabled
@@ -372,7 +359,7 @@ function handleSyncTeXMessage(data: WebSocketMessage): void {
   }
   
   // Check if the PDF file has changed in this sync message
-  const serverBasename = data.pdf_file;  // Now always basename from server
+  const serverBasename = data.pdf_file;
   const serverMtime = data.pdf_mtime;
   
   // Capture old values before updating
@@ -538,9 +525,9 @@ async function reloadPDF(): Promise<void> {
   try {
     // Hide no-pdf message and show container
     if (noPdfMessage) {
-      noPdfMessage.style.display = 'none';
+      noPdfMessage.classList.add('hidden');
     }
-    viewerContainer.style.display = 'block';
+    viewerContainer.classList.remove('hidden');
     
     // Clear existing state
     pdfRenderer.clear();
@@ -619,7 +606,7 @@ async function syncState(): Promise<void> {
       oldMtime,
       serverBasename,
       serverMtime,
-      noPdfMessage_visible: noPdfMessage?.style.display
+      noPdfMessage_visible: noPdfMessage?.classList.contains('hidden')
     });
     
     // Always update CONFIG with new values
@@ -643,7 +630,7 @@ async function syncState(): Promise<void> {
     if (filenameChanged) {
       // Different PDF file
       // Check if this is the initial PDF load (no PDF loaded yet)
-      const noPdfPageShowing = noPdfMessage && noPdfMessage.style.display !== 'none';
+      const noPdfPageShowing = noPdfMessage && !noPdfMessage.classList.contains('hidden');
       if (noPdfPageShowing || oldFilename === 'no-pdf-loaded') {
         console.log('[syncState] Initial load or no PDF showing - calling reloadPDF()');
         await reloadPDF();
@@ -802,9 +789,9 @@ async function performKeyboardInverseSearch(): Promise<void> {
 if (CONFIG.filename === 'no-pdf-loaded') {
   console.log('No PDF loaded yet');
   if (noPdfMessage) {
-    noPdfMessage.style.display = 'block';
+    noPdfMessage.classList.remove('hidden');
   }
-  viewerContainer.style.display = 'none';
+  viewerContainer.classList.add('hidden');
 } else {
   stateManager.setPdfLoaded(true);
   
