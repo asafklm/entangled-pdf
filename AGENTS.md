@@ -473,3 +473,36 @@ T3: handleSyncTeXMessage checks CONFIG.filename
 - Standalone binaries (complex Node.js build integration)
 
 **Rationale:** Target users (LaTeX + Neovim) already have Python installed. pipx is the modern standard for Python CLI tools and provides the best user experience without requiring git knowledge.
+
+## Frontend Framework Decisions
+
+### Current Status: Vanilla TypeScript
+
+The project uses vanilla TypeScript with a modular architecture (see `static/*.ts`). This is intentional and appropriate for the current scale (~4,871 lines).
+
+### Framework Analysis
+
+Comprehensive analysis of Vue.js and Lit alternatives is documented in:
+
+**📄 `[docs/frontend-framework-analysis.md](docs/frontend-framework-analysis.md)`**
+
+Key findings:
+- **Vue.js**: Too heavy (+40KB) for single-view PDF viewer, benefits don't justify costs
+- **Lit**: Viable alternative (~5KB overhead), consider when codebase >6,000 lines or 5+ UI components
+- **Current approach**: Continue with vanilla TypeScript, prepare for possible Lit migration in future
+
+### When to Revisit
+
+Consider Lit migration when:
+- Codebase exceeds 6,000 lines
+- Adding 3+ new UI components (search, annotations, settings)
+- Team grows to 3+ developers
+- Need to embed PDF viewer in other projects
+
+### Progressive Adoption Path
+
+1. **Now**: Continue vanilla TypeScript, extract UI logic into isolated modules
+2. **When adding components**: Evaluate pain points in manual DOM manipulation
+3. **At threshold**: Incremental migration to Lit (components → controllers → main app)
+
+See the full analysis document for detailed comparison, code examples, and decision criteria.
