@@ -399,12 +399,12 @@
 <body>
     <div id="error-banner">WebSocket disconnected. Refresh page to reconnect.</div>
     <div id="status">Syncing...</div>
-    <div id="no-pdf-message">
+    <div id="no-pdf-message" class="hidden">
         <h2>No PDF Loaded</h2>
         <p>Use <code>entangle-pdf sync &lt;filename&gt;</code> to load a PDF file.</p>
     </div>
     <div id="viewer-container" tabindex="0"></div>
-    <div id="connection-status" class="connected" style="display: none;">
+    <div id="connection-status" class="connected hidden">
         <span class="status-dot"></span>
         <span class="status-text">Connected</span>
     </div>
