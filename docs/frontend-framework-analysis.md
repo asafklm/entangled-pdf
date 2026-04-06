@@ -2,7 +2,7 @@
 
 **Document Date**: April 2026  
 **Project**: EntangledPdf  
-**Current Frontend**: ~4,871 lines of modular TypeScript (vanilla)  
+**Current Frontend**: ~3,833 lines of modular TypeScript (vanilla)  
 **Purpose**: Evaluate whether to migrate to Vue.js or Lit, and establish decision criteria for future framework adoption.
 
 ---
@@ -23,7 +23,7 @@
 | --------               | ---------------                   | ---------  |
 | **State Management**   | `StateManager` class with pub/sub | ⭐⭐⭐⭐⭐ |
 | **WebSocket Handling** | `WebSocketManager` class          | ⭐⭐⭐⭐⭐ |
-| **Modularity**         | 14 focused modules                | ⭐⭐⭐⭐⭐ |
+| **Modularity**         | 18 focused modules                | ⭐⭐⭐⭐⭐ |
 | **PDF Rendering**      | `PDFRenderer` class (PDF.js)      | ⭐⭐⭐⭐⭐ |
 | **Build System**       | esbuild + TypeScript              | ⭐⭐⭐⭐⭐ |
 
@@ -125,7 +125,7 @@ Current:                        Lit Version:
 | `marker-manager.ts` (125)       | `<synctex-marker>`         | **-50%** (~60 lines)  |
 | `state-manager.ts` (225)        | `StateController`          | **-55%** (~100 lines) |
 | Manual DOM (800)                | Declarative templates      | **-90%** (~80 lines)  |
-| **Total**                       | **~4,871 → ~3,200**        | **-34%**              |
+| **Total**                       | **~3,833 → ~3,200**        | **-17%**              |
 
 ---
 
@@ -135,7 +135,7 @@ Current:                        Lit Version:
 
 | Trigger Condition    | Current Status              | Threshold                     | Action             |
 | -------------------  | ----------------            | -----------                   | --------           |
-| **Codebase Size**    | ~4,871 lines                | 6,000+ lines                  | Evaluate switch    |
+| **Codebase Size**    | ~3,833 lines                | 4,500+ lines                  | Evaluate switch    |
 | **UI Components**    | 3 (tooltip, status, marker) | 6+ components                 | Switch justified   |
 | **New Features**     | None planned                | Search, annotations, settings | Switch makes sense |
 | **Team Size**        | 1 developer                 | 3+ developers                 | Switch helps       |
@@ -270,13 +270,13 @@ Rationale:
 - Bundle size matters for utility tool
 - Single-view application
 - No urgent need for component reusability
-- 4,871 lines is manageable
+- 3,833 lines is manageable
 
 ### Future Decision Criteria
 
 | Metric | Switch When |
 |--------|-------------|
-| **Lines of Code** | > 6,000 |
+| **Lines of Code** | > 4,500 |
 | **UI Components** | > 5 custom elements |
 | **New Major Features** | Search, annotations, settings panel |
 | **Team Size** | 3+ developers |

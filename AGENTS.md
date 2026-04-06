@@ -478,7 +478,7 @@ T3: handleSyncTeXMessage checks CONFIG.filename
 
 ### Current Status: Vanilla TypeScript
 
-The project uses vanilla TypeScript with a modular architecture (see `static/*.ts`). This is intentional and appropriate for the current scale (~4,871 lines).
+The project uses vanilla TypeScript with a modular architecture (see `static/*.ts`). This is intentional and appropriate for the current scale (~3,833 lines).
 
 ### Framework Analysis
 
