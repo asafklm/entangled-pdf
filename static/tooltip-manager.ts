@@ -2,6 +2,7 @@
  * EntangledPdf Viewer - Tooltip Manager
  *
  * Manages tooltip creation, positioning, and lifecycle.
+ * Refactored to use declarative CSS classes instead of inline styles.
  */
 
 import { FEEDBACK_DISPLAY_TIME, TOOLTIP_AUTO_HIDE_DELAY } from './constants';
@@ -37,6 +38,30 @@ export function isTooltipActive(): boolean {
 }
 
 /**
+ * Generate tooltip HTML structure
+ * Pure function: transforms state into HTML string
+ * This pattern maps directly to Lit's html template literal
+ */
+function renderTooltipHTML(
+  pdfPosition: PdfPosition,
+  isConnected: boolean
+): string {
+  const headerText = isConnected ? 'Go to Source?' : 'Authentication Required';
+  const buttonText = isConnected ? 'Confirm (Enter)' : 'Re-authenticate';
+  const buttonClass = isConnected ? 'tooltip-btn-confirm' : 'tooltip-btn-auth';
+  
+  const infoText = isConnected
+    ? `Page ${pdfPosition.page}, coordinates (${Math.round(pdfPosition.x)}, ${Math.round(pdfPosition.y)})`
+    : 'Server restarted. Re-authenticate to use inverse search.';
+  
+  return `
+    <div class="tooltip-header">${headerText}</div>
+    <div class="tooltip-info">${infoText}</div>
+    <button class="${buttonClass}">${buttonText}</button>
+  `;
+}
+
+/**
  * Create an inverse search confirmation tooltip
  * @param position - Screen coordinates for the tooltip
  * @param pdfPosition - PDF coordinates
@@ -58,67 +83,21 @@ export function createInverseSearchTooltip(
   // Create tooltip container
   const tooltip = document.createElement('div');
   tooltip.className = 'inverse-search-tooltip';
-  tooltip.style.cssText = `
-    position: fixed;
-    left: ${position.clientX}px;
-    top: ${position.clientY - 60}px;
-    transform: translateX(-50%);
-    background: rgba(30, 30, 30, 0.95);
-    color: white;
-    padding: 12px 16px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-family: sans-serif;
-    z-index: 10000;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-width: 200px;
-    user-select: none;
-    -webkit-user-select: none;
-  `;
+  
+  // Set position dynamically (only inline styles needed)
+  tooltip.style.left = `${position.clientX}px`;
+  tooltip.style.top = `${position.clientY - 60}px`;
+  
+  // Render declarative content
+  tooltip.innerHTML = renderTooltipHTML(pdfPosition, isConnected);
 
-  // Header
-  const header = document.createElement('div');
-  header.style.cssText = 'font-weight: bold; margin-bottom: 4px;';
-  header.textContent = isConnected ? 'Go to Source?' : 'Authentication Required';
-  tooltip.appendChild(header);
-
-  // Info text
-  const info = document.createElement('div');
-  info.style.cssText = 'font-size: 12px; opacity: 0.8; margin-bottom: 4px;';
-  if (isConnected) {
-    info.textContent = `Page ${pdfPosition.page}, coordinates (${Math.round(pdfPosition.x)}, ${Math.round(pdfPosition.y)})`;
-  } else {
-    info.textContent = 'Server restarted. Re-authenticate to use inverse search.';
-  }
-  tooltip.appendChild(info);
-
-  // Action button
-  const actionButton = document.createElement('button');
-  actionButton.textContent = isConnected ? 'Confirm (Enter)' : 'Re-authenticate';
-  actionButton.className = 'tooltip-confirm-btn';
-  actionButton.style.cssText = `
-    background: ${isConnected ? '#667eea' : '#dc2626'};
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    width: 100%;
-    margin-top: 4px;
-  `;
-
+  // Setup button click handler
+  const actionButton = tooltip.querySelector('button') as HTMLButtonElement;
   actionButton.addEventListener('click', (e) => {
     e.stopPropagation();
     onConfirm();
     hideActiveTooltip();
   });
-
-  tooltip.appendChild(actionButton);
 
   // Store reference
   activeTooltip = tooltip;
@@ -176,25 +155,6 @@ export function showSyncError(
 ): void {
   const tooltip = document.createElement('div');
   tooltip.className = 'sync-error-tooltip';
-  tooltip.style.cssText = `
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(234, 179, 8, 0.95);
-    color: rgb(66, 32, 6);
-    padding: 12px 20px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-family: sans-serif;
-    z-index: 10001;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    text-align: center;
-    max-width: 400px;
-    user-select: none;
-    -webkit-user-select: none;
-    cursor: pointer;
-  `;
   tooltip.textContent = message;
 
   // Click to dismiss
@@ -218,22 +178,11 @@ export function showSyncError(
  */
 export function showInverseSearchFeedback(position: { clientX: number; clientY: number }): void {
   const feedback = document.createElement('div');
-  feedback.style.cssText = `
-    position: fixed;
-    left: ${position.clientX}px;
-    top: ${position.clientY}px;
-    transform: translate(-50%, -50%);
-    background: rgba(102, 126, 234, 0.9);
-    color: white;
-    padding: 8px 16px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-family: sans-serif;
-    pointer-events: none;
-    z-index: 10000;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-  `;
+  feedback.className = 'inverse-search-feedback';
+  feedback.style.left = `${position.clientX}px`;
+  feedback.style.top = `${position.clientY}px`;
   feedback.textContent = 'Inverse search...';
+  
   document.body.appendChild(feedback);
 
   setTimeout(() => {
