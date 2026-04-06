@@ -19,7 +19,6 @@
 
 import { PDFRenderer, initPDFJSWorker, createPDFUrl } from './pdf-renderer.js';
 import { WebSocketManager, type MessageHandler } from './websocket-manager.js';
-import { KeyboardHandler } from './keyboard-handler.js';
 import { StateManager, createStateManager } from './state-manager.js';
 import { NotificationManager, createErrorBanner } from './notification-manager.js';
 import { 
@@ -45,7 +44,6 @@ import {
   isClickOutsideTooltip,
   showSyncError,
 } from './tooltip-manager.js';
-import { LongPressDetector } from './long-press-handler.js';
 import type { PdfPosition, ViewportPosition, StateUpdate, WebSocketMessage } from './types.js';
 import { MARKER_DELAY_AFTER_RELOAD } from './constants.js';
 import { clientLogger } from './client-logger.js';
@@ -56,6 +54,7 @@ import {
   determineStatus,
   type ConnectionStatusState,
 } from './connection-status-ui.js';
+import { createInputHandler } from './input-handler.js';
 
 // Configuration from server
 const CONFIG = window.PDF_CONFIG || { 
@@ -227,92 +226,57 @@ if (CONFIG.inverse_search_enabled) {
 // Connect to WebSocket
 wsManager.connect();
 
-// Create keyboard handler
-const keyboardHandler = new KeyboardHandler({
-  onScrollDown: () => scrollBy(viewerContainer, 40),
-  onScrollUp: () => scrollBy(viewerContainer, -40),
-  onScrollLeft: () => scrollHorizontallyBy(viewerContainer, -40),
-  onScrollRight: () => scrollHorizontallyBy(viewerContainer, 40),
-  onNextPage: () => {
-    const currentPage = stateManager.currentPage;
-    const doc = pdfRenderer.document;
-    if (currentPage && doc) {
-      navigateToNextPage(viewerContainer, pdfRenderer.getPageElements(), currentPage, doc.numPages);
-    }
-  },
-  onPreviousPage: () => {
-    const currentPage = stateManager.currentPage;
-    if (currentPage) {
-      navigateToPreviousPage(viewerContainer, pdfRenderer.getPageElements(), currentPage);
-    }
-  },
-  onFirstPage: () => {
-    navigateToPage(viewerContainer, pdfRenderer.getPageElements(), 1);
-    stateManager.updatePosition(1);
-  },
-  onLastPage: () => {
-    const doc = pdfRenderer.document;
-    if (doc) {
-      navigateToPage(viewerContainer, pdfRenderer.getPageElements(), doc.numPages);
-      stateManager.updatePosition(doc.numPages);
-    }
-  },
-  onScrollPageDown: (shiftKey) => {
-    scrollFullPage(viewerContainer, shiftKey ? 'up' : 'down');
-  },
-  onInverseSearch: performKeyboardInverseSearch,
-});
-
-keyboardHandler.attach();
-
-// Long press detector for inverse search
-const longPressDetector = new LongPressDetector({
-  duration: 500,
-  moveThreshold: 10,
-  onLongPress: handleLongPress,
-  isInteractiveElement: (target) => {
-    if (!target) return false;
-    const element = target as HTMLElement;
-    return element.tagName === 'A' || 
-           element.tagName === 'BUTTON' || 
-           element.isContentEditable;
-  },
-});
-
-// Mouse event handlers for long press
-const mouseHandlers = longPressDetector.createMouseHandlers(getPdfPositionAtPoint);
-viewerContainer.addEventListener('mousedown', mouseHandlers.onMouseDown);
-viewerContainer.addEventListener('mousemove', mouseHandlers.onMouseMove);
-viewerContainer.addEventListener('mouseup', mouseHandlers.onMouseUp);
-viewerContainer.addEventListener('mouseleave', mouseHandlers.onMouseLeave);
-
-// Touch event handlers for long press
-const touchHandlers = longPressDetector.createTouchHandlers(getPdfPositionAtPoint);
-viewerContainer.addEventListener('touchstart', touchHandlers.onTouchStart, { passive: true });
-viewerContainer.addEventListener('touchmove', touchHandlers.onTouchMove, { passive: true });
-viewerContainer.addEventListener('touchend', touchHandlers.onTouchEnd);
-viewerContainer.addEventListener('touchcancel', touchHandlers.onTouchCancel);
-
-// Click handler for focus and tooltip dismissal
-document.addEventListener('click', (event: MouseEvent) => {
-  // Focus container when clicking anywhere
-  if (document.activeElement !== viewerContainer) {
-    viewerContainer.focus();
-  }
-  
-  // Hide tooltip if clicking outside
-  if (isClickOutsideTooltip(event.clientX, event.clientY)) {
-    hideActiveTooltip();
-  }
-  
-  // Hide connection details panel if clicking outside
-  if (detailsPanelVisible && connectionDetails && connectionStatus) {
-    const target = event.target as HTMLElement;
-    if (!connectionDetails.contains(target) && !connectionStatus.contains(target)) {
+// Create input handler
+const inputHandler = createInputHandler(
+  {
+    viewerContainer,
+    onScrollDown: () => scrollBy(viewerContainer, 40),
+    onScrollUp: () => scrollBy(viewerContainer, -40),
+    onScrollLeft: () => scrollHorizontallyBy(viewerContainer, -40),
+    onScrollRight: () => scrollHorizontallyBy(viewerContainer, 40),
+    onNextPage: () => {
+      const currentPage = stateManager.currentPage;
+      const doc = pdfRenderer.document;
+      if (currentPage && doc) {
+        navigateToNextPage(viewerContainer, pdfRenderer.getPageElements(), currentPage, doc.numPages);
+      }
+    },
+    onPreviousPage: () => {
+      const currentPage = stateManager.currentPage;
+      if (currentPage) {
+        navigateToPreviousPage(viewerContainer, pdfRenderer.getPageElements(), currentPage);
+      }
+    },
+    onFirstPage: () => {
+      navigateToPage(viewerContainer, pdfRenderer.getPageElements(), 1);
+      stateManager.updatePosition(1);
+    },
+    onLastPage: () => {
+      const doc = pdfRenderer.document;
+      if (doc) {
+        navigateToPage(viewerContainer, pdfRenderer.getPageElements(), doc.numPages);
+        stateManager.updatePosition(doc.numPages);
+      }
+    },
+    onScrollPageDown: (shiftKey) => {
+      scrollFullPage(viewerContainer, shiftKey ? 'up' : 'down');
+    },
+    onInverseSearch: performKeyboardInverseSearch,
+    onLongPress: handleLongPress,
+    onClickOutsideTooltip: (clientX, clientY) => {
+      if (isClickOutsideTooltip(clientX, clientY)) {
+        hideActiveTooltip();
+      }
+    },
+    onClickOutsidePanel: () => {
       hideDetailsPanel();
-    }
-  }
-});
+    },
+  },
+  getPdfPositionAtPoint
+);
+
+// Attach input handler
+inputHandler.attach();
 
 // Simple visibility change handler - just reconnects WebSocket
 document.addEventListener('visibilitychange', () => {
