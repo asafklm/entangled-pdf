@@ -2,6 +2,7 @@
  * EntangledPdf Viewer - Notification Manager
  *
  * Centralized error and notification display system.
+ * Refactored to use declarative CSS classes instead of inline styles.
  */
 
 import { TOOLTIP_AUTO_HIDE_DELAY } from './constants';
@@ -20,7 +21,39 @@ export interface NotificationConfig {
 }
 
 /**
+ * Generate CSS class names for notification based on configuration
+ * This follows a declarative pattern that maps easily to Lit's classMap directive
+ */
+function getNotificationClasses(config: NotificationConfig): string {
+  const classes = ['notification', `notification-${config.severity}`];
+  
+  const position = config.position || 'center';
+  classes.push(`notification-position-${position}`);
+  
+  return classes.join(' ');
+}
+
+/**
+ * Create notification element from configuration
+ * Pure function: transforms state (config) into DOM element
+ */
+function createNotificationElement(config: NotificationConfig): HTMLElement {
+  const element = document.createElement('div');
+  element.className = getNotificationClasses(config);
+  element.textContent = config.message;
+  
+  // Click handler (preserved behavior)
+  element.addEventListener('click', () => {
+    config.onClick?.();
+    element.remove();
+  });
+  
+  return element;
+}
+
+/**
  * Notification manager for displaying messages to the user
+ * Handles lifecycle (show, hide, auto-hide) while delegating rendering to pure functions
  */
 export class NotificationManager {
   private activeNotifications: Set<HTMLElement> = new Set();
@@ -36,8 +69,10 @@ export class NotificationManager {
    * Show a notification
    */
   show(config: NotificationConfig): HTMLElement {
-    const element = this.createNotificationElement(config);
-    document.body.appendChild(element);
+    const element = createNotificationElement(config);
+    
+    const container = this.defaultContainer || document.body;
+    container.appendChild(element);
     this.activeNotifications.add(element);
 
     if (config.autoHide !== false) {
@@ -112,80 +147,6 @@ export class NotificationManager {
       autoHide,
       position: 'top',
     });
-  }
-
-  /**
-   * Create the notification DOM element
-   */
-  private createNotificationElement(config: NotificationConfig): HTMLElement {
-    const element = document.createElement('div');
-    element.className = `notification notification-${config.severity}`;
-    element.textContent = config.message;
-
-    // Base styles
-    const baseStyles: Record<string, string> = {
-      position: 'fixed',
-      left: '50%',
-      transform: 'translateX(-50%)',
-      padding: '12px 20px',
-      borderRadius: '6px',
-      fontSize: '14px',
-      fontFamily: 'sans-serif',
-      zIndex: '10001',
-      boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-      textAlign: 'center',
-      maxWidth: '400px',
-      userSelect: 'none',
-      webkitUserSelect: 'none',
-      cursor: config.onClick ? 'pointer' : 'default',
-    };
-
-    // Position
-    if (config.position === 'top') {
-      baseStyles.top = '20px';
-    } else if (config.position === 'bottom') {
-      baseStyles.bottom = '20px';
-    } else {
-      baseStyles.top = '50%';
-      baseStyles.transform = 'translate(-50%, -50%)';
-    }
-
-    // Severity-specific styles
-    const severityStyles: Record<ErrorSeverity, Record<string, string>> = {
-      error: {
-        background: 'rgba(239, 68, 68, 0.95)',
-        color: 'white',
-      },
-      warning: {
-        background: 'rgba(234, 179, 8, 0.95)',
-        color: 'rgb(66, 32, 6)',
-      },
-      info: {
-        background: 'rgba(59, 130, 246, 0.95)',
-        color: 'white',
-      },
-      success: {
-        background: 'rgba(34, 197, 94, 0.95)',
-        color: 'white',
-      },
-    };
-
-    // Apply styles
-    Object.assign(element.style, baseStyles, severityStyles[config.severity]);
-
-    // Click handler
-    if (config.onClick) {
-      element.addEventListener('click', () => {
-        config.onClick!();
-        this.hide(element);
-      });
-    } else {
-      element.addEventListener('click', () => {
-        this.hide(element);
-      });
-    }
-
-    return element;
   }
 }
 
