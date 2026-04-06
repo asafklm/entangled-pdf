@@ -88,7 +88,7 @@ describe('Tooltip Manager', () => {
       expect(infoText).toContain('(101, 201)'); // rounded coordinates
 
       // Check confirm button
-      const confirmBtn = tooltip.querySelector('.tooltip-confirm-btn') as HTMLButtonElement;
+      const confirmBtn = tooltip.querySelector('button') as HTMLButtonElement;
       expect(confirmBtn).toBeTruthy();
       expect(confirmBtn.textContent).toBe('Confirm (Enter)');
       expect(document.activeElement).toBe(confirmBtn); // Should be focused
@@ -138,7 +138,7 @@ describe('Tooltip Manager', () => {
       );
 
       // Click confirm button
-      const confirmBtn = document.querySelector('.tooltip-confirm-btn') as HTMLButtonElement;
+      const confirmBtn = document.querySelector('.inverse-search-tooltip button') as HTMLButtonElement;
       confirmBtn.click();
 
       // Verify callbacks
@@ -365,11 +365,12 @@ describe('Tooltip Manager', () => {
       expect(feedback).toBeTruthy();
       expect(feedback?.textContent).toBe('Inverse search...');
 
-      // Check styling
-      expect(feedback?.style.position).toBe('fixed');
+      // Check styling - uses CSS class now, not inline styles
+      expect(feedback?.className).toBe('inverse-search-feedback');
+      // Position is set dynamically
       expect(feedback?.style.left).toBe('300px');
       expect(feedback?.style.top).toBe('400px');
-      expect(feedback?.style.pointerEvents).toBe('none');
+      // pointer-events comes from CSS class
     });
 
     it('should auto-remove after display time', () => {

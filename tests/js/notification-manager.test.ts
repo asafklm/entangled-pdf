@@ -66,11 +66,9 @@ describe('Notification Manager', () => {
       };
 
       const element = manager.show(config);
-      // Currently uses inline styles (will be CSS classes after refactoring)
-      // Default position is 'center' (when position is undefined)
-      expect(element.style.position).toBe('fixed');
-      expect(element.style.top).toBe('50%');
-      expect(element.style.transform).toBe('translate(-50%, -50%)');
+      // Now uses CSS classes, not inline styles
+      expect(element.className).toContain('notification');
+      expect(element.className).toContain('notification-position-center');
     });
 
     it('should auto-hide after default delay by default', () => {
