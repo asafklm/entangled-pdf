@@ -55,6 +55,7 @@ import {
   type ConnectionStatusState,
 } from './connection-status-ui.js';
 import { createInputHandler } from './input-handler.js';
+import { createSyncTeXController } from './synctex-controller.js';
 
 // Configuration from server
 const CONFIG = window.PDF_CONFIG || { 
@@ -101,10 +102,54 @@ let detailsPanelVisible = false;
 // Attach logger to WebSocket
 clientLogger.attachWebSocket(wsManager);
 
+// Create SyncTeX controller
+const syncTeXController = createSyncTeXController({
+  config: CONFIG,
+  stateManager,
+  pdfRenderer,
+  notificationManager,
+  onPdfReload: reloadPDF,
+  onStatusUpdate: (status) => updateConnectionStatus(wsManager.isConnected),
+  onApplyStateUpdate: (data, delay, attempt, isForwardSync) => {
+    const pageNum = data.page;
+    const y = data.y;
+    
+    if (y != null) {
+      const canvas = pdfRenderer.getCanvas(pageNum);
+      const scale = pdfRenderer.getPageScale(pageNum);
+      
+      if (canvas) {
+        const pixelY = pdfYToPixels(canvas, y, scale);
+        const pageElements = pdfRenderer.getPageElements();
+        scrollToPageWithRetry(viewerContainer, pageElements, pageNum, pixelY, 0, 'auto', (from: ScrollPosition, to: ScrollPosition) => {
+          clientLogger.logScroll(from, to);
+        });
+        
+        setTimeout(() => {
+          showMarkerAtPage(
+            pdfRenderer.getPageElements(),
+            pdfRenderer.getPageScales(),
+            pageNum,
+            y
+          );
+        }, delay);
+      } else if (attempt < 10) {
+        setTimeout(() => {
+          syncTeXController.applyStateUpdate(data, delay, attempt + 1, isForwardSync);
+        }, 100);
+      }
+    } else if (isForwardSync) {
+      scrollToPageWithRetry(viewerContainer, pdfRenderer.getPageElements(), pageNum, undefined, 0, 'auto', (from: ScrollPosition, to: ScrollPosition) => {
+        clientLogger.logScroll(from, to);
+      });
+    }
+  },
+});
+
 // Setup WebSocket message handlers
-wsManager.on('synctex', handleSyncTeXMessage as MessageHandler);
-wsManager.on('reload', handleReloadMessage as MessageHandler);
-wsManager.on('error', handleErrorMessage as MessageHandler);
+wsManager.on('synctex', syncTeXController.handleSyncTeXMessage as MessageHandler);
+wsManager.on('reload', syncTeXController.handleReloadMessage as MessageHandler);
+wsManager.on('error', syncTeXController.handleErrorMessage as MessageHandler);
 
 /**
  * Update connection status UI
@@ -307,174 +352,6 @@ window.addEventListener('pageshow', (event: PageTransitionEvent) => {
 });
 
 /**
- * Handle SyncTeX message from WebSocket
- */
-function handleSyncTeXMessage(data: WebSocketMessage): void {
-  console.log('[handleSyncTeXMessage] Received:', {
-    page: data.page,
-    pdf_file: data.pdf_file,
-    pdf_mtime: data.pdf_mtime,
-    action: data.action
-  });
-  
-  if (!data.page) {
-    console.log('[handleSyncTeXMessage] No page data, returning');
-    return;
-  }
-  
-  // Check if the PDF file has changed in this sync message
-  const serverBasename = data.pdf_file;
-  const serverMtime = data.pdf_mtime;
-  
-  // Capture old values before updating
-  const oldFilename = CONFIG.filename;
-  const oldMtime = CONFIG.mtime;
-  
-  console.log('[handleSyncTeXMessage] Change detection:', {
-    oldFilename,
-    oldMtime,
-    serverBasename,
-    serverMtime,
-    pdfChangedPending_before: pdfChangedPending
-  });
-  
-  // Always update CONFIG with new values
-  if (serverBasename) {
-    CONFIG.filename = serverBasename;
-  }
-  if (serverMtime) {
-    CONFIG.mtime = serverMtime;
-  }
-  
-  // Determine what changed
-  const filenameChanged = serverBasename && serverBasename !== oldFilename;
-  const mtimeChanged = serverMtime && serverMtime !== oldMtime;
-  
-  console.log('[handleSyncTeXMessage] Change results:', {
-    filenameChanged,
-    mtimeChanged,
-    'oldFilename === no-pdf-loaded': oldFilename === 'no-pdf-loaded'
-  });
-  
-  if (filenameChanged) {
-    // Different PDF file - show reload button
-    // Only exception: initial load (no PDF loaded yet)
-    if (oldFilename === 'no-pdf-loaded') {
-      console.log('[handleSyncTeXMessage] Initial load - calling reloadPDF()');
-      reloadPDF();
-    } else {
-      console.log('[handleSyncTeXMessage] Different PDF - setting pdfChangedPending=true');
-      pdfChangedPending = true;
-      updateConnectionStatus(wsManager.isConnected);
-    }
-    return;
-  }
-  
-  if (mtimeChanged) {
-    console.log('[handleSyncTeXMessage] Same file modified - calling reloadPDF()');
-    reloadPDF();
-    return;
-  }
-  
-  console.log('[handleSyncTeXMessage] PDF unchanged - applying sync position');
-  // PDF unchanged - apply the sync position
-  applyStateUpdate({
-    page: data.page,
-    x: data.x,
-    y: data.y,
-    last_sync_time: data.last_sync_time,
-    action: data.action,
-  }, MARKER_DELAY_AFTER_RELOAD, 0, true);
-}
-
-/**
- * Apply state update and scroll to position
- */
-function applyStateUpdate(data: StateUpdate, delay = 0, attempt = 0, isForwardSync = false): void {
-  stateManager.applyUpdate(data);
-  
-  const pageNum = data.page;
-  const x = data.x;
-  const y = data.y;
-  
-  if (y != null) {
-    const canvas = pdfRenderer.getCanvas(pageNum);
-    const scale = pdfRenderer.getPageScale(pageNum);
-    
-    if (canvas) {
-      // Convert PDF points to pixels using proper coordinate conversion
-      const pixelY = pdfYToPixels(canvas, y, scale);
-      
-      const pageElements = pdfRenderer.getPageElements();
-      scrollToPageWithRetry(viewerContainer, pageElements, pageNum, pixelY, 0, 'auto', (from: ScrollPosition, to: ScrollPosition) => {
-        clientLogger.logScroll(from, to);
-      });
-      
-      setTimeout(() => {
-        // Show marker at Y position only - red dot should appear on left margin
-        // Don't pass x coordinate to keep marker on left margin (not at text position)
-        showMarkerAtPage(
-          pdfRenderer.getPageElements(),
-          pdfRenderer.getPageScales(),
-          pageNum,
-          y
-          // x is intentionally omitted - marker stays on left margin per CSS default
-        );
-      }, delay);
-    } else if (attempt < 10) {
-      // Canvas not ready yet - retry after a short delay
-      setTimeout(() => {
-        applyStateUpdate(data, delay, attempt + 1, isForwardSync);
-      }, 100);
-    }
-  } else if (isForwardSync) {
-    // Only scroll to page without position if this is a forward sync
-    scrollToPageWithRetry(viewerContainer, pdfRenderer.getPageElements(), pageNum, undefined, 0, 'auto', (from: ScrollPosition, to: ScrollPosition) => {
-      clientLogger.logScroll(from, to);
-    });
-  }
-}
-
-/**
- * Handle reload message from WebSocket
- */
-function handleReloadMessage(data: WebSocketMessage): void {
-  console.log('[handleReloadMessage] Received:', {
-    pdf_file: data.pdf_file,
-    pdf_mtime: data.pdf_mtime
-  });
-  
-  const reloadMtime = data.pdf_mtime;
-  const reloadFilename = data.pdf_file;
-  
-  if (reloadMtime && reloadMtime > 0) {
-    CONFIG.mtime = reloadMtime;
-    // Update state manager immediately to prevent race condition with syncState
-    // This ensures syncState() won't trigger another reload for the same mtime
-    stateManager.updatePdfMtime(reloadMtime);
-  }
-  
-  // Update filename if provided (from /api/load-pdf broadcast)
-  if (reloadFilename) {
-    console.log('[handleReloadMessage] Updating filename:', reloadFilename);
-    CONFIG.filename = reloadFilename;
-  }
-  
-  reloadPDF();
-}
-
-/**
- * Handle error message from WebSocket
- */
-function handleErrorMessage(data: WebSocketMessage): void {
-  const errorMessage = data.message;
-  if (errorMessage) {
-    console.error('Server error:', errorMessage);
-    notificationManager.error(errorMessage);
-  }
-}
-
-/**
  * Reload the PDF document
  */
 async function reloadPDF(): Promise<void> {
@@ -513,7 +390,7 @@ async function reloadPDF(): Promise<void> {
     // Apply pending state update if exists (from syncState during reload)
     const pending = stateManager.pendingUpdate;
     if (pending) {
-      applyStateUpdate(pending, MARKER_DELAY_AFTER_RELOAD);
+      syncTeXController.applyStateUpdate(pending, MARKER_DELAY_AFTER_RELOAD);
       stateManager.setPendingUpdate(null);
     }
     // Don't scroll to page 1 - let user stay where they are
@@ -629,7 +506,7 @@ async function syncState(): Promise<void> {
     if (newSync) {
       console.log('[syncState] Applying newer sync position');
       stateManager.setPdfLoaded(true);
-      applyStateUpdate(data, 0, 0, true);
+      syncTeXController.applyStateUpdate(data, 0, 0, true);
     }
     
     // Update our tracked timestamps
