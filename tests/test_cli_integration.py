@@ -261,3 +261,4 @@ class TestCLISubcommandList:
         assert "start" in help_text, "Help should list 'start' subcommand"
         assert "status" in help_text, "Help should list 'status' subcommand"
         assert "sync" in help_text, "Help should list 'sync' subcommand"
+        assert "generate-api-key" in help_text, "Help should list 'generate-api-key' subcommand"

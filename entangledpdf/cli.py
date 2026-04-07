@@ -15,6 +15,8 @@ import argcomplete
 import requests
 import urllib3
 
+import secrets
+
 from entangledpdf.sync import load_pdf, forward_search, parse_synctex_forward
 
 # Suppress urllib3 warnings for self-signed certificates
@@ -266,6 +268,33 @@ def cmd_sync(args):
         return 1
 
 
+def cmd_generate_api_key(args) -> int:
+    """Generate a secure API key for authentication.
+    
+    Generates a cryptographically secure random API key suitable for
+    the ENTANGLEDPDF_API_KEY environment variable.
+    
+    Args:
+        args: Parsed command line arguments
+        
+    Returns:
+        Exit code (0 for success)
+    """
+    # Generate 32 bytes (256 bits) of randomness, hex-encoded = 64 characters
+    api_key = secrets.token_hex(32)
+    
+    if args.shell:
+        # Output in shell export format for easy sourcing
+        print(f'export ENTANGLEDPDF_API_KEY="{api_key}"')
+        print("# Add the above line to your ~/.bashrc or ~/.zshrc", file=sys.stderr)
+        print("# Then run: source ~/.bashrc", file=sys.stderr)
+    else:
+        # Simple output
+        print(api_key)
+    
+    return 0
+
+
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
@@ -344,6 +373,14 @@ def main():
     # status command
     subparsers.add_parser("status", help="Show server status")
     
+    # generate-api-key command
+    key_parser = subparsers.add_parser("generate-api-key", help="Generate a secure API key")
+    key_parser.add_argument(
+        "--shell",
+        action="store_true",
+        help="Output in shell export format for easy sourcing"
+    )
+    
     # sync command
     sync_parser = subparsers.add_parser("sync", help="Load PDF and perform forward search")
     
@@ -395,6 +432,8 @@ def main():
         return cmd_status(args)
     elif args.command == "sync":
         return cmd_sync(args)
+    elif args.command == "generate-api-key":
+        return cmd_generate_api_key(args)
     else:
         parser.print_help()
         return 1

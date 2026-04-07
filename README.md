@@ -54,17 +54,30 @@ After installation, complete the required setup and optional editor configuratio
 
 #### 1. API Key (Required)
 
+The API key controls who can trigger PDF updates and forward search. Anyone with network 
+access to the server who knows this key can load PDFs and initiate forward sync. 
+The intended use is that your TeX editor and the EntangledPdf server share the same 
+key via the `ENTANGLEDPDF_API_KEY` environment variable—this ensures only your 
+authorized editor can control the PDF viewer, preventing updates from third parties.
+
 Generate a unique API key and add it to your shell:
 
 ```bash
 # Generate a secure random key and add to ~/.bashrc (or ~/.zshrc)
-echo "export ENTANGLEDPDF_API_KEY=\"$(openssl rand -hex 32)\"" >> ~/.bashrc
+entangle-pdf generate-api-key --shell >> ~/.bashrc
 
 # Reload your shell
 source ~/.bashrc
 ```
 
-Alternatively, you can use your own password:
+Alternatively, generate just the key:
+```bash
+# Copy the key and add it manually
+entangle-pdf generate-api-key
+# Then add to your shell: export ENTANGLEDPDF_API_KEY="<paste-key-here>"
+```
+
+Or use your own password:
 ```bash
 # Use your own password (must be unique and hard to guess)
 echo 'export ENTANGLEDPDF_API_KEY="my-unique-password-123"' >> ~/.bashrc
@@ -73,9 +86,11 @@ source ~/.bashrc
 
 > **Security:** Use a long, random key in shared environments. A simple password is fine for personal use on a single machine.
 
-#### 2. Editor Setup (Optional - for Inverse Search)
+#### 2. VimTeX Setup (Optional - for Inverse Search)
 
-To use **inverse search** (Shift+Click in PDF → jump to editor), configure your editor socket:
+To use **inverse search** (Shift+Click in PDF → jump to editor) with Vim/Neovim, 
+configure your editor socket. Note: Other editors and LaTeX plugins can also 
+integrate with EntangledPdf using the `entangle-pdf sync` command (see Manual Commands below).
 
 **Prerequisites:**
 - **Neovim**: `pip install neovim-remote`
@@ -163,13 +178,35 @@ Copy the token to your browser to enable inverse search
 ============================================================
 ```
 
+**About the Token:** This browser authentication token is separate from your API key. 
+The token prevents others on your network from viewing your PDFs or performing 
+inverse search (jumping to your editor). Unlike the API key (which persists via 
+your shell configuration), this token is regenerated every time the server starts 
+for security reasons.
+
 **Step 2: Authenticate in browser**
 
 1. Open the URL shown (e.g., `https://localhost:8431/view`)
 2. Enter the token from the terminal
 3. You'll see "No PDF loaded" - this is expected!
 
-**Step 3: Work in your editor**
+**Step 3: Test with a sample PDF**
+
+Before using VimTeX, verify the setup works by manually loading a PDF:
+
+```bash
+# Load an example PDF from the repository
+entangle-pdf sync examples/example.pdf
+```
+
+You should now see the PDF in your browser. This confirms the server, API key, 
+and browser are all configured correctly. If this works but VimTeX doesn't, 
+you'll know the issue is in your editor configuration.
+
+> **For other editors/plugins:** You can integrate by calling `entangle-pdf sync <pdf-file>` 
+> after compilation. See [Manual Commands](#manual-commands) for details.
+
+**Step 4: Work in your editor**
 
 In Neovim/Vim with VimTeX:
 - `<leader>ll` - Compile LaTeX document
@@ -277,6 +314,9 @@ entangle-pdf sync document.pdf --api-key "your-secret-key"
 ```bash
 # Check server status
 entangle-pdf status
+
+# Generate API key
+entangle-pdf generate-api-key --shell
 ```
 
 ### Inverse Search (Backward Search)
@@ -378,7 +418,7 @@ The `/state` endpoint is intentionally unauthenticated. It returns:
    # or
    echo $VIM_SERVERNAME       # For Vim
    ```
-   If empty, you haven't completed the [Editor Setup](#2-editor-setup-optional---for-inverse-search).
+   If empty, you haven't completed the [VimTeX Setup](#2-vimtex-setup-optional---for-inverse-search).
 
 2. **Check that nvr is installed** (Neovim only):
    ```bash
