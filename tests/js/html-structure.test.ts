@@ -72,6 +72,31 @@ describe("HTML Structure Validation", () => {
       expect(doc.getElementById("detail-modified")).not.toBeNull();
     });
     
+    it("should use .hidden class for elements controlled by JS visibility", () => {
+      // Elements that JavaScript shows/hides should use the .hidden class
+      // rather than inline style="display: none;" which can't be overridden by JS
+      const connectionStatus = doc.getElementById("connection-status");
+      const noPdfMessage = doc.getElementById("no-pdf-message");
+      
+      // These elements should have class="hidden" initially
+      expect(connectionStatus!.classList.contains("hidden")).toBe(true);
+      expect(noPdfMessage!.classList.contains("hidden")).toBe(true);
+      
+      // Should NOT have inline style="display: none;" which conflicts with JS
+      const style = connectionStatus!.getAttribute("style") || "";
+      expect(style).not.toContain("display: none");
+    });
+    
+    it("should have connection details panel with correct CSS visibility pattern", () => {
+      const panel = doc.getElementById("connection-details");
+      expect(panel).not.toBeNull();
+      
+      // Panel uses .visible class to override display: none in CSS
+      // This is the correct pattern (not inline styles)
+      const style = panel!.getAttribute("style");
+      expect(style === null || !style.includes("display: none")).toBe(true);
+    });
+    
     it("should load viewer.js as ES module", () => {
       const scripts = doc.querySelectorAll('script[type="module"]');
       const viewerScript = Array.from(scripts).find(s => 
