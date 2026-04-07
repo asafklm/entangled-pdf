@@ -1,13 +1,62 @@
 # EntangledPdf
 
-A FastAPI-based PDF synchronization server with TypeScript frontend that enables real-time PDF viewing across multiple devices with SyncTeX integration for LaTeX **forward search** (editor → PDF) and **inverse search** (PDF → editor via Shift+Click).
+A browser-based PDF viewer with SyncTeX support for LaTeX **forward search** (editor → PDF) and **inverse search** (PDF → editor via Shift+Click). Designed for viewing LaTeX compilation output on remote servers.
 
-## Main Idea
+## The Problem
+
+Most LaTeX users fall into two categories:
+1. **Local editing**: Using TeXShop, TeXMaker, LyX, or Vim/Neovim/Emacs with a local PDF viewer that supports SyncTeX
+2. **Online editing**: Using Overleaf with its built-in PDF viewer and collaboration features
+
+However, there's a third workflow: **writing LaTeX on a remote, headless server**. In this scenario, you need a way to view the compiled PDF. Common approaches include:
+
+- **SFTP**: Download the PDF to your local machine after every compilation
+- **Remote filesystem + local viewer**: Mount the remote directory locally and use a PDF viewer with auto-reload
+- **Simple HTTP server**: Run `python -m http.server` on the remote server and view the PDF in your browser
+
+The problem with the HTTP server approach is that you lose your position in the PDF every time you reload the page after recompiling. EntangledPdf solves this by adding SyncTeX support—when you forward search from your editor, the browser scrolls to the exact location in the PDF, maintaining your position.
+
+## Alternatives
+
+**For Local LaTeX Editing (TeXShop, TeXMaker, LyX, Vim/Neovim/Emacs)**
+
+If you edit LaTeX on your local machine, you likely don't need EntangledPdf. These tools have built-in or companion PDF viewers with SyncTeX support:
+- **TeXShop** (macOS): Integrated PDF viewer with SyncTeX
+- **TeXMaker**: Built-in PDF viewer with forward/inverse search
+- **LyX**: Integrated preview with source-to-PDF navigation
+- **Zathura/Skim/Okular**: PDF viewers with excellent SyncTeX integration for Vim/Neovim/Emacs users
+
+*Use these if:* You work locally and want a PDF viewer that syncs with your editor.
+
+**Overleaf (Cloud)**
+
+A complete LaTeX editing environment in the browser with real-time collaboration, built-in PDF preview, and integrated SyncTeX. No local installation required.
+
+*Use this if:* You want a full-featured online LaTeX editor with collaboration features.
+
+**Simple HTTP Server (`python -m http.server`)**
+
+If you're editing on a remote server and just need to view the PDF in a browser:
+
+```bash
+python -m http.server 8000
+# Then open http://your-server:8000/your.pdf
+```
+
+*Use this if:* You're fine manually refreshing the browser and navigating back to your position after each compilation.
+
+**Why EntangledPdf?**
+
+EntangledPdf is designed for a specific scenario:
+1. You edit LaTeX on a remote, headless server
+2. You want to view the PDF in a browser
+3. You want SyncTeX support to maintain your position in the PDF across compilations
+
+It fills the gap between a simple HTTP server (no SyncTeX) and a full local workflow with dedicated PDF viewers.
 
 EntangledPdf allows you to:
 - View PDFs in a web browser with smooth scrolling and high-quality rendering
-- Synchronize PDF position across multiple devices (desktop, tablet, phone)
-- Jump to specific locations in the PDF from your Neovim editor using SyncTeX (forward search)
+- Jump to specific locations in the PDF from your editor using SyncTeX (forward search)
 - Click in the PDF to jump back to your editor (inverse search with Shift+Click)
 - Automatically reconnect and sync when switching back to the browser tab
 

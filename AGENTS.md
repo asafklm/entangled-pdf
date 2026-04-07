@@ -4,6 +4,24 @@
 
 Python-based PDF server using FastAPI, WebSockets, and TypeScript for real-time PDF synchronization with SyncTeX support for LaTeX **forward search** (Editor → PDF) and **inverse search** (PDF → Editor via Shift+Click).
 
+**Important Context**: This is a specialized tool for a specific workflow (editing LaTeX on remote servers). See [docs/intended-users-and-use-cases.md](docs/intended-users-and-use-cases.md) for detailed user context.
+
+## Documentation Tone and Style
+
+When writing or editing project documentation (README, guides, etc.):
+
+- **Be honest**: Clearly state what the tool does and doesn't do
+- **Be welcoming**: Don't push users away, but help them understand if the tool fits their needs
+- **No sales pitch**: Don't try to persuade users that this is "better" than alternatives
+- **Acknowledge limitations**: It's okay to say "you probably don't need this if..."
+- **Context over features**: Explain the workflow and use case, not just feature lists
+
+**Example of good tone:**
+> "EntangledPdf is designed for a specific scenario: editing LaTeX on a remote, headless server. If you work locally with TeXShop or Zathura, you likely don't need this tool."
+
+**Example of tone to avoid:**
+> "EntangledPdf is the ultimate PDF viewer with unmatched multi-device synchronization!"
+
 ## First Principles
 
 ### When Debugging Complex Issues
