@@ -86,7 +86,19 @@ source ~/.bashrc
 
 > **Security:** Use a long, random key in shared environments. A simple password is fine for personal use on a single machine.
 
-#### 2. VimTeX Setup (Optional - for Inverse Search)
+#### 2. SSL Certificates (Required)
+
+EntangledPdf uses HTTPS by default with self-signed certificates. Generate them before first use:
+
+```bash
+python -m entangledpdf.certs generate
+```
+
+This creates certificates in `~/.local/share/pdf_server/certs/`. You'll see a browser warning on first access—click "Advanced" → "Accept" to proceed.
+
+To use your own certificates instead, see [SSL Certificates](#ssl-certificates) below.
+
+#### 3. VimTeX Setup (Optional - for Inverse Search)
 
 To use **inverse search** (Shift+Click in PDF → jump to editor) with Vim/Neovim, 
 configure your editor socket. Note: Other editors and LaTeX plugins can also 
@@ -418,7 +430,7 @@ The `/state` endpoint is intentionally unauthenticated. It returns:
    # or
    echo $VIM_SERVERNAME       # For Vim
    ```
-   If empty, you haven't completed the [VimTeX Setup](#2-vimtex-setup-optional---for-inverse-search).
+   If empty, you haven't completed the [VimTeX Setup](#3-vimtex-setup-optional---for-inverse-search).
 
 2. **Check that nvr is installed** (Neovim only):
    ```bash
