@@ -21,9 +21,9 @@ def get_cert_directory() -> Path:
     """Get the certificate storage directory (XDG compliant).
     
     Returns:
-        Path to ~/.local/share/pdf_server/certs/
+        Path to ~/.local/share/entangledpdf/certs/
     """
-    cert_dir = Path.home() / ".local/share/pdf_server/certs"
+    cert_dir = Path.home() / ".local/share/entangledpdf/certs"
     cert_dir.mkdir(parents=True, exist_ok=True)
     return cert_dir
 

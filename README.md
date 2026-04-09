@@ -107,7 +107,7 @@ EntangledPdf uses HTTPS by default with self-signed certificates. Generate them 
 python -m entangledpdf.certs generate
 ```
 
-This creates certificates in `~/.local/share/pdf_server/certs/`. You'll see a browser warning on first access—click "Advanced" → "Accept" to proceed.
+This creates certificates in `~/.local/share/entangledpdf/certs/`. You'll see a browser warning on first access—click "Advanced" → "Accept" to proceed.
 
 To use your own certificates instead, see [SSL Certificates](#ssl-certificates) below.
 

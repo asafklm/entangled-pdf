@@ -11,10 +11,9 @@ vim.g.vimtex_view_general_viewer = 'remote_pdf'
 -- vim.env.PDF_SERVER_SECRET = 'your-secret-key'
 
 -- That's it! VimTex will handle the rest:
--- - First compile: remote_pdf will start pdf_server automatically
--- - <leader>lv: Standard VimTeX forward search works via remote_pdf
+-- - First compile: entangle-pdf start (if not already running)
+-- - <leader>lv: Standard VimTeX forward search works via entangle-pdf sync
 -- - PDF reload: Automatic when file is modified
--- - Server lifecycle: Managed by remote_pdf automatically
+-- - Server lifecycle: Managed by entangle-pdf command
 
--- NOTE: Make sure remote_pdf is in your PATH. It's located at:
---       ~/EntangledPdf/bin/remote_pdf (or wherever you installed EntangledPdf)
+-- NOTE: Make sure entangle-pdf is in your PATH. It's installed via pip.
