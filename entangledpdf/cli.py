@@ -302,17 +302,17 @@ def main():
         prog="entangle-pdf"
     )
     
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=None,
-        help=f"Server port (default: {DEFAULT_PORT} or ENTANGLEDPDF_PORT env var)"
-    )
-    
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
     
     # start command
     start_parser = subparsers.add_parser("start", help="Start the PDF server (foreground)")
+    
+    start_parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.getenv("ENTANGLEDPDF_PORT", DEFAULT_PORT)),
+        help=f"Server port (default: {DEFAULT_PORT} or ENTANGLEDPDF_PORT env var)"
+    )
     
     inverse_group = start_parser.add_mutually_exclusive_group()
     inverse_group.add_argument(
@@ -371,7 +371,14 @@ def main():
     )
     
     # status command
-    subparsers.add_parser("status", help="Show server status")
+    status_parser = subparsers.add_parser("status", help="Show server status")
+    
+    status_parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.getenv("ENTANGLEDPDF_PORT", DEFAULT_PORT)),
+        help=f"Server port (default: {DEFAULT_PORT} or ENTANGLEDPDF_PORT env var)"
+    )
     
     # generate-api-key command
     key_parser = subparsers.add_parser("generate-api-key", help="Generate a secure API key")

@@ -103,8 +103,8 @@ class TestStartBasicServerStartup:
         
         cmd = [
             str(get_cli_path()),
-            "--port", str(port),
             "start",
+            "--port", str(port),
             "--ssl-cert", str(cert_path),
             "--ssl-key", str(key_path),
         ]
@@ -152,8 +152,8 @@ class TestStartBasicServerStartup:
         # Start first server
         cmd1 = [
             str(get_cli_path()),
-            "--port", str(port),
             "start",
+            "--port", str(port),
             "--ssl-cert", str(cert_path),
             "--ssl-key", str(key_path),
         ]
@@ -175,8 +175,8 @@ class TestStartBasicServerStartup:
             # Try to start second server on same port
             cmd2 = [
                 str(get_cli_path()),
-                "--port", str(port),
                 "start",
+                "--port", str(port),
                 "--ssl-cert", str(cert_path),
                 "--ssl-key", str(key_path),
             ]
@@ -210,8 +210,8 @@ class TestStartBasicServerStartup:
         
         cmd = [
             str(get_cli_path()),
-            "--port", str(port),
             "start",
+            "--port", str(port),
             "--http",
         ]
         
@@ -256,8 +256,8 @@ class TestStartBasicServerStartup:
         
         cmd = [
             str(get_cli_path()),
-            "--port", str(port),
             "start",
+            "--port", str(port),
             "--ssl-cert", str(cert_path),
             "--ssl-key", str(key_path),
         ]
@@ -298,8 +298,8 @@ class TestStartBasicServerStartup:
         
         cmd = [
             str(get_cli_path()),
-            "--port", str(port),
             "start",
+            "--port", str(port),
             "--http",
         ]
         
@@ -336,8 +336,8 @@ class TestStartInverseSearchFlags:
         
         cmd = [
             str(get_cli_path()),
-            "--port", str(port),
             "start",
+            "--port", str(port),
             "--ssl-cert", str(cert_path),
             "--ssl-key", str(key_path),
             "--inverse-search-nvim",
@@ -404,8 +404,8 @@ class TestStartInverseSearchFlags:
         
         cmd = [
             str(get_cli_path()),
-            "--port", str(port),
             "start",
+            "--port", str(port),
             "--ssl-cert", str(cert_path),
             "--ssl-key", str(key_path),
             "--inverse-search-vim",
@@ -447,8 +447,8 @@ class TestStartInverseSearchFlags:
         
         cmd = [
             str(get_cli_path()),
-            "--port", str(port),
             "start",
+            "--port", str(port),
             "--ssl-cert", str(cert_path),
             "--ssl-key", str(key_path),
         ]
@@ -506,8 +506,8 @@ class TestStartSslCertificates:
         
         cmd = [
             str(get_cli_path()),
-            "--port", str(port),
             "start",
+            "--port", str(port),
             "--ssl-cert", str(cert_path),
             "--ssl-key", str(key_path),
         ]
@@ -547,8 +547,8 @@ class TestStartSslCertificates:
         
         cmd = [
             str(get_cli_path()),
-            "--port", str(port),
             "start",
+            "--port", str(port),
             "--http",  # Use HTTP for this test to avoid cert issues
         ]
         
@@ -586,8 +586,8 @@ class TestStartErrorHandling:
         
         cmd = [
             str(get_cli_path()),
-            "--port", "999999",  # Invalid port
             "start",
+            "--port", "999999",  # Invalid port
             "--http",
         ]
         
@@ -616,8 +616,8 @@ class TestStartErrorHandling:
         
         cmd = [
             str(get_cli_path()),
-            "--port", str(port),
             "start",
+            "--port", str(port),
             "--ssl-cert", str(cert_path),
             "--ssl-key", str(key_path),
         ]
@@ -672,8 +672,8 @@ class TestStartVerboseAndLogging:
         
         cmd = [
             str(get_cli_path()),
-            "--port", str(port),
             "start",
+            "--port", str(port),
             "--ssl-cert", str(cert_path),
             "--ssl-key", str(key_path),
             "--verbose",
@@ -717,8 +717,8 @@ class TestStartVerboseAndLogging:
         
         cmd = [
             str(get_cli_path()),
-            "--port", str(port),
             "start",
+            "--port", str(port),
             "--ssl-cert", str(cert_path),
             "--ssl-key", str(key_path),
             "--log-file", str(log_file),
