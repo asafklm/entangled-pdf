@@ -175,11 +175,12 @@ class TestMain:
                     mock_init.return_value = mock_settings
                     
                     with patch("main.create_app") as mock_create:
-                        mock_create.return_value = MagicMock()
-                        main()
-                        
-                        mock_init.assert_called_once()
-                        mock_run.assert_called_once()
+                        with patch("main.validate_ssl_config", return_value={"ssl_keyfile": "test", "ssl_certfile": "test"}):
+                            mock_create.return_value = MagicMock()
+                            main()
+                            
+                            mock_init.assert_called_once()
+                            mock_run.assert_called_once()
     
     def test_main_with_port_argument(self, tmp_path):
         """Test main with --port argument."""
@@ -200,11 +201,12 @@ class TestMain:
                     mock_init.return_value = mock_settings
                     
                     with patch("main.create_app"):
-                        main()
-                        
-                        # Verify init_settings was called with port=9000
-                        call_kwargs = mock_init.call_args[1]
-                        assert call_kwargs["port"] == 9000
+                        with patch("main.validate_ssl_config", return_value={"ssl_keyfile": "test", "ssl_certfile": "test"}):
+                            main()
+                            
+                            # Verify init_settings was called with port=9000
+                            call_kwargs = mock_init.call_args[1]
+                            assert call_kwargs["port"] == 9000
     
     def test_main_with_inverse_search_nvim(self, tmp_path):
         """Test main with --inverse-search-nvim flag."""
@@ -251,13 +253,14 @@ class TestMain:
                     mock_init.return_value = mock_settings
                     
                     with patch("main.create_app") as mock_create:
-                        mock_app = MagicMock()
-                        mock_create.return_value = mock_app
-                        
-                        main()
-                        
-                        # Verify uvicorn.run was called with correct args
-                        mock_run.assert_called_once()
-                        call_args = mock_run.call_args
-                        assert call_args[1]["host"] == "127.0.0.1"
-                        assert call_args[1]["port"] == 8080
+                        with patch("main.validate_ssl_config", return_value={"ssl_keyfile": "test", "ssl_certfile": "test"}):
+                            mock_app = MagicMock()
+                            mock_create.return_value = mock_app
+                            
+                            main()
+                            
+                            # Verify uvicorn.run was called with correct args
+                            mock_run.assert_called_once()
+                            call_args = mock_run.call_args
+                            assert call_args[1]["host"] == "127.0.0.1"
+                            assert call_args[1]["port"] == 8080
