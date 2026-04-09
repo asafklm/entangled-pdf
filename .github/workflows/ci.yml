@@ -139,10 +139,15 @@ jobs:
     steps:
       - name: Check all required tests passed
         run: |
-          if [ "${{ needs.python-tests-fast.result }}" == "success" ] && \
-             [ "${{ needs.python-tests-slow.result }}" == "success" || "${{ needs.python-tests-slow.result }}" == "skipped" ] && \
-             [ "${{ needs.typescript-tests.result }}" == "success" ] && \
-             [ "${{ needs.e2e-tests.result }}" == "success" || "${{ needs.e2e-tests.result }}" == "skipped" ]; then
+          FAST_PASSED="${{ needs.python-tests-fast.result }}"
+          SLOW_RESULT="${{ needs.python-tests-slow.result }}"
+          TYPESCRIPT_PASSED="${{ needs.typescript-tests.result }}"
+          E2E_RESULT="${{ needs.e2e-tests.result }}"
+          
+          if [ "$FAST_PASSED" == "success" ] && \
+             ( [ "$SLOW_RESULT" == "success" ] || [ "$SLOW_RESULT" == "skipped" ] ) && \
+             [ "$TYPESCRIPT_PASSED" == "success" ] && \
+             ( [ "$E2E_RESULT" == "success" ] || [ "$E2E_RESULT" == "skipped" ] ); then
             echo "✓ All required tests passed"
             exit 0
           else
