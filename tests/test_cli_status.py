@@ -62,7 +62,7 @@ class TestStatusServerNotRunning:
         env["ENTANGLEDPDF_API_KEY"] = "test-status-key"
         
         result = subprocess.run(
-            [str(get_cli_path()), "status", "--port", str(port)],
+            [str(get_cli_path()), "--port", str(port), "status"],
             capture_output=True,
             text=True,
             env=env,
@@ -89,7 +89,7 @@ class TestStatusServerNotRunning:
         
         # Check port1
         result1 = subprocess.run(
-            [str(get_cli_path()), "status", "--port", str(port1)],
+            [str(get_cli_path()), "--port", str(port1), "status"],
             capture_output=True,
             text=True,
             env=env,
@@ -101,7 +101,7 @@ class TestStatusServerNotRunning:
         
         # Check port2
         result2 = subprocess.run(
-            [str(get_cli_path()), "status", "--port", str(port2)],
+            [str(get_cli_path()), "--port", str(port2), "status"],
             capture_output=True,
             text=True,
             env=env,
@@ -126,8 +126,8 @@ class TestStatusServerRunning:
         # Start server
         cmd = [
             str(get_cli_path()),
-            "start",
             "--port", str(port),
+            "start",
             "--ssl-cert", str(cert_path),
             "--ssl-key", str(key_path),
         ]
@@ -148,7 +148,7 @@ class TestStatusServerRunning:
             
             # Run status
             result = subprocess.run(
-                [str(get_cli_path()), "status", "--port", str(port)],
+                [str(get_cli_path()), "--port", str(port), "status"],
                 capture_output=True,
                 text=True,
                 env=env,
@@ -191,8 +191,8 @@ class TestStatusServerRunning:
         # Start server
         cmd = [
             str(get_cli_path()),
-            "start",
             "--port", str(port),
+            "start",
             "--ssl-cert", str(cert_path),
             "--ssl-key", str(key_path),
         ]
@@ -226,7 +226,7 @@ class TestStatusServerRunning:
             
             # Run status
             result = subprocess.run(
-                [str(get_cli_path()), "status", "--port", str(port)],
+                [str(get_cli_path()), "--port", str(port), "status"],
                 capture_output=True,
                 text=True,
                 env=env,
@@ -265,8 +265,8 @@ class TestStatusServerRunning:
         # Start server with inverse search
         cmd = [
             str(get_cli_path()),
-            "start",
             "--port", str(port),
+            "start",
             "--ssl-cert", str(cert_path),
             "--ssl-key", str(key_path),
             "--inverse-search-nvim",
@@ -301,7 +301,7 @@ class TestStatusServerRunning:
             
             # Run status
             result = subprocess.run(
-                [str(get_cli_path()), "status", "--port", str(port)],
+                [str(get_cli_path()), "--port", str(port), "status"],
                 capture_output=True,
                 text=True,
                 env=env,
@@ -335,8 +335,8 @@ class TestStatusCustomPort:
         # Start server on port1
         cmd = [
             str(get_cli_path()),
-            "start",
             "--port", str(port1),
+            "start",
             "--ssl-cert", str(cert_path),
             "--ssl-key", str(key_path),
         ]
@@ -357,7 +357,7 @@ class TestStatusCustomPort:
             
             # Check port1 - should show running
             result1 = subprocess.run(
-                [str(get_cli_path()), "status", "--port", str(port1)],
+                [str(get_cli_path()), "--port", str(port1), "status"],
                 capture_output=True,
                 text=True,
                 env=env,
@@ -368,7 +368,7 @@ class TestStatusCustomPort:
             
             # Check port2 - should show not running
             result2 = subprocess.run(
-                [str(get_cli_path()), "status", "--port", str(port2)],
+                [str(get_cli_path()), "--port", str(port2), "status"],
                 capture_output=True,
                 text=True,
                 env=env,
@@ -444,8 +444,8 @@ class TestStatusHttpHttps:
         # Start server in HTTP mode
         cmd = [
             str(get_cli_path()),
-            "start",
             "--port", str(port),
+            "start",
             "--http",
         ]
         
@@ -465,7 +465,7 @@ class TestStatusHttpHttps:
             
             # Run status
             result = subprocess.run(
-                [str(get_cli_path()), "status", "--port", str(port)],
+                [str(get_cli_path()), "--port", str(port), "status"],
                 capture_output=True,
                 text=True,
                 env=env,
@@ -493,8 +493,8 @@ class TestStatusHttpHttps:
         # Start server in HTTPS mode
         cmd = [
             str(get_cli_path()),
-            "start",
             "--port", str(port),
+            "start",
             "--ssl-cert", str(cert_path),
             "--ssl-key", str(key_path),
         ]
@@ -515,7 +515,7 @@ class TestStatusHttpHttps:
             
             # Run status
             result = subprocess.run(
-                [str(get_cli_path()), "status", "--port", str(port)],
+                [str(get_cli_path()), "--port", str(port), "status"],
                 capture_output=True,
                 text=True,
                 env=env,
