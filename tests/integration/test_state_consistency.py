@@ -13,6 +13,7 @@ from entangledpdf.config import get_settings
 from tests.integration.helpers import MockWebSocket
 
 
+@pytest.mark.slow
 class TestStateConsistency:
     """Test suite for state consistency across different access methods."""
     

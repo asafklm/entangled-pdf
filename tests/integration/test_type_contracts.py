@@ -24,6 +24,22 @@ class TestInterfaceDefinitions:
         return viewer_ts.read_text()
     
     @pytest.fixture
+    def lifecycle_ts_content(self):
+        """Read pdf-lifecycle.ts and extract functions."""
+        lifecycle_ts = Path(__file__).parent.parent.parent / "static" / "pdf-lifecycle.ts"
+        if not lifecycle_ts.exists():
+            pytest.skip("pdf-lifecycle.ts not found")
+        return lifecycle_ts.read_text()
+
+    @pytest.fixture
+    def controller_ts_content(self):
+        """Read synctex-controller.ts and extract functions."""
+        controller_ts = Path(__file__).parent.parent.parent / "static" / "synctex-controller.ts"
+        if not controller_ts.exists():
+            pytest.skip("synctex-controller.ts not found")
+        return controller_ts.read_text()
+    
+    @pytest.fixture
     def types_ts_content(self):
         """Read types.ts and extract interfaces."""
         types_ts = Path(__file__).parent.parent.parent / "static" / "types.ts"
@@ -38,14 +54,6 @@ class TestInterfaceDefinitions:
         if not utils_ts.exists():
             pytest.skip("coordinate-utils.ts not found")
         return utils_ts.read_text()
-
-    @pytest.fixture
-    def pdfjs_types_content(self):
-        """Read PDF.js type definitions."""
-        types_file = Path(__file__).parent.parent.parent / "types" / "pdfjs.d.ts"
-        if not types_file.exists():
-            pytest.skip("pdfjs.d.ts not found")
-        return types_file.read_text()
     
     def test_state_update_interface_structure(self, types_ts_content):
         """Test StateUpdate interface has correct structure."""
@@ -85,10 +93,10 @@ class TestInterfaceDefinitions:
         assert "interface Window" in content, "Window interface not extended"
         assert "PDF_CONFIG: PDFConfig" in content, "PDF_CONFIG not declared on Window"
     
-    def test_function_type_annotations(self, coordinate_utils_ts_content, viewer_ts_content):
+    def test_function_type_annotations(self, coordinate_utils_ts_content, controller_ts_content):
         """Test key functions have proper type annotations."""
         utils_content = coordinate_utils_ts_content
-        viewer_content = viewer_ts_content
+        controller_content = controller_ts_content
         
         # Check function signatures
         assert "function getRenderScale(canvas: MockCanvas): number" in utils_content or \
@@ -97,11 +105,11 @@ class TestInterfaceDefinitions:
         assert "function pdfYToPixels(canvas: MockCanvas, y: number" in utils_content or \
                "function pdfYToPixels(canvas:" in utils_content, "pdfYToPixels not properly typed"
         
-        assert "function applyStateUpdate(data: StateUpdate" in viewer_content, "applyStateUpdate not properly typed"
+        assert "function applyStateUpdate(" in controller_content and "data: StateUpdate" in controller_content, "applyStateUpdate not properly typed"
     
-    def test_async_function_declarations(self, viewer_ts_content):
+    def test_async_function_declarations(self, lifecycle_ts_content):
         """Test async functions are properly declared."""
-        content = viewer_ts_content
+        content = lifecycle_ts_content
         
         assert "async function reloadPDF(): Promise<void>" in content or \
                "async function reloadPDF()" in content, "reloadPDF not declared as async"

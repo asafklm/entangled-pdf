@@ -16,6 +16,7 @@ from entangledpdf.config import get_settings
 from tests.integration.helpers import MockWebSocket
 
 
+@pytest.mark.slow
 class TestWebhookBroadcastFlow:
     """Test the complete webhook → state → broadcast flow."""
     

@@ -13,6 +13,7 @@ from entangledpdf.config import get_settings
 from tests.integration.helpers import MockWebSocket
 
 
+@pytest.mark.slow
 class TestRaceConditions:
     """Test suite for race conditions in the PDF server."""
     

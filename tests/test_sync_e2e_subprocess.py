@@ -210,6 +210,7 @@ def running_server(test_certs, tmp_path_factory, request):
         untrack_test_process(process.pid)
 
 
+@pytest.mark.slow
 class TestSyncRemotePdfSubprocess:
     """End-to-end tests using real subprocesses for entangle-pdf sync."""
 
@@ -529,6 +530,7 @@ class TestSyncRemotePdfSubprocess:
         assert state["pdf_loaded"] is True
 
 
+@pytest.mark.slow
 class TestLoadPdfClientFunction:
     """Integration tests using the load_pdf() function directly (not subprocess)."""
 
@@ -571,6 +573,7 @@ class TestLoadPdfClientFunction:
         assert result["changed"] is True
 
 
+@pytest.mark.slow
 class TestForwardSearchFunction:
     """Integration tests for forward_search() function."""
 
@@ -605,6 +608,7 @@ class TestForwardSearchFunction:
         assert result["status"] in ["success", "ok", "received"]
 
 
+@pytest.mark.slow
 class TestPortOverride:
     """Test port conflict workaround via environment variable."""
 
@@ -625,6 +629,7 @@ class TestPortOverride:
         assert test_module.TEST_SERVER_PORT == custom_port
 
 
+@pytest.mark.slow
 class TestParseSynctexForwardInE2E:
     """E2E tests for parse_synctex_forward functionality."""
 

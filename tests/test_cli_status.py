@@ -50,6 +50,7 @@ def test_certs(tmp_path):
     return cert_path, key_path
 
 
+@pytest.mark.slow
 class TestStatusServerNotRunning:
     """Test suite for when server is not running."""
     
@@ -112,6 +113,7 @@ class TestStatusServerNotRunning:
             f"Port {port2} should show not running: {result2.stdout}"
 
 
+@pytest.mark.slow
 class TestStatusServerRunning:
     """Test suite for when server is running."""
     
@@ -320,6 +322,7 @@ class TestStatusServerRunning:
             process.wait(timeout=5)
 
 
+@pytest.mark.slow
 class TestStatusCustomPort:
     """Test suite for custom port handling."""
     
@@ -431,6 +434,7 @@ class TestStatusCustomPort:
             process.wait(timeout=5)
 
 
+@pytest.mark.slow
 class TestStatusHttpHttps:
     """Test suite for HTTP vs HTTPS detection."""
     

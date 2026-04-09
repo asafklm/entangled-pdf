@@ -17,6 +17,7 @@ from entangledpdf.connection_manager import manager
 from tests.integration.helpers import MockWebSocket
 
 
+@pytest.mark.slow
 class TestLoadPdfEndpoint:
     """Test the /api/load-pdf endpoint for dynamic PDF loading."""
 
@@ -185,6 +186,7 @@ class TestLoadPdfEndpoint:
             settings.pdf_file = original_pdf
 
 
+@pytest.mark.slow
 class TestLoadPdfStateUpdates:
     """Test state updates when loading PDFs dynamically."""
 
@@ -292,6 +294,7 @@ class TestLoadPdfStateUpdates:
             settings.pdf_file = original_pdf
 
 
+@pytest.mark.slow
 class TestLoadPdfSequential:
     """Test loading multiple PDFs sequentially."""
 

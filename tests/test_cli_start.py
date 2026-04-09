@@ -90,6 +90,7 @@ def wait_for_server(port: int, protocol: str = "https", timeout: float = 10.0) -
     return False
 
 
+@pytest.mark.slow
 class TestStartBasicServerStartup:
     """Test suite for basic server startup and shutdown."""
     
@@ -323,6 +324,7 @@ class TestStartBasicServerStartup:
             f"Error should mention API key requirement: {result.stderr}"
 
 
+@pytest.mark.slow
 class TestStartInverseSearchFlags:
     """Test suite for inverse search flags (--inverse-search-nvim, --vim)."""
     
@@ -493,6 +495,7 @@ class TestStartInverseSearchFlags:
             process.wait(timeout=5)
 
 
+@pytest.mark.slow
 class TestStartSslCertificates:
     """Test suite for SSL certificate handling."""
     
@@ -576,6 +579,7 @@ class TestStartSslCertificates:
             process.wait(timeout=5)
 
 
+@pytest.mark.slow
 class TestStartErrorHandling:
     """Test suite for error handling and edge cases."""
     
@@ -659,6 +663,7 @@ class TestStartErrorHandling:
             raise
 
 
+@pytest.mark.slow
 class TestStartVerboseAndLogging:
     """Test suite for verbose mode and logging options."""
     
