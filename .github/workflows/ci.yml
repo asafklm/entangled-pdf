@@ -21,7 +21,7 @@ jobs:
           cache: 'pip'
       
       - name: Install system dependencies
-        run: apt-get update && apt-get install -y texlive-extra-utils
+        run: sudo apt-get update && sudo apt-get install -y texlive-extra-utils
        
       - name: Install Python dependencies
         run: |
@@ -57,7 +57,7 @@ jobs:
           cache: 'pip'
       
       - name: Install system dependencies
-        run: apt-get update && apt-get install -y texlive-extra-utils
+        run: sudo apt-get update && sudo apt-get install -y texlive-extra-utils
       
       - name: Install Python dependencies
         run: |
@@ -105,7 +105,7 @@ jobs:
           cache: 'pip'
       
       - name: Install system dependencies
-        run: apt-get update && apt-get install -y texlive-extra-utils
+        run: sudo apt-get update && sudo apt-get install -y texlive-extra-utils
       
       - name: Install Python dependencies
         run: |
