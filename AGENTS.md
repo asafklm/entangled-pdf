@@ -278,6 +278,25 @@ class ConnectionManager:
 
 When adding deps, prefer packages already in use.
 
+### External Dependencies
+
+For external tools that EntangledPdf depends on (e.g., synctex, neovim-remote), **do not create installation instructions in our documentation**. Instead:
+
+1. **Link to official documentation** - Point users to the upstream project's docs
+2. **Mention package names if known** - e.g., "texlive-extra-utils provides synctex"
+3. **Avoid OS-specific instructions** - Different OS/package managers have different packages
+
+**Rationale**: External projects may change their installation process. By linking to official docs, we avoid tight coupling and reduce maintenance burden when external projects update.
+
+**Example**:
+```markdown
+# Instead of:
+# apt install texlive-extra-utils  # Don't do this
+
+# Do this:
+# See https://www.tug.org/texlive/ for TeX Live installation
+```
+
 ## E2E Testing with Console Log Capture
 
 ### Capturing Browser Console Logs in Tests

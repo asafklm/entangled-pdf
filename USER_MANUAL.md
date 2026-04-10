@@ -85,8 +85,8 @@ Then use `./bin/entangle-pdf` instead of `entangle-pdf`.
 To enable forward search (editor → PDF) and inverse search (PDF → editor), you need:
 
 1. **synctex command-line tool** - part of TeX Live
-   - Ubuntu/Debian: `apt install texlive-extra-utils`
-   - macOS: Install MacTeX or TeX Live
+   - See [TeX Live installation](https://www.tug.org/texlive/) for instructions
+   - On Ubuntu/Debian: `apt install texlive-extra-utils` (smaller package with synctex)
    - Verify: `synctex --version`
 
 2. **PDF compiled with SyncTeX** - compile with `-synctex=1` flag:
@@ -98,7 +98,7 @@ To enable forward search (editor → PDF) and inverse search (PDF → editor), y
 > ```bash
 > which synctex
 > ```
-> If not found, install TeX Live or the `texlive-extra-utils` package.
+> If not found, install TeX Live. On Ubuntu/Debian, the `texlive-extra-utils` package provides synctex.
 
 ---
 

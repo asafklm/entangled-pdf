@@ -133,7 +133,8 @@ To use your own certificates instead, see [SSL Certificates](#ssl-certificates) 
 To enable forward search (editor → PDF) and inverse search (PDF → editor), you need:
 
 - **synctex** - command-line tool part of TeX Live
-  - Ubuntu/Debian: `apt install texlive-extra-utils`
+  - See [TeX Live installation](https://www.tug.org/texlive/) for instructions
+  - On Ubuntu/Debian: `apt install texlive-extra-utils` (smaller package with synctex)
   - Verify: `synctex --version`
 
 - **PDF compiled with SyncTeX**: Compile with `-synctex=1` flag:
