@@ -20,22 +20,25 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
       
+      - name: Install system dependencies
+        run: apt-get update && apt-get install -y texlive-extra-utils
+       
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install responses
           pip install -e .
-      
+       
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-      
+       
       - name: Install Node.js dependencies and build
         run: npm ci && npm run build
-      
+       
       - name: Run fast Python tests
         run: python -m pytest tests/ -v --tb=short -m "not slow"
 
@@ -52,6 +55,9 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
+      
+      - name: Install system dependencies
+        run: apt-get update && apt-get install -y texlive-extra-utils
       
       - name: Install Python dependencies
         run: |
@@ -97,6 +103,9 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
+      
+      - name: Install system dependencies
+        run: apt-get update && apt-get install -y texlive-extra-utils
       
       - name: Install Python dependencies
         run: |

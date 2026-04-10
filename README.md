@@ -128,6 +128,21 @@ This creates certificates in `~/.local/share/entangledpdf/certs/`. You'll see a 
 
 To use your own certificates instead, see [SSL Certificates](#ssl-certificates) below.
 
+#### Requirements for Forward/Inverse Search
+
+To enable forward search (editor → PDF) and inverse search (PDF → editor), you need:
+
+- **synctex** - command-line tool part of TeX Live
+  - Ubuntu/Debian: `apt install texlive-extra-utils`
+  - Verify: `synctex --version`
+
+- **PDF compiled with SyncTeX**: Compile with `-synctex=1` flag:
+  ```bash
+  pdflatex -synctex=1 document.tex
+  ```
+
+> **Troubleshooting**: If synctex commands fail, ensure it's installed: `which synctex`
+
 #### 3. VimTeX Setup (Optional - for Inverse Search)
 
 To use **inverse search** (Shift+Click in PDF → jump to editor) with Vim/Neovim, 
