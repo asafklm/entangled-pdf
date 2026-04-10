@@ -98,7 +98,13 @@ def cmd_start(args):
             main_py = package_dir.parent / "main.py"
         
         if not main_py.exists():
-            print("Error: Could not find main.py. Are you in development mode?", file=sys.stderr)
+            # Try current directory as fallback (for development mode)
+            main_py = Path.cwd() / "main.py"
+            
+        if not main_py.exists():
+            print("Error: Could not find main.py.", file=sys.stderr)
+            print("If you installed via pip/pipx, run 'python main.py' from the project directory.", file=sys.stderr)
+            print("For development, use: pip install -e .", file=sys.stderr)
             return 1
     except ImportError:
         print("Error: Could not import entangledpdf package", file=sys.stderr)

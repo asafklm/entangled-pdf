@@ -25,7 +25,21 @@ Complete guide for using EntangledPdf to view and synchronize PDFs with LaTeX ed
 
 ### Installation Methods
 
-#### Method 1: Install from PyPI (Recommended for Users)
+#### Method 1: Install from GitHub with pipx (Recommended for Users)
+
+```bash
+# Install pipx first - see https://pipx.pypa.io for installation instructions
+
+# Clone and install
+git clone https://github.com/asafklm/entangled-pdf.git
+cd entangled-pdf
+pipx install .
+
+# Build the frontend (required for PDF rendering)
+npm install && npm run build
+```
+
+#### Method 2: Install from PyPI
 
 ```bash
 pip install entangledpdf
@@ -33,12 +47,12 @@ pip install entangledpdf
 
 This installs the `entangle-pdf` command globally.
 
-#### Method 2: Install from Source (For Development)
+#### Method 3: Install from Source (For Development)
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/entangledpdf.git
-cd entangledpdf
+git clone https://github.com/asafklm/entangled-pdf.git
+cd entangled-pdf
 
 # Install Python package
 pip install .
@@ -46,12 +60,11 @@ pip install .
 # Or for development (editable install)
 pip install -e .
 
-# Install and build Node.js dependencies
-npm install
-npm run build
+# Build the frontend (required for PDF rendering)
+npm install && npm run build
 ```
 
-#### Method 3: Install Dependencies Only (Advanced)
+#### Method 4: Install Dependencies Only (Advanced)
 
 If you prefer not to install the package:
 
@@ -163,7 +176,7 @@ entangle-pdf start \
 
 **Installing certificates to default location:**
 ```bash
-python -m entangledpdf.certs generate \
+python3 -m entangledpdf.certs generate \
   --cert /path/to/cert.pem \
   --key /path/to/key.pem
 ```

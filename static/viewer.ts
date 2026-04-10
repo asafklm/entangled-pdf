@@ -466,12 +466,18 @@ async function performKeyboardInverseSearch(): Promise<void> {
 }
 
 // Initialize
+console.log('Initializing viewer, CONFIG.filename:', CONFIG.filename);
 if (CONFIG.filename === 'no-pdf-loaded') {
-  console.log('No PDF loaded yet');
+  console.log('No PDF loaded yet, showing message');
   if (noPdfMessage) {
     noPdfMessage.classList.remove('hidden');
+    console.log('Removed hidden class from noPdfMessage');
+  } else {
+    console.warn('noPdfMessage element not found');
   }
-  viewerContainer.classList.add('hidden');
+  if (viewerContainer) {
+    viewerContainer.classList.add('hidden');
+  }
 } else {
   stateManager.setPdfLoaded(true);
   

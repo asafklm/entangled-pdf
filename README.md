@@ -30,36 +30,53 @@ The server uses WebSockets for real-time updates with automatic fallback to HTTP
 
 ### Installation
 
-#### Option 1: Install from GitHub (Recommended)
+#### Option 1: Install from GitHub with pipx (Recommended)
 
 ```bash
-# Clone the repository
-git clone https://github.com/asafklm/entangledpdf.git
-cd entangledpdf
+# Install pipx first - see https://pipx.pypa.io for installation instructions
 
-# Install the package (includes Python dependencies)
+# Clone the repository
+git clone https://github.com/asafklm/entangled-pdf.git
+cd entangled-pdf
+
+# Install EntangledPdf (includes Python dependencies)
+pipx install .
+
+# Build the frontend (required for PDF rendering)
+npm install && npm run build
+```
+
+#### Option 2: Install from GitHub with pip
+
+```bash
+git clone https://github.com/asafklm/entangled-pdf.git
+cd entangled-pdf
+
+# Install the package
 pip install .
 
 # Or for development (editable install)
 pip install -e .
+
+# Build the frontend
+npm install && npm run build
 ```
 
-#### Option 2: Install Python Dependencies Only
+#### Option 3: Python Dependencies Only
 
 If you prefer not to install the package:
 
 ```bash
+git clone https://github.com/asafklm/entangled-pdf.git
+cd entangled-pdf
+
 pip install -r requirements.txt
+
+# Build the frontend
+npm install && npm run build
 ```
 
-#### Node.js Dependencies (Required for PDF.js)
-
-```bash
-npm install
-npm run build  # Compile TypeScript to JavaScript
-```
-
-> **Note:** After `pip install .`, the command `entangle-pdf` will be available in your PATH. If using the development approach (without pip install), use `./bin/entangle-pdf` instead.
+> **Note:** After `pip install .` or `pipx install .`, the command `entangle-pdf` will be available in your PATH. If using the development approach (without pip install), use `./bin/entangle-pdf` instead.
 
 ### Setup
 
@@ -104,7 +121,7 @@ source ~/.bashrc
 EntangledPdf uses HTTPS by default with self-signed certificates. Generate them before first use:
 
 ```bash
-python -m entangledpdf.certs generate
+python3 -m entangledpdf.certs generate
 ```
 
 This creates certificates in `~/.local/share/entangledpdf/certs/`. You'll see a browser warning on first access—click "Advanced" → "Accept" to proceed.
@@ -247,7 +264,7 @@ EntangledPdf uses HTTPS by default with self-signed certificates. To use your ow
 entangle-pdf start --ssl-cert /path/to/cert.pem --ssl-key /path/to/key.pem
 
 # Or install certificates to default location
-python -m entangledpdf.certs generate --cert /path/to/cert.pem --key /path/to/key.pem
+python3 -m entangledpdf.certs generate --cert /path/to/cert.pem --key /path/to/key.pem
 ```
 
 **Example with Tailscale certificates:**

@@ -1,3 +1,8 @@
+# For end-user installation:
+# 1. Install pipx: https://pipx.pypa.io
+# 2. Install EntangledPdf: pipx install .
+# See README.md for full installation options.
+
 fastapi>=0.100.0
 uvicorn[standard]>=0.23.0
 websockets>=11.0

@@ -275,7 +275,7 @@ def cmd_generate(args: argparse.Namespace) -> int:
         logger.info("\nFirst-time browser access:")
         logger.info("You'll see a certificate warning - click 'Advanced' → 'Accept'")
         logger.info("\nTo use EntangledPdf:")
-        logger.info("  python main.py document.pdf")
+        logger.info("  entangle-pdf start")
         
         return 0
         

@@ -20,6 +20,30 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+async def check_synctex_available() -> tuple[bool, str]:
+    """Check if synctex command is available.
+    
+    Returns:
+        Tuple of (is_available, error_message)
+    """
+    try:
+        process = await asyncio.create_subprocess_exec(
+            "synctex", "--version",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        await asyncio.wait_for(process.communicate(), timeout=2.0)
+        if process.returncode == 0:
+            return (True, "")
+        return (False, "synctex command returned non-zero")
+    except FileNotFoundError:
+        return (False, "synctex not found. Install TeX Live to enable forward/inverse search.")
+    except asyncio.TimeoutError:
+        return (False, "synctex command timed out")
+    except Exception as e:
+        return (False, f"Error checking synctex: {e}")
+
+
 async def run_synctex_edit(
     page: int,
     x: float,
@@ -113,6 +137,12 @@ async def execute_inverse_search(page: int, x: float, y: float) -> bool:
         if not synctex_file.exists():
             logger.warning(f"No synctex file found for {pdf_state.pdf_file}")
             return False
+    
+    # Check if synctex is available
+    synctex_available, synctex_error = await check_synctex_available()
+    if not synctex_available:
+        logger.warning(f"Synctex not available: {synctex_error}")
+        return False
     
     # Run synctex edit to get source coordinates
     synctex_result = await run_synctex_edit(

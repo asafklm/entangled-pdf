@@ -54,9 +54,9 @@ dev = [
 entangle-pdf = "entangledpdf.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/pdfserver"
-Repository = "https://github.com/yourusername/pdfserver"
-Issues = "https://github.com/yourusername/pdfserver/issues"
+Homepage = "https://github.com/asafklm/entangled-pdf"
+Repository = "https://github.com/asafklm/entangled-pdf"
+Issues = "https://github.com/asafklm/entangled-pdf/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
