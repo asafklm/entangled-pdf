@@ -46,10 +46,10 @@ ssh -i ~/.ssh/entangledpdf_vps root@<server-ip>
 ## Phase 4: Install System Dependencies (as root)
 
 ```bash
-apt update && apt install -y python3 python3-venv python3-pip nodejs npm git
+apt update && apt install -y python3 python3-venv python3-pip nodejs npm git pipx
 
-# Install pipx (required for end-user installation)
-apt install pipx
+# Install synctex (required for forward/backward sync)
+apt install texlive-extra-utils
 ```
 
 ---
@@ -61,9 +61,10 @@ apt install pipx
 adduser tester
 # Enter password, press Enter through prompts
 
-# Switch to user
+# Switch to user and create ssh folder
 su - tester
 cd /home/tester
+mkdir ~/.ssh
 ```
 
 **Copy SSH key to server** (from your local machine):
@@ -143,7 +144,7 @@ Open a **new terminal** on the server (as tester):
 ```bash
 export ENTANGLEDPDF_API_KEY="test-key-123"
 
-# Load PDF with forward search
+#end-user installation Load PDF with forward search
 python3 -c "
 import sys
 sys.path.insert(0, '.')
@@ -155,7 +156,7 @@ forward_search('examples/example.pdf', 1, 1, 'examples/example.tex', 'http://loc
 
 Or use the CLI (if `pipx install .` worked):
 ```bash
-entangle-pdf sync examples/example.pdf 1:1:example.tex
+entangle-pdf sync examples/example.pdf 90:1:example.tex
 ```
 
 ---

@@ -68,6 +68,7 @@ export function createPdfLifecycle(options: PdfLifecycleOptions): PdfLifecycleMa
       // Hide no-pdf message and show container
       if (options.noPdfMessage) {
         options.noPdfMessage.classList.add('hidden');
+        options.noPdfMessage.style.display = 'none';
       }
       options.viewerContainer.classList.remove('hidden');
 

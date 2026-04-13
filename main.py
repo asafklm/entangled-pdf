@@ -7,6 +7,7 @@ Server runs in foreground mode (use Ctrl+C to stop).
 
 import argparse
 import logging
+import subprocess
 import sys
 from pathlib import Path
 from typing import Optional
@@ -204,6 +205,25 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def check_vim_clientserver() -> bool:
+    """Check if vim supports the --servername option.
+    
+    Returns:
+        True if vim supports clientserver features, False otherwise
+    """
+    try:
+        result = subprocess.run(
+            ["vim", "--servername", "TEST", "--version"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            timeout=5
+        )
+        # If vim doesn't support --servername, it returns error
+        return result.returncode == 0 and b"Unknown option argument" not in result.stderr
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False
+
+
 def get_inverse_search_command(args) -> str | None:
     """Determine inverse search command from arguments.
     
@@ -212,6 +232,9 @@ def get_inverse_search_command(args) -> str | None:
     
     Returns:
         Command template string or None if inverse search not enabled
+    
+    Raises:
+        SystemExit: If vim is requested but doesn't support clientserver features
     """
     if args.inverse_search_command:
         # User provided custom command - unescape %% to %
@@ -219,6 +242,21 @@ def get_inverse_search_command(args) -> str | None:
     elif args.inverse_search_nvim:
         return "nvr --nostart --remote-silent %{file} -c 'call cursor(%{line}, %{column})'"
     elif args.inverse_search_vim:
+        if not check_vim_clientserver():
+            print("ERROR: Vim does not support --servername (clientserver features not available).")
+            print("This is common on minimal Vim installations (vim.basic).")
+            print("")
+            print("Options:")
+            print("1. Install Neovim and use --inverse-search-nvim instead:")
+            print("   apt install neovim")
+            print("   pip install neovim-remote")
+            print("")
+            print("2. Install a fuller Vim with clientserver support:")
+            print("   apt install vim-gtk3  # or vim-nox")
+            print("")
+            print("3. Use a custom inverse search command:")
+            print("   entangle-pdf start --inverse-search-command 'your-command %{file} %{line}'")
+            sys.exit(1)
         return "vim --servername VIM --remote-silent %{file} '+call cursor(%{line}, %{column})'"
     else:
         return None

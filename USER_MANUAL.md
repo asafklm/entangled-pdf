@@ -162,6 +162,12 @@ vim.g.vimtex_view_general_options = 'sync @pdf @line:@col:@tex'
 
 #### Vim Setup
 
+> **Vim Clientserver Requirement:** Vim must be compiled with clientserver support for inverse search to work. On Ubuntu/Debian, the default `vim.basic` package does NOT include this feature. Install `vim-gtk3` or `vim-nox`:
+> ```bash
+> apt install vim-gtk3  # or vim-nox
+> ```
+> Alternatively, use Neovim with `--inverse-search-nvim` (recommended).
+
 **Shell Configuration** (add to `~/.bashrc` or `~/.zshrc`):
 ```bash
 # PDF Server + Vim Integration  

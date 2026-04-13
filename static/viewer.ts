@@ -260,6 +260,7 @@ wsManager.onError(() => {
 
 wsManager.onConnect(() => {
   updateConnectionStatus(true);
+  errorBanner.hide();
 });
 
 wsManager.onDisconnect((code) => {
@@ -471,6 +472,7 @@ if (CONFIG.filename === 'no-pdf-loaded') {
   console.log('No PDF loaded yet, showing message');
   if (noPdfMessage) {
     noPdfMessage.classList.remove('hidden');
+    noPdfMessage.style.display = 'block';
     console.log('Removed hidden class from noPdfMessage');
   } else {
     console.warn('noPdfMessage element not found');

@@ -152,7 +152,7 @@ integrate with EntangledPdf using the `entangle-pdf sync` command (see Manual Co
 
 **Prerequisites:**
 - **Neovim**: `pip install neovim-remote`
-- **Vim**: No additional packages needed
+- **Vim**: Must have clientserver support (see below)
 
 **Shell Configuration:**
 
@@ -203,7 +203,11 @@ source ~/.bashrc  # or ~/.zshrc
 
 > **Note:** The fixed socket approach supports only one editor instance at a time. If you need multiple instances, use project-specific sockets.
 
-### Starting the Server
+> **Vim Clientserver Requirement:** Vim must be compiled with clientserver support for `--inverse-search-vim` to work. On Ubuntu/Debian, the default `vim.basic` package does NOT include this feature. Install `vim-gtk3` or `vim-nox` for full clientserver support:
+> ```bash
+> apt install vim-gtk3  # or vim-nox
+> ```
+> If you try to use `--inverse-search-vim` without clientserver support, the server will show an error with instructions. Alternatively, use Neovim with `--inverse-search-nvim` (recommended).
 
 **Step 1: Start the server**
 
