@@ -265,7 +265,7 @@ def cmd_status(args):
     
     # Display URLs
     urls = format_status_urls(port, use_https)
-    print(f"\n  URLs:")
+    print("\n  Open the following URL in your browser and enter the authentication token:")
     for url, label in urls:
         print(f"    {url}  ({label})")
     

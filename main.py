@@ -435,8 +435,9 @@ def main() -> None:
         print(f"PDF Server Ready")
         print(f"Inverse search: {inverse_command}")
         print(f"{'='*60}")
+        print("Open the following URL in your browser and enter the authentication token:")
         for i, (url, label) in enumerate(urls):
-            prefix = "URL:   " if i == 0 else "        "
+            prefix = "  " if i == 0 else "    "
             print(f"{prefix}{url}  ({label})")
         print(f"Token:  {pdf_state.websocket_token}")
         print(f"{'='*60}")
@@ -447,8 +448,9 @@ def main() -> None:
         print(f"\n{'='*60}")
         print(f"PDF Server Ready (HTTPS)")
         print(f"{'='*60}")
+        print("Open the following URL in your browser and enter the authentication token:")
         for i, (url, label) in enumerate(urls):
-            prefix = "URL:   " if i == 0 else "        "
+            prefix = "  " if i == 0 else "    "
             print(f"{prefix}{url}  ({label})")
         print(f"Token:  {pdf_state.websocket_token}")
         print(f"{'='*60}")
@@ -459,8 +461,9 @@ def main() -> None:
         print(f"\n{'='*60}")
         print(f"PDF Server Ready (HTTP)")
         print(f"{'='*60}")
+        print("Open the following URL in your browser:")
         for i, (url, label) in enumerate(urls):
-            prefix = "URL:   " if i == 0 else "        "
+            prefix = "  " if i == 0 else "    "
             print(f"{prefix}{url}  ({label})")
         print(f"{'='*60}\n")
         logger.warning("Running in HTTP mode - inverse search is disabled for security")
