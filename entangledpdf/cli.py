@@ -6,6 +6,8 @@ which manages the PDF server lifecycle.
 
 import argparse
 import os
+import re
+import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -24,6 +26,69 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Configuration
 DEFAULT_PORT = 8431
+
+
+def get_network_info() -> dict:
+    """Get all relevant network addresses for URL display."""
+    info = {'hostname': socket.gethostname()}
+    
+    try:
+        result = subprocess.run(['ip', 'addr'], capture_output=True, text=True)
+        current_iface = None
+        for line in result.stdout.split('\n'):
+            if ': ' in line and not line.startswith(' '):
+                current_iface = line.split(':')[1].strip().split()[0]
+            
+            match = re.search(r'inet (\d+\.\d+\.\d+\.\d+)', line)
+            if match:
+                ip = match.group(1)
+                if ip != '127.0.0.1':
+                    if current_iface:
+                        if 'tailscale' in current_iface:
+                            info['tailscale'] = ip
+                        elif 'docker' in current_iface:
+                            info['docker'] = ip
+                        elif any(x in current_iface for x in ['eth', 'ens', 'enp']):
+                            info['primary'] = ip
+    except Exception:
+        pass
+    
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))
+        info['outbound'] = s.getsockname()[0]
+        s.close()
+    except Exception:
+        pass
+    
+    return info
+
+
+def format_status_urls(port: int, use_https: bool) -> list:
+    """Format URLs for status display."""
+    info = get_network_info()
+    protocol = 'https' if use_https else 'http'
+    urls = []
+    seen = set()
+    
+    for key in ['tailscale', 'docker', 'primary', 'outbound']:
+        if key in info and info[key] not in seen:
+            seen.add(info[key])
+            label = {'tailscale': 'remote (Tailscale)', 'docker': 'remote (Docker)', 
+                     'primary': 'remote', 'outbound': 'remote'}[key]
+            urls.append((f'{protocol}://{info[key]}:{port}/view', label))
+    
+    if 'hostname' in info and info['hostname']:
+        try:
+            resolved = socket.gethostbyname(info['hostname'])
+            if resolved != '127.0.1.1' and resolved not in seen:
+                seen.add(resolved)
+                urls.append((f"{protocol}://{info['hostname']}:{port}/view", 'if DNS resolves'))
+        except socket.gaierror:
+            pass
+    
+    urls.append((f'{protocol}://localhost:{port}/view', 'local only'))
+    return urls
 
 
 def get_server_dir() -> Path:
@@ -190,15 +255,19 @@ def cmd_status(args):
     if state.get('websocket_token'):
         print(f"\n  Authentication Token: {state['websocket_token']}")
     
-    protocol = "https" if not is_server_running(port) else "https"
-    # Check if HTTP mode
+    # Check if HTTP or HTTPS
+    use_https = True
     try:
         requests.get(f"http://localhost:{port}/state", timeout=1)
-        protocol = "http"
+        use_https = False
     except:
         pass
     
-    print(f"\n  URL: {protocol}://localhost:{port}/view")
+    # Display URLs
+    urls = format_status_urls(port, use_https)
+    print(f"\n  URLs:")
+    for url, label in urls:
+        print(f"    {url}  ({label})")
     
     return 0
 

@@ -7,6 +7,8 @@ Server runs in foreground mode (use Ctrl+C to stop).
 
 import argparse
 import logging
+import re
+import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -224,6 +226,92 @@ def check_vim_clientserver() -> bool:
         return False
 
 
+def get_network_info() -> dict:
+    """Get all relevant network addresses for URL display.
+    
+    Returns:
+        Dict with keys: hostname, tailscale, primary, outbound
+    """
+    info = {
+        'hostname': socket.gethostname(),
+    }
+    
+    # Get all interfaces
+    try:
+        result = subprocess.run(['ip', 'addr'], capture_output=True, text=True)
+        current_iface = None
+        for line in result.stdout.split('\n'):
+            # Track interface name
+            if ': ' in line and not line.startswith(' '):
+                current_iface = line.split(':')[1].strip().split()[0]
+            
+            # Extract IP (indented lines under interface)
+            match = re.search(r'inet (\d+\.\d+\.\d+\.\d+)', line)
+            if match:
+                ip = match.group(1)
+                if ip != '127.0.0.1':
+                    if current_iface:
+                        if 'tailscale' in current_iface:
+                            info['tailscale'] = ip
+                        elif 'docker' in current_iface:
+                            info['docker'] = ip
+                        elif any(x in current_iface for x in ['eth', 'ens', 'enp']):
+                            info['primary'] = ip
+    except Exception:
+        pass
+    
+    # Get primary IP by connecting outward (fallback)
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))
+        info['outbound'] = s.getsockname()[0]
+        s.close()
+    except Exception:
+        pass
+    
+    return info
+
+
+def format_startup_urls(port: int, use_https: bool) -> "list[tuple[str, str]]":
+    """Format startup URLs for display.
+    
+    Args:
+        port: Server port
+        use_https: Whether using HTTPS
+    
+    Returns:
+        List of (url, description) tuples, ordered by priority
+    """
+    info = get_network_info()
+    protocol = 'https' if use_https else 'http'
+    urls = []
+    seen = set()
+    
+    # Priority order: tailscale, docker, primary, outbound
+    for key in ['tailscale', 'docker', 'primary', 'outbound']:
+        if key in info and info[key] not in seen:
+            seen.add(info[key])
+            label = {'tailscale': 'remote (Tailscale)', 'docker': 'remote (Docker)', 
+                     'primary': 'remote', 'outbound': 'remote'}[key]
+            urls.append((f'{protocol}://{info[key]}:{port}/view', label))
+    
+    # Hostname (only if it resolves to something different)
+    if 'hostname' in info and info['hostname']:
+        try:
+            resolved = socket.gethostbyname(info['hostname'])
+            if resolved != '127.0.1.1' and resolved not in seen:
+                seen.add(resolved)
+                urls.append((f"{protocol}://{info['hostname']}:{port}/view", 'if DNS resolves'))
+        except socket.gaierror:
+            # Hostname doesn't resolve, skip
+            pass
+    
+    # Always include localhost
+    urls.append((f'{protocol}://localhost:{port}/view', 'local only'))
+    
+    return urls
+
+
 def get_inverse_search_command(args) -> str | None:
     """Determine inverse search command from arguments.
     
@@ -338,13 +426,18 @@ def main() -> None:
     logger.info("No PDF loaded - waiting for entangle-pdf sync to load a PDF")
     
     # Print startup banner to stdout (visible before daemonization)
+    use_https = bool(ssl_config)
+    urls = format_startup_urls(settings.port, use_https)
+    
     if ssl_config and pdf_state.inverse_search_enabled:
         # HTTPS with inverse search
         print(f"\n{'='*60}")
         print(f"PDF Server Ready")
         print(f"Inverse search: {inverse_command}")
         print(f"{'='*60}")
-        print(f"URL:    https://localhost:{settings.port}/view")
+        for i, (url, label) in enumerate(urls):
+            prefix = "URL:   " if i == 0 else "        "
+            print(f"{prefix}{url}  ({label})")
         print(f"Token:  {pdf_state.websocket_token}")
         print(f"{'='*60}")
         print("Copy the token to your browser to enable inverse search")
@@ -354,7 +447,9 @@ def main() -> None:
         print(f"\n{'='*60}")
         print(f"PDF Server Ready (HTTPS)")
         print(f"{'='*60}")
-        print(f"URL:    https://localhost:{settings.port}/view")
+        for i, (url, label) in enumerate(urls):
+            prefix = "URL:   " if i == 0 else "        "
+            print(f"{prefix}{url}  ({label})")
         print(f"Token:  {pdf_state.websocket_token}")
         print(f"{'='*60}")
         print("Copy the token to your browser")
@@ -364,7 +459,9 @@ def main() -> None:
         print(f"\n{'='*60}")
         print(f"PDF Server Ready (HTTP)")
         print(f"{'='*60}")
-        print(f"URL:    http://localhost:{settings.port}/view")
+        for i, (url, label) in enumerate(urls):
+            prefix = "URL:   " if i == 0 else "        "
+            print(f"{prefix}{url}  ({label})")
         print(f"{'='*60}\n")
         logger.warning("Running in HTTP mode - inverse search is disabled for security")
     
