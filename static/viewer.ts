@@ -239,8 +239,9 @@ if (connectionStatus) {
     const status = determineStatus(wsManager.isConnected, lifecycle.isPdfChangedPending());
     
     if (status === 'disconnected') {
-      // Navigate to auth page to get new token
-      window.location.href = '/view';
+      // Try to reconnect WebSocket first
+      console.log('Reconnecting WebSocket...');
+      wsManager.connect();
     } else if (status === 'reload-needed') {
       // PDF has changed - trigger reload
       updateConnectionStatus(true);

@@ -154,11 +154,15 @@ export class WebSocketManager {
 
     this.state = ConnectionState.CONNECTING;
     console.log('Connecting to WebSocket...');
+    console.log('WebSocket token:', this.token ? `${this.token.substring(0, 8)}...` : 'null/undefined');
 
     // Build WebSocket URL
     let wsUrl = `wss://${this.host}:${this.port}/ws`;
     if (this.token) {
       wsUrl += `?token=${encodeURIComponent(this.token)}`;
+      console.log('WebSocket URL with token:', wsUrl.replace(this.token, '***TOKEN***'));
+    } else {
+      console.log('WebSocket URL (no token):', wsUrl);
     }
 
     this.socket = new WebSocket(wsUrl);
@@ -190,11 +194,19 @@ export class WebSocketManager {
       this.state = ConnectionState.DISCONNECTED;
       this.socket = null;
       this.stopKeepalive();
-      console.log(`WebSocket closed (code: ${event.code})`);
+      const reason = event.reason ? `: ${event.reason}` : '';
+      console.log(`WebSocket closed (code: ${event.code}${reason})`);
       
       // Handle invalid token (server restarted with new token)
       if (event.code === 4002) {
         console.log('WebSocket closed: Invalid token - server may have restarted');
+        this.onInvalidTokenCallback?.();
+        return;
+      }
+      
+      // Handle token required (not authenticated)
+      if (event.code === 4001) {
+        console.log('WebSocket closed: Token required - user not authenticated');
         this.onInvalidTokenCallback?.();
         return;
       }
