@@ -543,3 +543,58 @@ Consider Lit migration when:
 3. **At threshold**: Incremental migration to Lit (components → controllers → main app)
 
 See the full analysis document for detailed comparison, code examples, and decision criteria.
+
+## Debugging WebSocket Connection Issues
+
+When diagnosing WebSocket connection problems in the browser:
+
+### Key Console Logs to Look For
+
+The frontend logs important diagnostic information to the browser console:
+
+1. **Connection initiation:**
+   ```
+   Connecting to WebSocket...
+   WebSocket token: abc12345...  (or null/undefined if not passed)
+   WebSocket URL with token: wss://host:port/ws?token=***TOKEN***
+   ```
+
+2. **Connection state:**
+   ```
+   WebSocket connected
+   WebSocket closed (code: 4001): Token required - user not authenticated
+   WebSocket closed (code: 4002): Invalid token - server may have restarted
+   ```
+
+### Common WebSocket Close Codes
+
+| Code | Meaning | Likely Cause |
+|------|---------|--------------|
+| 4001 | Token required | Inverse search enabled but no token passed to WebSocket |
+| 4002 | Invalid token | Token doesn't match server (server restarted) |
+| 1000 | Clean close | Normal disconnection |
+| 1001 | Going away | Server shutting down |
+
+### Debugging Steps
+
+1. **Open browser console (F12)** before loading the page
+2. **Look for the token** - should show first 8+ characters
+3. **Check WebSocket URL** - should include `?token=...`
+4. **Check close code** - 4001/4002 indicate auth issues
+
+### Common Issues
+
+**Token not passed to WebSocket:**
+- Symptom: "WebSocket token: null/undefined"
+- Check: Is the token in the HTML template? (`{{ token }}` in viewer.html)
+- Check: Is the cookie being set after form submission? (auth.py)
+
+**Token rejected:**
+- Symptom: "WebSocket closed (code: 4002)"
+- Cause: Server restarted, new token generated
+- Fix: Re-authenticate in browser
+
+**Connection immediately closed:**
+- Symptom: "WebSocket closed (code: 4001)"
+- Cause: Cookie not set or cookie token doesn't match server token
+- Fix: Clear cookies and re-authenticate
