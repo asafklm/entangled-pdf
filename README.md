@@ -144,21 +144,19 @@ To enable forward search (editor → PDF) and inverse search (PDF → editor), y
 
 > **Troubleshooting**: If synctex commands fail, ensure it's installed: `which synctex`
 
-#### 3. VimTeX Setup (Optional - for Inverse Search)
+#### 3. Neovim Setup (Optional - for Inverse Search)
 
-To use **inverse search** (Shift+Click in PDF → jump to editor) with Vim/Neovim, 
+To use **inverse search** (Shift+Click in PDF → jump to editor) with Neovim, 
 configure your editor socket. Note: Other editors and LaTeX plugins can also 
 integrate with EntangledPdf using the `entangle-pdf sync` command (see Manual Commands below).
 
 **Prerequisites:**
 - **Neovim**: `pip install neovim-remote`
-- **Vim**: Must have clientserver support (see below)
 
 **Shell Configuration:**
 
 Add to your `~/.bashrc` or `~/.zshrc`:
 
-**For Neovim:**
 ```bash
 # PDF Server + Neovim Integration
 export NVIM_LISTEN_ADDRESS="/tmp/nvim-${USER}.sock"
@@ -166,17 +164,6 @@ export NVIM_LISTEN_ADDRESS="/tmp/nvim-${USER}.sock"
 # Wrapper function ensures nvim always uses the socket
 nvim() {
     command nvim --listen "$NVIM_LISTEN_ADDRESS" "$@"
-}
-```
-
-**For Vim:**
-```bash
-# PDF Server + Vim Integration  
-export VIM_SERVERNAME="VIM-${USER}"
-
-# Wrapper function ensures vim always uses the servername
-vim() {
-    command vim --servername "$VIM_SERVERNAME" "$@"
 }
 ```
 
@@ -189,25 +176,12 @@ vim.g.vimtex_view_general_viewer = 'entangle-pdf'
 vim.g.vimtex_view_general_options = 'sync @pdf @line:@col:@tex'
 ```
 
-**Vim** (.vimrc):
-```vim
-let g:vimtex_view_method = 'general'
-let g:vimtex_view_general_viewer = 'entangle-pdf'
-let g:vimtex_view_general_options = 'sync @pdf @line:@col:@tex'
-```
-
 Then reload your shell:
 ```bash
 source ~/.bashrc  # or ~/.zshrc
 ```
 
 > **Note:** The fixed socket approach supports only one editor instance at a time. If you need multiple instances, use project-specific sockets.
-
-> **Vim Clientserver Requirement:** Vim must be compiled with clientserver support for `--inverse-search-vim` to work. On Ubuntu/Debian, the default `vim.basic` package does NOT include this feature. Install `vim-gtk3` or `vim-nox` for full clientserver support:
-> ```bash
-> apt install vim-gtk3  # or vim-nox
-> ```
-> If you try to use `--inverse-search-vim` without clientserver support, the server will show an error with instructions. Alternatively, use Neovim with `--inverse-search-nvim` (recommended).
 
 **Step 1: Start the server**
 
@@ -217,9 +191,6 @@ entangle-pdf start
 
 # Start with inverse search for Neovim
 entangle-pdf start --inverse-search-nvim
-
-# Start with inverse search for Vim
-entangle-pdf start --inverse-search-vim
 
 # Start on different port
 entangle-pdf start --port 9000
@@ -270,7 +241,7 @@ you'll know the issue is in your editor configuration.
 
 **Step 4: Work in your editor**
 
-In Neovim/Vim with VimTeX:
+In Neovim with VimTeX:
 - `<leader>ll` - Compile LaTeX document
 - `<leader>lv` - View PDF and forward search to cursor position
 - Shift+Click in PDF - Jump back to editor (inverse search)
@@ -338,7 +309,7 @@ Trigger inverse search at the current position to jump to the corresponding sour
 - `Long press/click` (hold ~0.5 seconds) - Jump to held location  
 - `Long touch` (mobile) - Jump to touched location
 
-> **Note:** Inverse search requires server to be started with `--inverse-search-nvim` or `--inverse-search-vim`, and your editor must be configured with a fixed socket (see [Setup](#setup)).
+> **Note:** Inverse search requires server to be started with `--inverse-search-nvim`, and your editor must be configured with a fixed socket (see [Setup](#3-neovim-setup-optional---for-inverse-search)).
 
 ### VimTeX Integration
 
@@ -386,8 +357,8 @@ entangle-pdf generate-api-key --shell
 Jump from PDF to editor with Shift+Click.
 
 **Requirements:**
-- Server started with inverse search enabled (`--inverse-search-nvim` or `--inverse-search-vim`)
-- Editor configured with fixed socket (see [Setup](#setup))
+- Server started with inverse search enabled (`--inverse-search-nvim`)
+- Editor configured with fixed socket (see [Setup](#3-neovim-setup-optional---for-inverse-search))
 - Browser authenticated with token from server startup
 
 **Security:**
@@ -426,7 +397,6 @@ Parameters:
 - `ENTANGLEDPDF_PORT`: Server port (default: 8431, used by both server and client)
 - `ENTANGLEDPDF_API_KEY`: API key for authentication (required)
 - `NVIM_LISTEN_ADDRESS`: Neovim socket path (for inverse search)
-- `VIM_SERVERNAME`: Vim server name (for inverse search)
 
 ### Security
 
@@ -477,10 +447,8 @@ The `/state` endpoint is intentionally unauthenticated. It returns:
 1. **Verify shell configuration**:
    ```bash
    echo $NVIM_LISTEN_ADDRESS  # For Neovim
-   # or
-   echo $VIM_SERVERNAME       # For Vim
    ```
-   If empty, you haven't completed the [VimTeX Setup](#3-vimtex-setup-optional---for-inverse-search).
+   If empty, you haven't completed the [Neovim Setup](#3-neovim-setup-optional---for-inverse-search).
 
 2. **Check that nvr is installed** (Neovim only):
    ```bash

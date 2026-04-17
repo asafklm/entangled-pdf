@@ -160,39 +160,6 @@ vim.g.vimtex_view_general_viewer = 'entangle-pdf'
 vim.g.vimtex_view_general_options = 'sync @pdf @line:@col:@tex'
 ```
 
-#### Vim Setup
-
-> **Vim Clientserver Requirement:** Vim must be compiled with clientserver support for inverse search to work. On Ubuntu/Debian, the default `vim.basic` package does NOT include this feature. Install `vim-gtk3` or `vim-nox`:
-> ```bash
-> apt install vim-gtk3  # or vim-nox
-> ```
-> Alternatively, use Neovim with `--inverse-search-nvim` (recommended).
-
-**Shell Configuration** (add to `~/.bashrc` or `~/.zshrc`):
-```bash
-# PDF Server + Vim Integration  
-export VIM_SERVERNAME="VIM-${USER}"
-
-# Wrapper function ensures vim always uses the servername
-vim() {
-    command vim --servername "$VIM_SERVERNAME" "$@"
-}
-```
-
-**Vim Configuration** (.vimrc):
-```vim
-let g:vimtex_view_method = 'general'
-let g:vimtex_view_general_viewer = 'entangle-pdf'
-let g:vimtex_view_general_options = 'sync @pdf @line:@col:@tex'
-```
-
-**Reload your shell:**
-```bash
-source ~/.bashrc  # or ~/.zshrc
-```
-
-> **Note:** The fixed socket approach supports only one editor instance at a time.
-
 ### 3. SSL Certificates (Optional)
 
 EntangledPdf uses HTTPS by default with self-signed certificates. For production use or to avoid browser warnings, use proper certificates:
@@ -238,9 +205,6 @@ entangle-pdf start
 
 # With inverse search for Neovim
 entangle-pdf start --inverse-search-nvim
-
-# With inverse search for Vim
-entangle-pdf start --inverse-search-vim
 
 # Custom port
 entangle-pdf start --port 9000
@@ -357,7 +321,7 @@ Jump from the PDF back to your editor:
 - `Long touch` (mobile) - Jump to touched location
 
 **Requirements:**
-- Server started with `--inverse-search-nvim` or `--inverse-search-vim`
+- Server started with `--inverse-search-nvim`
 - Editor configured with fixed socket
 - Browser authenticated with token
 
@@ -402,7 +366,6 @@ entangle-pdf sync your-document.pdf
 1. **Verify environment variables:**
    ```bash
    echo $NVIM_LISTEN_ADDRESS  # For Neovim
-   echo $VIM_SERVERNAME       # For Vim
    ```
 
 2. **Check neovim-remote is installed** (Neovim only):
@@ -591,7 +554,6 @@ response = requests.post(
 | `ENTANGLEDPDF_PORT` | 8431 | Server port |
 | `ENTANGLEDPDF_API_KEY` | (required) | API key for authentication |
 | `NVIM_LISTEN_ADDRESS` | (none) | Neovim socket path |
-| `VIM_SERVERNAME` | (none) | Vim server name |
 | `ENTANGLEDPDF_TEST_PORT` | 18080 | Port for E2E tests |
 
 ---
@@ -740,7 +702,7 @@ Send forward search update.
 
 ### Q: Can I use EntangledPdf with Emacs?
 
-**A:** Not directly. EntangledPdf currently supports Neovim and Vim. Emacs support would require implementing a new inverse search command handler.
+**A:** Not directly. EntangledPdf currently supports Neovim. Emacs support would require implementing a new inverse search command handler.
 
 ### Q: How do I view the PDF on my iPad?
 
