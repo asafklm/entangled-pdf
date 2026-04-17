@@ -194,6 +194,8 @@ def cmd_start(args):
         cmd.extend(["--inverse-search-command", escaped_cmd])
     elif args.inverse_search_nvim:
         cmd.append("--inverse-search-nvim")
+    elif args.inverse_search_emacs:
+        cmd.append("--inverse-search-emacs")
     elif args.inverse_search_vim:
         cmd.append("--inverse-search-vim")
     
@@ -399,6 +401,11 @@ def main():
         "--inverse-search-nvim",
         action="store_true",
         help="Enable inverse search for Neovim (uses nvr --nostart --remote-silent)"
+    )
+    inverse_group.add_argument(
+        "--inverse-search-emacs",
+        action="store_true",
+        help="Enable inverse search for Emacs (uses emacsclient)"
     )
     inverse_group.add_argument(
         "--inverse-search-vim",

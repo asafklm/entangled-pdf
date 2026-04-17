@@ -160,6 +160,24 @@ vim.g.vimtex_view_general_viewer = 'entangle-pdf'
 vim.g.vimtex_view_general_options = 'sync @pdf @line:@col:@tex'
 ```
 
+#### Emacs Setup
+
+**Prerequisites:** None - emacsclient is built into Emacs
+
+**Emacs Configuration** (init.el or .emacs):
+```elisp
+;; Start Emacs server for inverse search
+(server-start)
+```
+
+**Start Emacs server:**
+```bash
+# Option 1: Run as daemon (background)
+emacs --daemon
+
+# Option 2: Run Emacs normally with (server-start) in your config
+```
+
 ### 3. SSL Certificates (Optional)
 
 EntangledPdf uses HTTPS by default with self-signed certificates. For production use or to avoid browser warnings, use proper certificates:
@@ -205,6 +223,9 @@ entangle-pdf start
 
 # With inverse search for Neovim
 entangle-pdf start --inverse-search-nvim
+
+# With inverse search for Emacs
+entangle-pdf start --inverse-search-emacs
 
 # Custom port
 entangle-pdf start --port 9000
@@ -321,8 +342,8 @@ Jump from the PDF back to your editor:
 - `Long touch` (mobile) - Jump to touched location
 
 **Requirements:**
-- Server started with `--inverse-search-nvim`
-- Editor configured with fixed socket
+- Server started with `--inverse-search-nvim` or `--inverse-search-emacs`
+- Editor configured with fixed socket (Neovim) or server running (Emacs)
 - Browser authenticated with token
 
 ### Mobile/Touch Support
@@ -702,7 +723,7 @@ Send forward search update.
 
 ### Q: Can I use EntangledPdf with Emacs?
 
-**A:** Not directly. EntangledPdf currently supports Neovim. Emacs support would require implementing a new inverse search command handler.
+**A:** Yes! EntangledPdf supports Emacs with `--inverse-search-emacs`. Just ensure Emacs is running with `(server-start)` in your config or start with `emacs --daemon`.
 
 ### Q: How do I view the PDF on my iPad?
 

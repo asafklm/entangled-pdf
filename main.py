@@ -185,6 +185,12 @@ def parse_args() -> argparse.Namespace:
     )
     
     inverse_group.add_argument(
+        "--inverse-search-emacs",
+        action="store_true",
+        help="Enable inverse search for Emacs (uses emacsclient)"
+    )
+    
+    inverse_group.add_argument(
         "--inverse-search-vim",
         action="store_true",
         help="Enable inverse search for Vim (uses vim --remote-silent)"
@@ -329,6 +335,8 @@ def get_inverse_search_command(args) -> str | None:
         return args.inverse_search_command.replace("%%", "%")
     elif args.inverse_search_nvim:
         return "nvr --nostart --remote-silent %{file} -c 'call cursor(%{line}, %{column})'"
+    elif args.inverse_search_emacs:
+        return "emacsclient +%{line}:%{column} %{file}"
     elif args.inverse_search_vim:
         if not check_vim_clientserver():
             print("ERROR: Vim does not support --servername (clientserver features not available).")

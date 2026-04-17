@@ -126,6 +126,12 @@ class TestParseArgs:
             args = parse_args()
             assert args.inverse_search_nvim is True
     
+    def test_parse_args_inverse_search_emacs(self):
+        """Test parsing with --inverse-search-emacs flag."""
+        with patch.object(sys, "argv", ["main.py", "--inverse-search-emacs"]):
+            args = parse_args()
+            assert args.inverse_search_emacs is True
+    
     def test_parse_args_inverse_search_vim(self):
         """Test parsing with --inverse-search-vim flag."""
         with patch.object(sys, "argv", ["main.py", "--inverse-search-vim"]):

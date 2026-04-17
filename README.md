@@ -144,19 +144,21 @@ To enable forward search (editor → PDF) and inverse search (PDF → editor), y
 
 > **Troubleshooting**: If synctex commands fail, ensure it's installed: `which synctex`
 
-#### 3. Neovim Setup (Optional - for Inverse Search)
+#### 3. Neovim/Emacs Setup (Optional - for Inverse Search)
 
-To use **inverse search** (Shift+Click in PDF → jump to editor) with Neovim, 
-configure your editor socket. Note: Other editors and LaTeX plugins can also 
+To use **inverse search** (Shift+Click in PDF → jump to editor) with Neovim or Emacs, 
+configure your editor. Note: Other editors and LaTeX plugins can also 
 integrate with EntangledPdf using the `entangle-pdf sync` command (see Manual Commands below).
 
 **Prerequisites:**
 - **Neovim**: `pip install neovim-remote`
+- **Emacs**: No extra installation needed (emacsclient is built-in)
 
 **Shell Configuration:**
 
 Add to your `~/.bashrc` or `~/.zshrc`:
 
+**For Neovim:**
 ```bash
 # PDF Server + Neovim Integration
 export NVIM_LISTEN_ADDRESS="/tmp/nvim-${USER}.sock"
@@ -165,6 +167,13 @@ export NVIM_LISTEN_ADDRESS="/tmp/nvim-${USER}.sock"
 nvim() {
     command nvim --listen "$NVIM_LISTEN_ADDRESS" "$@"
 }
+```
+
+**For Emacs:**
+```bash
+# PDF Server + Emacs Integration
+# No shell configuration needed - emacsclient finds the server automatically
+# Just ensure Emacs is started with (server-start) in your config
 ```
 
 **Editor Configuration:**
@@ -176,9 +185,23 @@ vim.g.vimtex_view_general_viewer = 'entangle-pdf'
 vim.g.vimtex_view_general_options = 'sync @pdf @line:@col:@tex'
 ```
 
+**Emacs** (init.el or .emacs):
+```elisp
+;; Start Emacs server for inverse search
+(server-start)
+```
+
 Then reload your shell:
 ```bash
 source ~/.bashrc  # or ~/.zshrc
+```
+
+**Start Emacs server:**
+```bash
+# Option 1: As daemon (runs in background)
+emacs --daemon
+
+# Option 2: Run Emacs normally with (server-start) in your config
 ```
 
 > **Note:** The fixed socket approach supports only one editor instance at a time. If you need multiple instances, use project-specific sockets.
@@ -191,6 +214,9 @@ entangle-pdf start
 
 # Start with inverse search for Neovim
 entangle-pdf start --inverse-search-nvim
+
+# Start with inverse search for Emacs
+entangle-pdf start --inverse-search-emacs
 
 # Start on different port
 entangle-pdf start --port 9000
@@ -241,7 +267,7 @@ you'll know the issue is in your editor configuration.
 
 **Step 4: Work in your editor**
 
-In Neovim with VimTeX:
+In Neovim or Emacs with VimTeX:
 - `<leader>ll` - Compile LaTeX document
 - `<leader>lv` - View PDF and forward search to cursor position
 - Shift+Click in PDF - Jump back to editor (inverse search)
@@ -309,7 +335,7 @@ Trigger inverse search at the current position to jump to the corresponding sour
 - `Long press/click` (hold ~0.5 seconds) - Jump to held location  
 - `Long touch` (mobile) - Jump to touched location
 
-> **Note:** Inverse search requires server to be started with `--inverse-search-nvim`, and your editor must be configured with a fixed socket (see [Setup](#3-neovim-setup-optional---for-inverse-search)).
+> **Note:** Inverse search requires server to be started with `--inverse-search-nvim` or `--inverse-search-emacs`, and your editor must be configured with a fixed socket (see [Setup](#3-neovimemacs-setup-optional---for-inverse-search)).
 
 ### VimTeX Integration
 
@@ -357,7 +383,7 @@ entangle-pdf generate-api-key --shell
 Jump from PDF to editor with Shift+Click.
 
 **Requirements:**
-- Server started with inverse search enabled (`--inverse-search-nvim`)
+- Server started with inverse search enabled (`--inverse-search-nvim` or `--inverse-search-emacs`)
 - Editor configured with fixed socket (see [Setup](#3-neovim-setup-optional---for-inverse-search))
 - Browser authenticated with token from server startup
 
@@ -448,21 +474,26 @@ The `/state` endpoint is intentionally unauthenticated. It returns:
    ```bash
    echo $NVIM_LISTEN_ADDRESS  # For Neovim
    ```
-   If empty, you haven't completed the [Neovim Setup](#3-neovim-setup-optional---for-inverse-search).
+   If empty, you haven't completed the [Neovim/Emacs Setup](#3-neovimemacs-setup-optional---for-inverse-search).
 
-2. **Check that nvr is installed** (Neovim only):
+2. **For Neovim: Check that nvr is installed**:
    ```bash
    which nvr
    # If not found: pip install neovim-remote
    ```
 
-3. **Verify editor is running with the socket**:
+3. **For Neovim: Verify editor is running with the socket**:
    ```bash
    nvr --serverlist  # For Neovim
    # Should show your $NVIM_LISTEN_ADDRESS value
    ```
 
-4. **Reload your shell**:
+4. **For Emacs: Verify Emacs server is running**:
+   ```bash
+   emacsclient -e "(+ 1 1)"  # Should return 2 if server is running
+   ```
+
+5. **Reload your shell**:
    ```bash
    source ~/.bashrc  # or ~/.zshrc
    ```
