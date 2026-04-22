@@ -7,9 +7,9 @@ on:
     branches: [main, master]
 
 jobs:
-  # Fast Python tests - run on every push and PR
-  python-tests-fast:
-    name: Python Tests (Fast)
+  # Installation job - tests pip install (CI/dev mode)
+  install:
+    name: Install Dependencies (pip)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,23 +22,75 @@ jobs:
       
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y texlive-extra-utils
-       
-      - name: Install Python dependencies
+      
+      - name: Run install.sh (CI mode - pip, editable)
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install responses
-          pip install -e .
-       
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+          chmod +x install.sh
+          ./install.sh --ci
+      
+      - name: Verify installation
+        run: |
+          which entangle-pdf
+          entangle-pdf --help
+
+  # Installation job - tests pipx install (user experience)
+  install-pipx:
+    name: Install Dependencies (pipx)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          node-version: '20'
-          cache: 'npm'
-       
-      - name: Install Node.js dependencies and build
-        run: npm ci && npm run build
-       
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install pipx
+        run: pip install pipx
+      
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y texlive-extra-utils
+      
+      - name: Run install.sh (pipx mode, skip certs)
+        run: |
+          chmod +x install.sh
+          ./install.sh --skip-certs
+      
+      - name: Verify installation
+        run: |
+          which entangle-pdf
+          entangle-pdf --help
+      
+      - name: Verify frontend built
+        run: |
+          ls -la static/viewer.js
+
+  # Fast Python tests - run on every push and PR
+  python-tests-fast:
+    name: Python Tests (Fast)
+    runs-on: ubuntu-latest
+    needs: [install, install-pipx]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y texlive-extra-utils
+      
+      - name: Run install.sh (CI mode)
+        run: |
+          chmod +x install.sh
+          ./install.sh --ci
+      
+      - name: Install test dependencies
+        run: pip install responses
+      
       - name: Run fast Python tests
         run: python -m pytest tests/ -v --tb=short -m "not slow"
 
@@ -46,6 +98,7 @@ jobs:
   python-tests-slow:
     name: Python Tests (Slow/E2E)
     runs-on: ubuntu-latest
+    needs: [install, install-pipx]
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
@@ -59,11 +112,13 @@ jobs:
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y texlive-extra-utils
       
-      - name: Install Python dependencies
+      - name: Run install.sh (CI mode)
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install responses
+          chmod +x install.sh
+          ./install.sh --ci
+      
+      - name: Install test dependencies
+        run: pip install responses
       
       - name: Run slow Python tests
         run: python -m pytest tests/ -v --tb=short -m "slow"
@@ -72,6 +127,7 @@ jobs:
   typescript-tests:
     name: TypeScript Unit Tests
     runs-on: ubuntu-latest
+    needs: [install, install-pipx]
     steps:
       - uses: actions/checkout@v4
       
@@ -94,6 +150,7 @@ jobs:
   e2e-tests:
     name: Playwright E2E Tests
     runs-on: ubuntu-latest
+    needs: [install, install-pipx]
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
@@ -107,11 +164,13 @@ jobs:
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y texlive-extra-utils
       
-      - name: Install Python dependencies
+      - name: Run install.sh (CI mode)
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install responses
+          chmod +x install.sh
+          ./install.sh --ci
+      
+      - name: Install test dependencies
+        run: pip install responses
       
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -142,18 +201,22 @@ jobs:
   # Combined status check for main/master branch protection
   all-tests-pass:
     name: All Required Tests Passed
-    needs: [python-tests-fast, python-tests-slow, typescript-tests, e2e-tests]
+    needs: [install, install-pipx, python-tests-fast, python-tests-slow, typescript-tests, e2e-tests]
     runs-on: ubuntu-latest
     if: always()
     steps:
       - name: Check all required tests passed
         run: |
+          INSTALL_PASSED="${{ needs.install.result }}"
+          INSTALL_PIPX_PASSED="${{ needs.install-pipx.result }}"
           FAST_PASSED="${{ needs.python-tests-fast.result }}"
           SLOW_RESULT="${{ needs.python-tests-slow.result }}"
           TYPESCRIPT_PASSED="${{ needs.typescript-tests.result }}"
           E2E_RESULT="${{ needs.e2e-tests.result }}"
           
-          if [ "$FAST_PASSED" == "success" ] && \
+          if [ "$INSTALL_PASSED" == "success" ] && \
+             [ "$INSTALL_PIPX_PASSED" == "success" ] && \
+             [ "$FAST_PASSED" == "success" ] && \
              ( [ "$SLOW_RESULT" == "success" ] || [ "$SLOW_RESULT" == "skipped" ] ) && \
              [ "$TYPESCRIPT_PASSED" == "success" ] && \
              ( [ "$E2E_RESULT" == "success" ] || [ "$E2E_RESULT" == "skipped" ] ); then
