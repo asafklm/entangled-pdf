@@ -30,7 +30,32 @@ The server uses WebSockets for real-time updates with automatic fallback to HTTP
 
 ### Installation
 
-#### Option 1: Install from GitHub with pipx (Recommended)
+#### Option 1: Using install.sh (Recommended)
+
+```bash
+# Clone the repository
+git clone https://github.com/asafklm/entangled-pdf.git
+cd entangled-pdf
+
+# Run the installation script
+./install.sh
+
+# Add API key to your shell
+entangle-pdf generate-api-key --shell >> ~/.bashrc
+source ~/.bashrc
+
+# Start the server
+entangle-pdf start
+```
+
+The install.sh script handles:
+- Python dependency installation (prefers pipx, falls back to pip)
+- Frontend build (npm install && npm run build)
+- SSL certificate generation
+
+For development, use: `./install.sh --editable`
+
+#### Option 2: Install from GitHub with pipx
 
 ```bash
 # Install pipx first - see https://pipx.pypa.io for installation instructions
@@ -46,7 +71,7 @@ pipx install .
 npm install && npm run build
 ```
 
-#### Option 2: Install from GitHub with pip
+#### Option 3: Install from GitHub with pip
 
 ```bash
 git clone https://github.com/asafklm/entangled-pdf.git
@@ -62,7 +87,7 @@ pip install -e .
 npm install && npm run build
 ```
 
-#### Option 3: Python Dependencies Only
+#### Option 4: Python Dependencies Only
 
 If you prefer not to install the package:
 
