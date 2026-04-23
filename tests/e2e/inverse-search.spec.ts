@@ -160,6 +160,153 @@ test.describe('Inverse Search E2E', () => {
       await expect(marker).not.toBeVisible({ timeout: 2000 });
     });
 
+    test('ctrl+click shows inverse search tooltip with confirmation', async ({ page, httpsInverseServer }) => {
+      // Load the PDF
+      await fetch(`${httpsInverseServer.baseUrl}/api/load-pdf`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': httpsInverseServer.apiKey,
+        },
+        body: JSON.stringify({
+          pdf_path: EXAMPLE_PDF,
+        }),
+      });
+      
+      // Get auth token and set cookie
+      const stateResponse = await fetch(`${httpsInverseServer.baseUrl}/state`);
+      const stateData = await stateResponse.json();
+      const token = stateData.websocket_token;
+      
+      await page.context().addCookies([{
+        name: 'pdf_token',
+        value: token,
+        domain: 'localhost',
+        path: '/',
+        secure: true,
+        httpOnly: true,
+        sameSite: 'Strict',
+      }]);
+      
+      await page.goto(`${httpsInverseServer.baseUrl}/view`);
+      
+      // Wait for PDF to render
+      await expect(page.locator('#viewer-container canvas').first()).toBeVisible({ timeout: 10000 });
+      
+      // Ctrl+Click on the PDF canvas to trigger inverse search
+      const canvas = page.locator('#viewer-container canvas').first();
+      await canvas.click({ modifiers: ['Control'] });
+      
+      // Wait for tooltip to appear
+      const tooltip = page.locator('.inverse-search-tooltip');
+      await expect(tooltip).toBeVisible({ timeout: 5000 });
+      
+      // Verify tooltip content
+      await expect(tooltip.locator('text=Go to Source?')).toBeVisible();
+      await expect(tooltip.locator('button.tooltip-confirm-btn')).toContainText('Confirm (Enter)');
+      
+      // Click the confirm button
+      await tooltip.locator('button.tooltip-confirm-btn').click();
+      
+      // Wait for tooltip to disappear
+      await expect(tooltip).not.toBeVisible({ timeout: 5000 });
+      
+      // Verify red marker feedback is shown
+      const marker = page.locator('.synctex-marker');
+      await expect(marker).toBeVisible({ timeout: 5000 });
+    });
+
+    test('cmd+click (macOS) shows inverse search tooltip', async ({ page, httpsInverseServer }) => {
+      // Load the PDF
+      await fetch(`${httpsInverseServer.baseUrl}/api/load-pdf`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': httpsInverseServer.apiKey,
+        },
+        body: JSON.stringify({
+          pdf_path: EXAMPLE_PDF,
+        }),
+      });
+      
+      // Get auth token and set cookie
+      const stateResponse = await fetch(`${httpsInverseServer.baseUrl}/state`);
+      const stateData = await stateResponse.json();
+      const token = stateData.websocket_token;
+      
+      await page.context().addCookies([{
+        name: 'pdf_token',
+        value: token,
+        domain: 'localhost',
+        path: '/',
+        secure: true,
+        httpOnly: true,
+        sameSite: 'Strict',
+      }]);
+      
+      await page.goto(`${httpsInverseServer.baseUrl}/view`);
+      
+      // Wait for PDF to render
+      await expect(page.locator('#viewer-container canvas').first()).toBeVisible({ timeout: 10000 });
+      
+      // Cmd+Click (metaKey) on the PDF canvas to trigger inverse search (macOS)
+      const canvas = page.locator('#viewer-container canvas').first();
+      await canvas.click({ modifiers: ['Meta'] });
+      
+      // Wait for tooltip to appear
+      const tooltip = page.locator('.inverse-search-tooltip');
+      await expect(tooltip).toBeVisible({ timeout: 5000 });
+      
+      // Press Escape to dismiss
+      await page.keyboard.press('Escape');
+      await expect(tooltip).not.toBeVisible({ timeout: 5000 });
+    });
+
+    test('regular click does not show inverse search tooltip', async ({ page, httpsInverseServer }) => {
+      // Load the PDF
+      await fetch(`${httpsInverseServer.baseUrl}/api/load-pdf`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': httpsInverseServer.apiKey,
+        },
+        body: JSON.stringify({
+          pdf_path: EXAMPLE_PDF,
+        }),
+      });
+      
+      // Get auth token and set cookie
+      const stateResponse = await fetch(`${httpsInverseServer.baseUrl}/state`);
+      const stateData = await stateResponse.json();
+      const token = stateData.websocket_token;
+      
+      await page.context().addCookies([{
+        name: 'pdf_token',
+        value: token,
+        domain: 'localhost',
+        path: '/',
+        secure: true,
+        httpOnly: true,
+        sameSite: 'Strict',
+      }]);
+      
+      await page.goto(`${httpsInverseServer.baseUrl}/view`);
+      
+      // Wait for PDF to render
+      await expect(page.locator('#viewer-container canvas').first()).toBeVisible({ timeout: 10000 });
+      
+      // Regular click (no modifier) on the PDF canvas
+      const canvas = page.locator('#viewer-container canvas').first();
+      await canvas.click();
+      
+      // Wait a moment to ensure no tooltip appears
+      await page.waitForTimeout(500);
+      
+      // Tooltip should NOT be visible
+      const tooltip = page.locator('.inverse-search-tooltip');
+      await expect(tooltip).not.toBeVisible();
+    });
+
     test('tooltip can be dismissed and re-shown', async ({ page, httpsInverseServer }) => {
       // Load the PDF
       await fetch(`${httpsInverseServer.baseUrl}/api/load-pdf`, {

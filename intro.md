@@ -10,7 +10,7 @@ EntangledPdf allows you to:
 - View PDFs in a web browser with smooth scrolling and high-quality rendering
 - Synchronize PDF position across multiple devices (desktop, tablet, phone)
 - Jump to specific locations in the PDF from your Neovim editor using SyncTeX (forward search)
-- Click in the PDF to jump back to your editor (inverse search with Shift+Click)
+- Click in the PDF to jump back to your editor (inverse search with Ctrl+Click or Cmd+Click on macOS)
 - Automatically reconnect and sync when switching back to the browser tab
 
 The server uses WebSockets for real-time updates with automatic fallback to HTTP polling when connections drop. Perfect for LaTeX editing workflows where you want to see your compiled PDF update instantly as you edit.

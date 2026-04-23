@@ -166,7 +166,7 @@ entangle-pdf sync examples/example.pdf 90:1:example.tex
 1. In browser: Open `https://<server-ip>:8431/view`
 2. Accept certificate warning
 3. Enter token from server output
-4. Shift+Click on the PDF
+4. Ctrl+Click on the PDF (or Cmd+Click on macOS)
 5. Check server terminal - should see output like:
    ```
    /home/tester/entangled-pdf/examples/example.tex:42

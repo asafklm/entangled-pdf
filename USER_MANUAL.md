@@ -133,7 +133,7 @@ echo $ENTANGLEDPDF_API_KEY
 
 ### 2. Editor Integration (Optional - for Inverse Search)
 
-To enable **inverse search** (Shift+Click in PDF → jump to editor position), configure your editor:
+To enable **inverse search** (Ctrl+Click in PDF → jump to editor position), configure your editor:
 
 #### Neovim Setup
 
@@ -337,7 +337,7 @@ Jump from the PDF back to your editor:
 - `i` - Trigger inverse search at current scroll position
 
 **Mouse/Touch:**
-- `Shift+Click` - Jump to clicked location in PDF
+- `Ctrl+Click` - Jump to clicked location in PDF (Cmd+Click on macOS)
 - `Long press/click` (hold ~0.5s) - Jump to held location
 - `Long touch` (mobile) - Jump to touched location
 
@@ -349,7 +349,7 @@ Jump from the PDF back to your editor:
 ### Mobile/Touch Support
 
 - **Smooth scrolling**: Optimized for iPad and iPhone
-- **Long touch**: Alternative to Shift+Click for inverse search
+- **Long touch**: Alternative to Ctrl+Click for inverse search
 - **Responsive design**: Works on all screen sizes
 - **Touch-friendly**: All controls accessible via touch
 
@@ -380,7 +380,7 @@ entangle-pdf sync your-document.pdf
 
 ### "nvr: no server found" / Inverse Search Not Working
 
-**Problem:** Shift+Click doesn't open your editor.
+**Problem:** Ctrl+Click doesn't open your editor.
 
 **Checklist:**
 

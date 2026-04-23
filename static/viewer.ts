@@ -326,6 +326,7 @@ const inputHandler = createInputHandler(
     },
     onInverseSearch: performKeyboardInverseSearch,
     onLongPress: handleLongPress,
+    onCtrlClick: handleCtrlClick,
     onClickOutsideTooltip: (clientX, clientY) => {
       if (isClickOutsideTooltip(clientX, clientY)) {
         hideActiveTooltip();
@@ -398,6 +399,28 @@ function getPdfPositionAtPoint(position: ViewportPosition): PdfPosition | null {
  * Handle long press activation
  */
 function handleLongPress(position: ViewportPosition, pdfPosition: PdfPosition): void {
+  if (!CONFIG.inverse_search_enabled) return;
+  
+  createInverseSearchTooltip(
+    position,
+    pdfPosition,
+    () => {
+      if (wsManager.isConnected) {
+        performInverseSearch(pdfPosition);
+      } else {
+        // Navigate to auth page when not connected
+        window.location.href = '/view';
+      }
+    },
+    () => hideActiveTooltip(),
+    wsManager.isConnected
+  );
+}
+
+/**
+ * Handle Ctrl+Click / Cmd+Click for inverse search
+ */
+function handleCtrlClick(position: ViewportPosition, pdfPosition: PdfPosition): void {
   if (!CONFIG.inverse_search_enabled) return;
   
   createInverseSearchTooltip(

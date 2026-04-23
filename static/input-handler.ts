@@ -25,6 +25,7 @@ export interface InputHandlerOptions {
   onScrollPageDown: (shiftKey: boolean) => void;
   onInverseSearch: () => void;
   onLongPress: (position: ViewportPosition, pdfPosition: PdfPosition) => void;
+  onCtrlClick: (position: ViewportPosition, pdfPosition: PdfPosition) => void;
   onClickOutsideTooltip: (clientX: number, clientY: number) => void;
   onClickOutsidePanel: () => void;
 }
@@ -99,6 +100,41 @@ export function createInputHandler(
     }
   };
 
+  // Ctrl+Click / Cmd+Click handler for inverse search
+  const handleCtrlClick = (event: MouseEvent) => {
+    // Check for Ctrl key (Linux/Windows) or Cmd key (macOS)
+    const isCtrlClick = event.ctrlKey || event.metaKey;
+    
+    if (!isCtrlClick) {
+      return; // Not a Ctrl+Click, let normal click handling proceed
+    }
+
+    // Don't trigger on interactive elements
+    const target = event.target as HTMLElement;
+    if (target.tagName === 'A' || 
+        target.tagName === 'BUTTON' || 
+        target.isContentEditable) {
+      return;
+    }
+
+    // Prevent default to avoid text selection or other browser behaviors
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Get PDF position at click point
+    if (getPdfPositionAtPoint) {
+      const position: ViewportPosition = { 
+        clientX: event.clientX, 
+        clientY: event.clientY 
+      };
+      const pdfPosition = getPdfPositionAtPoint(position);
+      
+      if (pdfPosition) {
+        options.onCtrlClick(position, pdfPosition);
+      }
+    }
+  };
+
   // Long press handlers
   let mouseHandlers: ReturnType<LongPressDetector['createMouseHandlers']> | null = null;
   let touchHandlers: ReturnType<LongPressDetector['createTouchHandlers']> | null = null;
@@ -128,6 +164,9 @@ export function createInputHandler(
 
       // Attach document click handler
       document.addEventListener('click', handleDocumentClick);
+
+      // Attach Ctrl+Click handler to viewer container
+      options.viewerContainer.addEventListener('click', handleCtrlClick);
     },
 
     detach: () => {
@@ -149,6 +188,9 @@ export function createInputHandler(
 
       // Detach document click handler
       document.removeEventListener('click', handleDocumentClick);
+
+      // Detach Ctrl+Click handler
+      options.viewerContainer.removeEventListener('click', handleCtrlClick);
     },
   };
 }

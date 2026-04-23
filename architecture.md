@@ -67,7 +67,7 @@ await manager.broadcast({
 
 ### Browser → Server: WebSocket Message
 
-When the user shift+clicks on the PDF, the browser sends an inverse search request:
+When the user Ctrl+clicks (or Cmd+clicks on macOS) on the PDF, the browser sends an inverse search request:
 
 ```json
 {
@@ -102,7 +102,7 @@ When the user shift+clicks on the PDF, the browser sends an inverse search reque
 
 | Action | Trigger | Purpose |
 |--------|---------|---------|
-| `inverse_search` | User shift+click/long-press | Open editor at source position |
+| `inverse_search` | User Ctrl+click/long-press | Open editor at source position |
 | `ping` | Keepalive (every 25s) | Verify connection health with timestamp |
 | `log` | Rate-limited client events | Debug info (scroll, load, etc.) |
 

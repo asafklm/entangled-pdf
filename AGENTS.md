@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Python-based PDF server using FastAPI, WebSockets, and TypeScript for real-time PDF synchronization with SyncTeX support for LaTeX **forward search** (Editor → PDF) and **inverse search** (PDF → Editor via Shift+Click).
+Python-based PDF server using FastAPI, WebSockets, and TypeScript for real-time PDF synchronization with SyncTeX support for LaTeX **forward search** (Editor → PDF) and **inverse search** (PDF → Editor via Ctrl+Click).
 
 **Important Context**: This is a specialized tool for a specific workflow (editing LaTeX on remote servers). See [docs/intended-users-and-use-cases.md](docs/intended-users-and-use-cases.md) for detailed user context.
 
@@ -235,7 +235,7 @@ class ConnectionManager:
 │       ├── websocket.py        # WebSocket with token validation
 │       └── ...
 ├── static/                     # Frontend TypeScript
-│   ├── viewer.ts               # Main viewer (includes shift+click handler)
+│   ├── viewer.ts               # Main viewer (includes ctrl+click handler)
 │   ├── viewer.html             # Jinja2 template with token support
 │   ├── token_form.html         # Authentication form
 │   └── ...

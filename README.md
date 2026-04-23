@@ -1,6 +1,6 @@
 # EntangledPdf
 
-A browser-based PDF viewer with SyncTeX support for LaTeX **forward search** (editor → PDF) and **inverse search** (PDF → editor via Shift+Click). Designed for viewing LaTeX compilation output on remote servers.
+A browser-based PDF viewer with SyncTeX support for LaTeX **forward search** (editor → PDF) and **inverse search** (PDF → editor via Ctrl+Click). Designed for viewing LaTeX compilation output on remote servers.
 
 ## The Problem
 
@@ -21,7 +21,7 @@ The problem with the HTTP server approach is that you lose your position in the 
 EntangledPdf allows you to:
 - View PDFs in a web browser with smooth scrolling and high-quality rendering
 - Jump to specific locations in the PDF from your editor using SyncTeX (forward search)
-- Click in the PDF to jump back to your editor (inverse search with Shift+Click)
+- Click in the PDF to jump back to your editor (inverse search with Ctrl+Click or Cmd+Click on macOS)
 - Automatically reconnect and sync when switching back to the browser tab
 
 The server uses WebSockets for real-time updates with automatic fallback to HTTP polling when connections drop. Perfect for LaTeX editing workflows where you want to see your compiled PDF update instantly as you edit.
@@ -171,7 +171,7 @@ To enable forward search (editor → PDF) and inverse search (PDF → editor), y
 
 #### 3. Neovim/Emacs Setup (Optional - for Inverse Search)
 
-To use **inverse search** (Shift+Click in PDF → jump to editor) with Neovim or Emacs, 
+To use **inverse search** (Ctrl+Click in PDF → jump to editor) with Neovim or Emacs, 
 configure your editor. Note: Other editors and LaTeX plugins can also 
 integrate with EntangledPdf using the `entangle-pdf sync` command (see Manual Commands below).
 
@@ -286,7 +286,7 @@ you'll know the issue is in your editor configuration.
 In Neovim with VimTeX:
 - `<leader>ll` - Compile LaTeX document
 - `<leader>lv` - View PDF and forward search to cursor position
-- Shift+Click in PDF - Jump back to editor (inverse search)
+- Ctrl+Click in PDF - Jump back to editor (inverse search)
 
 ### SSL Certificates
 
@@ -347,7 +347,7 @@ Trigger inverse search at the current position to jump to the corresponding sour
 - `i` - Trigger inverse search at the current scroll position
 
 **Mouse/Touch:**
-- `Shift+Click` on PDF - Jump to clicked location
+- `Ctrl+Click` on PDF - Jump to clicked location (Cmd+Click on macOS)
 - `Long press/click` (hold ~0.5 seconds) - Jump to held location  
 - `Long touch` (mobile) - Jump to touched location
 
@@ -363,7 +363,7 @@ When you press `<leader>lv`:
 1. VimTeX calls: `entangle-pdf sync @pdf @line:@col:@tex`
 2. Server converts line:column to PDF coordinates via SyncTeX
 3. Browser scrolls to position and shows red dot marker
-4. When you Shift+Click in the PDF, browser sends coordinates to server
+4. When you Ctrl+Click in the PDF, browser sends coordinates to server
 5. Server runs `synctex edit` to convert to file:line and opens your editor
 
 ### Manual Commands
@@ -396,7 +396,7 @@ entangle-pdf generate-api-key --shell
 
 ### Inverse Search (Backward Search)
 
-Jump from PDF to editor with Shift+Click.
+Jump from PDF to editor with Ctrl+Click (or Cmd+Click on macOS).
 
 **Requirements:**
 - Server started with inverse search enabled (`--inverse-search-nvim` or `--inverse-search-emacs`)
@@ -482,7 +482,7 @@ The `/state` endpoint is intentionally unauthenticated. It returns:
 
 ### "nvr: no server found" / Inverse search not working
 
-**Problem**: Shift+Click in PDF doesn't open your editor, or you see "no server found" errors.
+**Problem**: Ctrl+Click in PDF doesn't open your editor, or you see "no server found" errors.
 
 **Check these items:**
 
@@ -546,7 +546,7 @@ killall nvim  # Warning: closes ALL nvim instances
 ## Features
 
 - **Multi-device sync**: View and control PDF from multiple devices simultaneously
-- **Inverse search**: Shift+Click PDF to jump to source code in editor (HTTPS/WSS only)
+- **Inverse search**: Ctrl+Click PDF to jump to source code in editor (HTTPS/WSS only)
 - **Token-based auth**: Secure Jupyter-style authentication for inverse search
 - **WebSocket + HTTP fallback**: Reliable real-time updates with automatic reconnection
 - **Smart refocus handling**: Only scrolls to new positions when tab regains focus if there's a new update

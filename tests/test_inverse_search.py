@@ -1,6 +1,6 @@
 """Tests for inverse search (backward sync) functionality.
 
-Tests the token-based authentication system and inverse search (Shift+Click → Editor)
+Tests the token-based authentication system and inverse search (Ctrl+Click → Editor)
 functionality. Inverse search is only available with HTTPS/WSS for security.
 """
 
