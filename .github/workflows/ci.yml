@@ -89,7 +89,7 @@ jobs:
           ./install.sh --ci
       
       - name: Install test dependencies
-        run: pip install responses
+        run: pip install pytest pytest-asyncio httpx responses psutil
       
       - name: Run fast Python tests
         run: python -m pytest tests/ -v --tb=short -m "not slow"
@@ -118,7 +118,7 @@ jobs:
           ./install.sh --ci
       
       - name: Install test dependencies
-        run: pip install responses
+        run: pip install pytest pytest-asyncio httpx responses psutil
       
       - name: Run slow Python tests
         run: python -m pytest tests/ -v --tb=short -m "slow"
@@ -170,7 +170,7 @@ jobs:
           ./install.sh --ci
       
       - name: Install test dependencies
-        run: pip install responses
+        run: pip install pytest pytest-asyncio httpx responses psutil
       
       - name: Set up Node.js
         uses: actions/setup-node@v4
