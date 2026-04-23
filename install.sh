@@ -99,10 +99,10 @@ echo
 echo "Installing Python dependencies into virtual environment..."
 if [ "$USE_EDITABLE" = "true" ]; then
     echo "Installing in editable mode..."
-    "${VENV_DIR}/pip" install -e .
+    "${VENV_DIR}/python" -m pip install -e .
 else
     echo "Installing in standard mode..."
-    "${VENV_DIR}/pip" install .
+    "${VENV_DIR}/python" -m pip install .
 fi
 echo "Python dependencies installed into ${VENV_DIR}."
 echo
