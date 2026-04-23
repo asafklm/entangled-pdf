@@ -87,10 +87,12 @@ echo
 # Create local virtual environment for consistent development and testing
 echo "Setting up Python virtual environment..."
 VENV_DIR="${REPO_DIR}/bin"
-if [ ! -d "$VENV_DIR" ]; then
+if [ ! -f "${VENV_DIR}/python" ]; then
     echo "Creating virtual environment at ${VENV_DIR}..."
     python3 -m venv "$VENV_DIR"
     echo "Virtual environment created."
+    echo "Contents of ${VENV_DIR}:"
+    ls -la "$VENV_DIR" || echo "Directory does not exist"
 else
     echo "Virtual environment already exists at ${VENV_DIR}."
 fi
