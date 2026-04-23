@@ -9,14 +9,21 @@ USE_EDITABLE=false
 usage() {
     echo "Usage: $0 [OPTIONS]"
     echo
+    echo "Installs EntangledPdf with a local Python virtual environment at ./bin/"
+    echo "This ensures consistent dependencies across development and CI environments."
+    echo
     echo "Options:"
-    echo "  --ci              CI mode: use pip, skip SSL certs, editable install"
+    echo "  --ci              CI mode: skip SSL certs, use editable install"
     echo "  --editable        Install package in editable mode (pip install -e .)"
     echo "  --skip-certs      Skip SSL certificate generation"
     echo "  -h, --help        Show this help message"
     echo
     echo "Environment variables:"
     echo "  ENTANGLEDPDF_API_KEY    API key for the server"
+    echo
+    echo "After installation, use ./bin/entangle-pdf to run commands:"
+    echo "  ./bin/entangle-pdf start"
+    echo "  ./bin/entangle-pdf sync <pdf> <line>:<column>:<texfile>"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -77,29 +84,27 @@ fi
 echo "Working in: ${REPO_DIR}"
 echo
 
-echo "Installing Python dependencies..."
-if command -v pipx &> /dev/null && [ "$USE_EDITABLE" = "false" ]; then
-    echo "Using pipx..."
-    pipx install .
-elif command -v pip3 &> /dev/null; then
-    echo "Using pip3..."
-    if [ "$USE_EDITABLE" = "true" ]; then
-        pip3 install -e .
-    else
-        pip3 install .
-    fi
-elif command -v pip &> /dev/null; then
-    echo "Using pip..."
-    if [ "$USE_EDITABLE" = "true" ]; then
-        pip install -e .
-    else
-        pip install .
-    fi
+# Create local virtual environment for consistent development and testing
+echo "Setting up Python virtual environment..."
+VENV_DIR="${REPO_DIR}/bin"
+if [ ! -d "$VENV_DIR" ]; then
+    echo "Creating virtual environment at ${VENV_DIR}..."
+    python3 -m venv "$VENV_DIR"
+    echo "Virtual environment created."
 else
-    echo "Error: No pip or pipx found."
-    exit 1
+    echo "Virtual environment already exists at ${VENV_DIR}."
 fi
-echo "Python dependencies installed."
+echo
+
+echo "Installing Python dependencies into virtual environment..."
+if [ "$USE_EDITABLE" = "true" ]; then
+    echo "Installing in editable mode..."
+    "${VENV_DIR}/pip" install -e .
+else
+    echo "Installing in standard mode..."
+    "${VENV_DIR}/pip" install .
+fi
+echo "Python dependencies installed into ${VENV_DIR}."
 echo
 
 echo "Building frontend..."
@@ -111,20 +116,22 @@ echo
 
 if [ "$SKIP_CERTS" = "false" ]; then
     echo "Generating SSL certificates..."
-    python3 -m entangledpdf.certs generate || true
+    "${VENV_DIR}/python" -m entangledpdf.certs generate || true
     echo "SSL certificates generated."
     echo
 fi
 
 echo "=== Installation Complete ==="
 echo
+echo "A Python virtual environment has been created at: ${VENV_DIR}"
+echo
 echo "Next steps:"
 echo "  1. Add API key to your shell:"
-echo "     entangle-pdf generate-api-key --shell >> ~/.bashrc"
+echo "     ./bin/entangle-pdf generate-api-key --shell >> ~/.bashrc"
 echo "     source ~/.bashrc"
 echo
 echo "  2. Start the server:"
-echo "     entangle-pdf start"
+echo "     ./bin/entangle-pdf start"
 echo
 echo "  3. Open browser and accept SSL certificate:"
 echo "     - Open https://localhost:8431/view in your browser"
@@ -132,18 +139,18 @@ echo "     - Click 'Advanced' → 'Accept' to proceed (self-signed cert)"
 echo "     - Enter the token shown in the terminal"
 echo
 echo "  4. Test loading a PDF with forward search:"
-echo "     entangle-pdf sync examples/example.pdf 10:1:example.tex"
-echo "     # Format: entangle-pdf sync <pdf> <line>:<column>:<texfile>"
+echo "     ./bin/entangle-pdf sync examples/example.pdf 10:1:example.tex"
+echo "     # Format: ./bin/entangle-pdf sync <pdf> <line>:<column>:<texfile>"
 echo
 echo "  5. Configure forward search in your editor:"
-echo "     - The sync command works with any editor: entangle-pdf sync <pdf> <line>:<col>:<tex>"
+echo "     - The sync command works with any editor: ./bin/entangle-pdf sync <pdf> <line>:<col>:<tex>"
 echo "     - See README.md for VimTeX/neovim setup examples"
 echo
 echo "  6. For inverse search (PDF → editor, optional):"
 echo "     # Example for Neovim:"
-echo "     entangle-pdf start --inverse-search-nvim"
+echo "     ./bin/entangle-pdf start --inverse-search-nvim"
 echo "     # Or use custom command:"
-echo "     entangle-pdf start --inverse-search-command 'nvr --remote-silent +%{line} %{file}'"
+echo "     ./bin/entangle-pdf start --inverse-search-command 'nvr --remote-silent +%{line} %{file}'"
 echo "     - See README.md for editor-specific setup (neovim/emacs/vim)"
 echo
 echo "For full setup instructions, see: ${REPO_DIR}/README.md"
