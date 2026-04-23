@@ -1,5 +1,5 @@
 # Python virtual environment
-# bin/ is used for project venv - do not track any files here
+.venv/
 bin/
 lib/
 lib64

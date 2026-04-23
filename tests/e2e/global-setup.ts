@@ -89,9 +89,9 @@ async function startServerInstance(port: number, https: boolean, inverseSearch: 
     NODE_TLS_REJECT_UNAUTHORIZED: '0',
   };
 
-  // Use project venv Python instead of system python3
+  // Use project venv Python from .venv directory
   // The venv has all dependencies (uvicorn, fastapi, etc.) installed
-  const venvPython = join(PROJECT_ROOT, 'bin', 'python');
+  const venvPython = join(PROJECT_ROOT, '.venv', 'bin', 'python');
   const proc = spawn(venvPython, args, {
     cwd: PROJECT_ROOT,
     env,

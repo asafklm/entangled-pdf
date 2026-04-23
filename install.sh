@@ -21,9 +21,9 @@ usage() {
     echo "Environment variables:"
     echo "  ENTANGLEDPDF_API_KEY    API key for the server"
     echo
-    echo "After installation, use ./bin/entangle-pdf to run commands:"
-    echo "  ./bin/entangle-pdf start"
-    echo "  ./bin/entangle-pdf sync <pdf> <line>:<column>:<texfile>"
+    echo "After installation, use ./.venv/bin/entangle-pdf to run commands:"
+    echo "  ./.venv/bin/entangle-pdf start"
+    echo "  ./.venv/bin/entangle-pdf sync <pdf> <line>:<column>:<texfile>"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -86,13 +86,11 @@ echo
 
 # Create local virtual environment for consistent development and testing
 echo "Setting up Python virtual environment..."
-VENV_DIR="${REPO_DIR}/bin"
-if [ ! -f "${VENV_DIR}/python" ]; then
+VENV_DIR="${REPO_DIR}/.venv"
+if [ ! -f "${VENV_DIR}/bin/python" ]; then
     echo "Creating virtual environment at ${VENV_DIR}..."
     python3 -m venv "$VENV_DIR"
     echo "Virtual environment created."
-    echo "Contents of ${VENV_DIR}:"
-    ls -la "$VENV_DIR" || echo "Directory does not exist"
 else
     echo "Virtual environment already exists at ${VENV_DIR}."
 fi
@@ -101,10 +99,10 @@ echo
 echo "Installing Python dependencies into virtual environment..."
 if [ "$USE_EDITABLE" = "true" ]; then
     echo "Installing in editable mode..."
-    "${VENV_DIR}/python" -m pip install -e .
+    "${VENV_DIR}/bin/python" -m pip install -e .
 else
     echo "Installing in standard mode..."
-    "${VENV_DIR}/python" -m pip install .
+    "${VENV_DIR}/bin/python" -m pip install .
 fi
 echo "Python dependencies installed into ${VENV_DIR}."
 echo
@@ -118,7 +116,7 @@ echo
 
 if [ "$SKIP_CERTS" = "false" ]; then
     echo "Generating SSL certificates..."
-    "${VENV_DIR}/python" -m entangledpdf.certs generate || true
+    "${VENV_DIR}/bin/python" -m entangledpdf.certs generate || true
     echo "SSL certificates generated."
     echo
 fi
@@ -129,11 +127,11 @@ echo "A Python virtual environment has been created at: ${VENV_DIR}"
 echo
 echo "Next steps:"
 echo "  1. Add API key to your shell:"
-echo "     ./bin/entangle-pdf generate-api-key --shell >> ~/.bashrc"
+echo "     ./.venv/bin/entangle-pdf generate-api-key --shell >> ~/.bashrc"
 echo "     source ~/.bashrc"
 echo
 echo "  2. Start the server:"
-echo "     ./bin/entangle-pdf start"
+echo "     ./.venv/bin/entangle-pdf start"
 echo
 echo "  3. Open browser and accept SSL certificate:"
 echo "     - Open https://localhost:8431/view in your browser"
@@ -141,18 +139,18 @@ echo "     - Click 'Advanced' → 'Accept' to proceed (self-signed cert)"
 echo "     - Enter the token shown in the terminal"
 echo
 echo "  4. Test loading a PDF with forward search:"
-echo "     ./bin/entangle-pdf sync examples/example.pdf 10:1:example.tex"
-echo "     # Format: ./bin/entangle-pdf sync <pdf> <line>:<column>:<texfile>"
+echo "     ./.venv/bin/entangle-pdf sync examples/example.pdf 10:1:example.tex"
+echo "     # Format: ./.venv/bin/entangle-pdf sync <pdf> <line>:<column>:<texfile>"
 echo
 echo "  5. Configure forward search in your editor:"
-echo "     - The sync command works with any editor: ./bin/entangle-pdf sync <pdf> <line>:<col>:<tex>"
+echo "     - The sync command works with any editor: ./.venv/bin/entangle-pdf sync <pdf> <line>:<col>:<tex>"
 echo "     - See README.md for VimTeX/neovim setup examples"
 echo
 echo "  6. For inverse search (PDF → editor, optional):"
 echo "     # Example for Neovim:"
-echo "     ./bin/entangle-pdf start --inverse-search-nvim"
+echo "     ./.venv/bin/entangle-pdf start --inverse-search-nvim"
 echo "     # Or use custom command:"
-echo "     ./bin/entangle-pdf start --inverse-search-command 'nvr --remote-silent +%{line} %{file}'"
+echo "     ./.venv/bin/entangle-pdf start --inverse-search-command 'nvr --remote-silent +%{line} %{file}'"
 echo "     - See README.md for editor-specific setup (neovim/emacs/vim)"
 echo
 echo "For full setup instructions, see: ${REPO_DIR}/README.md"
