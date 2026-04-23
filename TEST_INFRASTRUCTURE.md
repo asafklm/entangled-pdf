@@ -4,19 +4,19 @@ This document describes the improvements made to the test infrastructure to prev
 
 ## Changes Made
 
-### 1. Cleanup Utility Script (`bin/entangle-pdf-test-cleanup`)
+### 1. Cleanup Utility Script (`scripts/entangle-pdf-test-cleanup`)
 
 A standalone utility script for manually cleaning up orphaned test processes:
 
 ```bash
 # Show what would be killed (dry run)
-./bin/entangle-pdf-test-cleanup --dry-run
+./scripts/entangle-pdf-test-cleanup --dry-run
 
 # Clean up with confirmation prompt
-./bin/entangle-pdf-test-cleanup
+./scripts/entangle-pdf-test-cleanup
 
 # Clean up without confirmation
-./bin/entangle-pdf-test-cleanup --force
+./scripts/entangle-pdf-test-cleanup --force
 ```
 
 **Features:**
@@ -95,10 +95,10 @@ Just run tests as usual - cleanup is automatic:
 If you notice zombie processes:
 ```bash
 # Check for zombies
-./bin/entangle-pdf-test-cleanup --dry-run
+./scripts/entangle-pdf-test-cleanup --dry-run
 
 # Kill them
-./bin/entangle-pdf-test-cleanup --force
+./scripts/entangle-pdf-test-cleanup --force
 ```
 
 ### Session-Level Cleanup

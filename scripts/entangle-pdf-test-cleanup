@@ -9,9 +9,9 @@ as it will NOT kill:
 - Servers not matching the test port range pattern
 
 Usage:
-    ./bin/entangle-pdf-test-cleanup          # Clean up all zombie test processes
-    ./bin/entangle-pdf-test-cleanup --dry-run # Show what would be killed without killing
-    ./bin/entangle-pdf-test-cleanup --force   # Skip confirmation prompts
+    ./scripts/entangle-pdf-test-cleanup          # Clean up all zombie test processes
+    ./scripts/entangle-pdf-test-cleanup --dry-run # Show what would be killed without killing
+    ./scripts/entangle-pdf-test-cleanup --force   # Skip confirmation prompts
 
 Returns:
     0 if no zombies found or all cleaned up successfully
