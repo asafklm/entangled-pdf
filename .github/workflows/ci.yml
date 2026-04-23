@@ -30,8 +30,7 @@ jobs:
       
       - name: Verify installation
         run: |
-          which entangle-pdf
-          entangle-pdf --help
+          ./.venv/bin/entangle-pdf --help
 
   # Installation job - tests pipx install (user experience)
   install-pipx:
@@ -59,8 +58,7 @@ jobs:
       
       - name: Verify installation
         run: |
-          which entangle-pdf
-          entangle-pdf --help
+          ./.venv/bin/entangle-pdf --help
       
       - name: Verify frontend built
         run: |
