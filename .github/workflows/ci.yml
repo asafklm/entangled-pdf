@@ -87,10 +87,10 @@ jobs:
           ./install.sh --ci
       
       - name: Install test dependencies
-        run: pip install pytest pytest-asyncio httpx responses psutil
+        run: ./.venv/bin/pip install pytest pytest-asyncio httpx responses psutil
       
       - name: Run fast Python tests
-        run: python -m pytest tests/ -v --tb=short -m "not slow"
+        run: ./.venv/bin/python -m pytest tests/ -v --tb=short -m "not slow"
 
   # Slow Python tests - run only on PRs (including from forks)
   python-tests-slow:
@@ -116,10 +116,10 @@ jobs:
           ./install.sh --ci
       
       - name: Install test dependencies
-        run: pip install pytest pytest-asyncio httpx responses psutil
+        run: ./.venv/bin/pip install pytest pytest-asyncio httpx responses psutil
       
       - name: Run slow Python tests
-        run: python -m pytest tests/ -v --tb=short -m "slow"
+        run: ./.venv/bin/python -m pytest tests/ -v --tb=short -m "slow"
 
   # TypeScript unit tests - run on every push and PR
   typescript-tests:
@@ -168,14 +168,14 @@ jobs:
           ./install.sh --ci
       
       - name: Install test dependencies
-        run: pip install pytest pytest-asyncio httpx responses psutil
+        run: ./.venv/bin/pip install pytest pytest-asyncio httpx responses psutil
       
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-      
+        
       - name: Install Node.js dependencies
         run: npm ci
       
