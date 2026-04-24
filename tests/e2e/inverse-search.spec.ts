@@ -194,8 +194,11 @@ test.describe('Inverse Search E2E', () => {
       await expect(page.locator('#viewer-container canvas').first()).toBeVisible({ timeout: 10000 });
       
       // Ctrl+Click on the PDF canvas to trigger inverse search
+      // Use keyboard.down/up to properly simulate holding Ctrl during click
       const canvas = page.locator('#viewer-container canvas').first();
-      await canvas.click({ modifiers: ['Control'] });
+      await page.keyboard.down('Control');
+      await canvas.click();
+      await page.keyboard.up('Control');
       
       // Wait for tooltip to appear
       const tooltip = page.locator('.inverse-search-tooltip');
@@ -203,10 +206,10 @@ test.describe('Inverse Search E2E', () => {
       
       // Verify tooltip content
       await expect(tooltip.locator('text=Go to Source?')).toBeVisible();
-      await expect(tooltip.locator('button.tooltip-confirm-btn')).toContainText('Confirm (Enter)');
+      await expect(tooltip.locator('button.tooltip-btn-confirm')).toContainText('Confirm (Enter)');
       
       // Click the confirm button
-      await tooltip.locator('button.tooltip-confirm-btn').click();
+      await tooltip.locator('button.tooltip-btn-confirm').click();
       
       // Wait for tooltip to disappear
       await expect(tooltip).not.toBeVisible({ timeout: 5000 });
@@ -250,8 +253,11 @@ test.describe('Inverse Search E2E', () => {
       await expect(page.locator('#viewer-container canvas').first()).toBeVisible({ timeout: 10000 });
       
       // Cmd+Click (metaKey) on the PDF canvas to trigger inverse search (macOS)
+      // Use keyboard.down/up to properly simulate holding Cmd during click
       const canvas = page.locator('#viewer-container canvas').first();
-      await canvas.click({ modifiers: ['Meta'] });
+      await page.keyboard.down('Meta');
+      await canvas.click();
+      await page.keyboard.up('Meta');
       
       // Wait for tooltip to appear
       const tooltip = page.locator('.inverse-search-tooltip');
