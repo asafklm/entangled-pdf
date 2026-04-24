@@ -99,7 +99,7 @@ const lifecycle: PdfLifecycleManager = createPdfLifecycle({
   notificationManager,
   noPdfMessage,
   viewerContainer,
-  onStatusUpdate: (status) => updateConnectionStatus(wsManager.isConnected),
+  onStatusUpdate: (status) => updateConnectionStatus(wsManager.isConnected, status),
   onApplyStateUpdate: (data, delay) => {
     syncTeXController.applyStateUpdate(data, delay, 0, true);
   },
@@ -119,7 +119,14 @@ const syncTeXController = createSyncTeXController({
   pdfRenderer,
   notificationManager,
   onPdfReload: lifecycle.reloadPDF,
-  onStatusUpdate: (status) => updateConnectionStatus(wsManager.isConnected),
+  onStatusUpdate: (status) => {
+    if (status === 'reload-needed') {
+      lifecycle.setPdfChangedPending(true);
+    } else if (status === 'connected') {
+      lifecycle.setPdfChangedPending(false);
+    }
+    updateConnectionStatus(wsManager.isConnected, status);
+  },
   onApplyStateUpdate: (data, delay, attempt, isForwardSync) => {
     const pageNum = data.page;
     const y = data.y;
@@ -164,10 +171,10 @@ wsManager.on('error', syncTeXController.handleErrorMessage as MessageHandler);
 /**
  * Update connection status UI
  */
-function updateConnectionStatus(connected: boolean): void {
+function updateConnectionStatus(connected: boolean, explicitStatus?: 'reload-needed' | 'connected' | 'disconnected'): void {
   if (!connectionStatus || !CONFIG.inverse_search_enabled) return;
   
-  const status = determineStatus(connected, lifecycle.isPdfChangedPending());
+  const status = explicitStatus || determineStatus(connected, lifecycle.isPdfChangedPending());
   const state: ConnectionStatusState = {
     status,
     filename: CONFIG.filename,

@@ -83,9 +83,9 @@ async function startServerInstance(port: number, https: boolean, inverseSearch: 
 
   const env = {
     ...process.env,
-    PDF_SERVER_API_KEY: DEFAULT_API_KEY,
-    PDF_SERVER_TESTING: '1',
-    PDF_SERVER_TEST_MODE: '1',
+    ENTANGLEDPDF_API_KEY: DEFAULT_API_KEY,
+    ENTANGLEDPDF_TESTING: '1',
+    ENTANGLEDPDF_TEST_MODE: '1',
     NODE_TLS_REJECT_UNAUTHORIZED: '0',
   };
 

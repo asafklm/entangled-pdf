@@ -9,7 +9,7 @@ USE_EDITABLE=false
 usage() {
     echo "Usage: $0 [OPTIONS]"
     echo
-    echo "Installs EntangledPdf with a local Python virtual environment at ./bin/"
+    echo "Installs EntangledPdf with a local Python virtual environment at ./.venv/"
     echo "This ensures consistent dependencies across development and CI environments."
     echo
     echo "Options:"

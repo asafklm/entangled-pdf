@@ -92,10 +92,10 @@ test.describe('Inverse Search E2E', () => {
       
       // Verify tooltip content
       await expect(tooltip.locator('text=Go to Source?')).toBeVisible();
-      await expect(tooltip.locator('button.tooltip-confirm-btn')).toContainText('Confirm (Enter)');
+      await expect(tooltip.locator('button.tooltip-btn-confirm')).toContainText('Confirm (Enter)');
       
       // Click the confirm button (same code path as Enter key)
-      await tooltip.locator('button.tooltip-confirm-btn').click();
+      await tooltip.locator('button.tooltip-btn-confirm').click();
       
       // Wait for tooltip to disappear
       await expect(tooltip).not.toBeVisible({ timeout: 5000 });
@@ -218,7 +218,7 @@ test.describe('Inverse Search E2E', () => {
       await expect(tooltip).toBeVisible({ timeout: 5000 });
       
       // Click confirm button - should work (tooltip state was properly cleaned up)
-      await tooltip.locator('button.tooltip-confirm-btn').click();
+      await tooltip.locator('button.tooltip-btn-confirm').click();
       await expect(tooltip).not.toBeVisible({ timeout: 5000 });
       
       // Verify red marker feedback is shown

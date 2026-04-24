@@ -114,7 +114,7 @@ def running_server(test_certs, tmp_path_factory, request):
     # Set environment variables
     env = os.environ.copy()
     env["ENTANGLEDPDF_API_KEY"] = TEST_API_KEY
-    env["ENTANGLEDPDF_TESTING"] = "1"  # Flag to indicate test mode
+    env["ENTANGLEDPDF_TESTING"] = "1"  # Marker for test-cleanup script to identify test processes
     
     # Start server process
     process = subprocess.Popen(

@@ -42,6 +42,7 @@ export interface PdfLifecycleManager {
   reloadPDF(): Promise<void>;
   syncState(): Promise<void>;
   isPdfChangedPending(): boolean;
+  setPdfChangedPending(value: boolean): void;
   isLoading(): boolean;
 }
 
@@ -228,6 +229,7 @@ export function createPdfLifecycle(options: PdfLifecycleOptions): PdfLifecycleMa
     reloadPDF,
     syncState,
     isPdfChangedPending: () => pdfChangedPending,
+    setPdfChangedPending: (value: boolean) => { pdfChangedPending = value; },
     isLoading: () => isLoadingPDF,
   };
 }

@@ -55,7 +55,7 @@ def is_test_process(cmdline: str) -> bool:
         in_test_port_range = False
     
     # Check for test mode environment flag
-    has_test_flag = "PDF_SERVER_TESTING" in cmdline
+    has_test_flag = "ENTANGLEDPDF_TESTING" in cmdline
     
     return (has_test_cert and in_test_port_range) or has_test_flag
 
@@ -65,7 +65,7 @@ def is_production_process(cmdline: str) -> bool:
     # Production servers typically:
     # 1. Use port 8431 (default)
     # 2. Use production SSL certificates (not test.pem)
-    # 3. Run without PDF_SERVER_TESTING flag
+    # 3. Run without ENTANGLEDPDF_TESTING flag
     
     port_match = re.search(r'--port\s+(\d+)', cmdline)
     is_default_port = not port_match or port_match.group(1) == "8431"
