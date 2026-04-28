@@ -227,6 +227,8 @@ emacs --daemon
 
 > **Note:** The fixed socket approach supports only one editor instance at a time. If you need multiple instances, use project-specific sockets.
 
+### Run EntaledPdf
+
 **Step 1: Start the server**
 
 ```bash
@@ -285,7 +287,7 @@ You should now see the PDF in your browser. This confirms the server, API key,
 and browser are all configured correctly. If this works but VimTeX doesn't, 
 you'll know the issue is in your editor configuration.
 
-> **For other editors/plugins:** You can integrate by calling `entangle-pdf sync <pdf-file>` 
+> **For other editors/plugins:** You can integrate by calling `entangle-pdf sync <pdf-file> <line>:<col>:<tex-file>` 
 > after compilation. See [Manual Commands](#manual-commands) for details.
 
 **Step 4: Work in your editor**
