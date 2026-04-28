@@ -39,21 +39,16 @@ cd entangled-pdf
 
 # Run the installation script
 ./install.sh
-
-# Add API key to your shell
-entangle-pdf generate-api-key --shell >> ~/.bashrc
-source ~/.bashrc
-
-# Start the server
-entangle-pdf start
 ```
 
 The install.sh script handles:
-- Python dependency installation (prefers pipx, falls back to pip)
+- Python dependency installation (creates local virtual environment at `./.venv/`)
 - Frontend build (npm install && npm run build)
 - SSL certificate generation
 
 For development, use: `./install.sh --editable`
+
+After installation, proceed to the [Setup](#setup) section for configuration.
 
 #### Option 2: Install from GitHub with pipx
 
@@ -107,6 +102,12 @@ npm install && npm run build
 
 After installation, complete the required setup and optional editor configuration.
 
+> **Note:** If you used **Option 1** (`./install.sh`), use `./.venv/bin/entangle-pdf` 
+> instead of `entangle-pdf` in the commands below (unless you've activated the virtual 
+> environment or added it to your PATH).
+> 
+> If you used **Option 2 or 3** (pipx or pip), `entangle-pdf` is already in your PATH.
+
 #### 1. API Key (Required)
 
 The API key controls who can trigger PDF updates and forward search. Anyone with network 
@@ -146,6 +147,10 @@ source ~/.bashrc
 EntangledPdf uses HTTPS by default with self-signed certificates. Generate them before first use:
 
 ```bash
+# If using Option 1 (./install.sh with local venv):
+./.venv/bin/python -m entangledpdf.certs generate
+
+# If using Option 2 or 3 (pipx or pip):
 python3 -m entangledpdf.certs generate
 ```
 
@@ -226,20 +231,22 @@ emacs --daemon
 
 ```bash
 # Basic start (HTTPS mode, no inverse search)
-entangle-pdf start
+./.venv/bin/entangle-pdf start
 
 # Start with inverse search for Neovim
-entangle-pdf start --inverse-search-nvim
+./.venv/bin/entangle-pdf start --inverse-search-nvim
 
 # Start with inverse search for Emacs
-entangle-pdf start --inverse-search-emacs
+./.venv/bin/entangle-pdf start --inverse-search-emacs
 
 # Start on different port
-entangle-pdf start --port 9000
+./.venv/bin/entangle-pdf start --port 9000
 
 # Start in foreground (for debugging)
-entangle-pdf start --verbose
+./.venv/bin/entangle-pdf start --verbose
 ```
+
+> **Note:** If you installed with **pipx or pip** instead of `./install.sh`, use `entangle-pdf` directly (it's already in your PATH).
 
 When you start the server, you'll see:
 ```
@@ -271,7 +278,7 @@ Before using VimTeX, verify the setup works by manually loading a PDF:
 
 ```bash
 # Load an example PDF from the repository
-entangle-pdf sync examples/example.pdf
+./.venv/bin/entangle-pdf sync examples/example.pdf
 ```
 
 You should now see the PDF in your browser. This confirms the server, API key, 
@@ -294,15 +301,17 @@ EntangledPdf uses HTTPS by default with self-signed certificates. To use your ow
 
 ```bash
 # Specify certificates at runtime
-entangle-pdf start --ssl-cert /path/to/cert.pem --ssl-key /path/to/key.pem
+./.venv/bin/entangle-pdf start --ssl-cert /path/to/cert.pem --ssl-key /path/to/key.pem
 
 # Or install certificates to default location
-python3 -m entangledpdf.certs generate --cert /path/to/cert.pem --key /path/to/key.pem
+./.venv/bin/python -m entangledpdf.certs generate --cert /path/to/cert.pem --key /path/to/key.pem
 ```
+
+> **Note:** If you installed with pipx or pip, use `entangle-pdf` directly instead of `./.venv/bin/entangle-pdf`.
 
 **Example with Tailscale certificates:**
 ```bash
-entangle-pdf start --inverse-search-nvim \
+./.venv/bin/entangle-pdf start --inverse-search-nvim \
   --ssl-cert /etc/ntfy/certs/elul.asymptote-cirius.ts.net.crt \
   --ssl-key /etc/ntfy/certs/elul.asymptote-cirius.ts.net.key
 ```
@@ -313,8 +322,10 @@ You can obtain certificates from [Let's Encrypt](https://letsencrypt.org/) or [T
 
 For local-only development without HTTPS:
 ```bash
-entangle-pdf start --http
+./.venv/bin/entangle-pdf start --http
 ```
+
+> **Note:** If you installed with pipx or pip, use `entangle-pdf` directly instead of `./.venv/bin/entangle-pdf`.
 
 Note: Inverse search is disabled in HTTP mode for security.
 
@@ -367,6 +378,9 @@ When you press `<leader>lv`:
 5. Server runs `synctex edit` to convert to file:line and opens your editor
 
 ### Manual Commands
+
+> **Note:** If you used **Option 1** (`./install.sh`), use `./.venv/bin/entangle-pdf` 
+> in the commands below. If you used **Option 2 or 3** (pipx or pip), use `entangle-pdf` directly.
 
 **Loading PDFs:**
 
