@@ -10,7 +10,7 @@ import subprocess
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from entangledpdf.config import get_settings
@@ -139,7 +139,8 @@ async def run_synctex_view(
 @router.post("/webhook/update")
 async def receive_webhook(
     data: dict,
-    x_api_key: Optional[str] = Header(None)
+    x_api_key: Optional[str] = Header(None),
+    request: Request = None
 ) -> JSONResponse:
     """Receive PDF position updates and broadcast to clients.
     
@@ -147,13 +148,17 @@ async def receive_webhook(
     If synctex succeeds, broadcasts the PDF position. If synctex fails or no
     TeX coordinates are provided, simply returns success without scrolling.
     
+    When accessed via Unix socket transport, API key is not required
+    (filesystem permissions provide authentication).
+    
     Args:
         data: JSON payload with TeX coordinates
             - line (int): Line number in TeX file
             - col (int): Column number in TeX file  
             - tex_file (str): Path to TeX source file
             - pdf_file (str): Path to PDF file
-        x_api_key: API key from X-API-Key header
+        x_api_key: API key from X-API-Key header (not required for Unix socket)
+        request: FastAPI request object (used to detect transport)
     
     Returns:
         JSONResponse: Success status with PDF coordinates or None if synctex failed
@@ -163,8 +168,14 @@ async def receive_webhook(
     """
     settings = get_settings()
     
-    # Validate API key
-    if x_api_key != settings.api_key:
+    # Check if request came via Unix socket (skip API key check)
+    is_unix_socket = (
+        request is not None and 
+        getattr(request.state, "unix_socket", False)
+    )
+    
+    # Validate API key (skip for Unix socket transport)
+    if not is_unix_socket and x_api_key != settings.api_key:
         raise HTTPException(
             status_code=403,
             detail="Authentication failed. Ensure ENTANGLEDPDF_API_KEY is set and server was restarted."

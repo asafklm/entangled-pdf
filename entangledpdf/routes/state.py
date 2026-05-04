@@ -24,13 +24,14 @@ async def get_state(request: Request) -> JSONResponse:
     
     Returns:
         JSONResponse: Current state with pdf_file, pdf_loaded, page, y, 
-                     last_update_time, and optionally websocket_token
+                     last_update_time, port, https, and optionally websocket_token
     """
     settings = get_settings()
     state_dict = pdf_state.to_dict()
     
     state_dict["https"] = settings.use_https
     state_dict["inverse_search_enabled"] = pdf_state.inverse_search_enabled
+    state_dict["port"] = settings.port
     
     client_host = request.client.host if request.client else None
     if client_host in ("127.0.0.1", "::1", "localhost"):

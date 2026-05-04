@@ -14,15 +14,16 @@ from pathlib import Path
 from typing import Optional
 
 import argcomplete
-import requests
-import urllib3
-
 import secrets
 
-from entangledpdf.sync import load_pdf, forward_search, parse_synctex_forward
-
-# Suppress urllib3 warnings for self-signed certificates
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+from entangledpdf.socket_path import get_socket_path, is_server_running
+from entangledpdf.sync import (
+    load_pdf,
+    forward_search,
+    parse_synctex_forward,
+    get_server_state,
+    get_default_socket_path
+)
 
 # Configuration
 DEFAULT_PORT = 8431
@@ -93,16 +94,10 @@ def format_status_urls(port: int, use_https: bool) -> list:
 
 def get_server_dir() -> Path:
     """Get the server directory (parent of package)."""
-    # When installed via pip, the package is in site-packages
-    # We need to find where static files and certs are stored
     import entangledpdf
     
     package_dir = Path(entangledpdf.__file__).parent.resolve()
-    # The server root is one level up from the package
     server_dir = package_dir.parent
-    
-    # If installed in development mode (pip install -e), files are in the git repo
-    # If installed normally, we need to handle this differently
     return server_dir
 
 
@@ -111,43 +106,15 @@ def get_python_cmd() -> str:
     return sys.executable
 
 
-def get_server_url(port: int, use_http: bool = False) -> str:
-    """Get server base URL."""
-    protocol = "http" if use_http else "https"
-    return f"{protocol}://localhost:{port}"
-
-
-def get_server_state(port: int, verify_ssl: bool = False):
-    """Check if server is running and get state."""
-    try:
-        url = f"{get_server_url(port)}/state"
-        response = requests.get(url, timeout=2, verify=verify_ssl)
-        response.raise_for_status()
-        return response.json()
-    except Exception:
-        # Try HTTP as fallback
-        try:
-            url = f"http://localhost:{port}/state"
-            response = requests.get(url, timeout=2, verify=verify_ssl)
-            response.raise_for_status()
-            return response.json()
-        except Exception:
-            return None
-
-
-def is_server_running(port: int) -> bool:
-    """Check if server is running on given port."""
-    return get_server_state(port) is not None
-
-
 def cmd_start(args):
     """Start the PDF server (foreground mode)."""
     port = args.port or int(os.getenv("ENTANGLEDPDF_PORT", DEFAULT_PORT))
+    socket_path = args.socket_path or get_socket_path()
     
-    # Check if server already running
-    if is_server_running(port):
-        print(f"Error: Server already running on port {port}", file=sys.stderr)
-        print(f"Use 'entangle-pdf status --port {port}' to see details", file=sys.stderr)
+    # Check if server already running via socket
+    if is_server_running(socket_path):
+        print(f"Error: Server already running", file=sys.stderr)
+        print(f"Socket: {socket_path}", file=sys.stderr)
         print(f"Press Ctrl+C to stop the running server", file=sys.stderr)
         return 1
     
@@ -157,13 +124,10 @@ def cmd_start(args):
         package_dir = Path(entangledpdf.__file__).parent
         main_py = package_dir.parent / "main.py"
         
-        # If main.py is not next to the package, try to find it
         if not main_py.exists():
-            # When installed via pip -e, main.py should be in the same dir as entangledpdf
             main_py = package_dir.parent / "main.py"
         
         if not main_py.exists():
-            # Try current directory as fallback (for development mode)
             main_py = Path.cwd() / "main.py"
             
         if not main_py.exists():
@@ -189,7 +153,6 @@ def cmd_start(args):
         cmd.append("--http")
     
     if args.inverse_search_command:
-        # Escape % for argparse
         escaped_cmd = args.inverse_search_command.replace("%", "%%")
         cmd.extend(["--inverse-search-command", escaped_cmd])
     elif args.inverse_search_nvim:
@@ -220,6 +183,7 @@ def cmd_start(args):
     
     # Run server in foreground - this will block until Ctrl+C
     print(f"Starting EntangledPdf on port {port}...")
+    print(f"Unix socket: {socket_path}")
     print("Press Ctrl+C to stop the server\n")
     
     try:
@@ -234,19 +198,20 @@ def cmd_start(args):
 
 
 def cmd_status(args):
-    """Show server status."""
-    port = args.port or int(os.getenv("ENTANGLEDPDF_PORT", DEFAULT_PORT))
+    """Show server status via Unix socket."""
+    socket_path = args.socket_path or get_default_socket_path()
     
-    state = get_server_state(port)
+    state = get_server_state(socket_path)
     
     if state is None:
-        print(f"Server not running on port {port}")
+        print(f"Server not running (socket: {socket_path})")
         return 0
     
     # Show status
-    print(f"Server running on port {port}")
-    print(f"  Status: {'Ready' if state.get('pdf_loaded') else 'Waiting for PDF'})")
+    print(f"Server running")
+    print(f"  Status: {'Ready' if state.get('pdf_loaded') else 'Waiting for PDF'}")
     print(f"  PDF: {state.get('pdf_file', 'None')}")
+    print(f"  Socket: {socket_path}")
     
     if state.get('pdf_mtime'):
         import datetime
@@ -257,15 +222,9 @@ def cmd_status(args):
     if state.get('websocket_token'):
         print(f"\n  Authentication Token: {state['websocket_token']}")
     
-    # Check if HTTP or HTTPS
-    use_https = True
-    try:
-        requests.get(f"http://localhost:{port}/state", timeout=1)
-        use_https = False
-    except:
-        pass
-    
-    # Display URLs
+    # Display browser URLs
+    port = state.get('port', DEFAULT_PORT)
+    use_https = state.get('https', True)
     urls = format_status_urls(port, use_https)
     print("\n  Open the following URL in your browser and enter the authentication token:")
     for url, label in urls:
@@ -275,30 +234,15 @@ def cmd_status(args):
 
 
 def cmd_sync(args):
-    """Load PDF and optionally perform forward search."""
-    port = args.port or int(os.getenv("ENTANGLEDPDF_PORT", DEFAULT_PORT))
-    
-    # Check for API key from command line or environment variable
-    api_key = args.api_key or os.getenv("ENTANGLEDPDF_API_KEY")
-    
-    if not api_key:
-        print("Error: API key required.", file=sys.stderr)
-        print("Either:", file=sys.stderr)
-        print("  1. Set ENTANGLEDPDF_API_KEY environment variable", file=sys.stderr)
-        print("  2. Use --api-key flag", file=sys.stderr)
-        return 1
+    """Load PDF and optionally perform forward search via Unix socket."""
+    socket_path = args.socket_path or get_default_socket_path()
     
     try:
         # Load PDF
         if args.verbose:
             print(f"Loading PDF: {args.pdf_file}")
         
-        response = load_pdf(
-            args.pdf_file,
-            port,
-            api_key=api_key,
-            use_http=args.http
-        )
+        response = load_pdf(args.pdf_file, socket_path)
         
         if args.verbose:
             print(f"Loaded: {response.get('filename', args.pdf_file.name)}")
@@ -320,9 +264,7 @@ def cmd_sync(args):
                 column,
                 str(tex_file_path),
                 str(args.pdf_file),
-                port,
-                api_key=api_key,
-                use_http=args.http
+                socket_path
             )
             
             if args.verbose:
@@ -339,6 +281,8 @@ def cmd_sync(args):
         
     except FileNotFoundError as e:
         print(f"Error: {e}", file=sys.stderr)
+        if "socket" in str(e).lower():
+            print("Is the server running? Use: entangle-pdf start", file=sys.stderr)
         return 1
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
@@ -348,8 +292,8 @@ def cmd_sync(args):
 def cmd_generate_api_key(args) -> int:
     """Generate a secure API key for authentication.
     
-    Generates a cryptographically secure random API key suitable for
-    the ENTANGLEDPDF_API_KEY environment variable.
+    Note: API keys are only required for browser access. The CLI commands
+    (sync, status) use Unix socket authentication instead.
     
     Args:
         args: Parsed command line arguments
@@ -357,16 +301,14 @@ def cmd_generate_api_key(args) -> int:
     Returns:
         Exit code (0 for success)
     """
-    # Generate 32 bytes (256 bits) of randomness, hex-encoded = 64 characters
     api_key = secrets.token_hex(32)
     
     if args.shell:
-        # Output in shell export format for easy sourcing
         print(f'export ENTANGLEDPDF_API_KEY="{api_key}"')
         print("# Add the above line to your ~/.bashrc or ~/.zshrc", file=sys.stderr)
         print("# Then run: source ~/.bashrc", file=sys.stderr)
+        print("# Note: API keys are only needed for browser access", file=sys.stderr)
     else:
-        # Simple output
         print(api_key)
     
     return 0
@@ -389,6 +331,13 @@ def main():
         type=int,
         default=int(os.getenv("ENTANGLEDPDF_PORT", DEFAULT_PORT)),
         help=f"Server port (default: {DEFAULT_PORT} or ENTANGLEDPDF_PORT env var)"
+    )
+    
+    start_parser.add_argument(
+        "--socket-path",
+        type=Path,
+        default=None,
+        help="Path to Unix socket (default: $XDG_RUNTIME_DIR/entangledpdf/server.sock)"
     )
     
     inverse_group = start_parser.add_mutually_exclusive_group()
@@ -456,10 +405,10 @@ def main():
     status_parser = subparsers.add_parser("status", help="Show server status")
     
     status_parser.add_argument(
-        "--port",
-        type=int,
-        default=int(os.getenv("ENTANGLEDPDF_PORT", DEFAULT_PORT)),
-        help=f"Server port (default: {DEFAULT_PORT} or ENTANGLEDPDF_PORT env var)"
+        "--socket-path",
+        type=Path,
+        default=None,
+        help="Path to Unix socket (default: $XDG_RUNTIME_DIR/entangledpdf/server.sock)"
     )
     
     # generate-api-key command
@@ -487,21 +436,10 @@ def main():
     )
     
     sync_parser.add_argument(
-        "--port",
-        type=int,
-        default=int(os.getenv("ENTANGLEDPDF_PORT", DEFAULT_PORT)),
-        help=f"Server port (default: {DEFAULT_PORT} or ENTANGLEDPDF_PORT env var)"
-    )
-    
-    sync_parser.add_argument(
-        "--api-key",
-        help="API authentication key"
-    )
-    
-    sync_parser.add_argument(
-        "--http",
-        action="store_true",
-        help="Use HTTP instead of HTTPS"
+        "--socket-path",
+        type=Path,
+        default=None,
+        help="Path to Unix socket (default: $XDG_RUNTIME_DIR/entangledpdf/server.sock)"
     )
     
     sync_parser.add_argument(

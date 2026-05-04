@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from entangledpdf.config import get_settings
@@ -50,7 +50,8 @@ def validate_pdf_file(pdf_path: Path) -> tuple[bool, str]:
 @router.post("/api/load-pdf")
 async def load_pdf(
     data: dict,
-    x_api_key: Optional[str] = Header(None)
+    x_api_key: Optional[str] = Header(None),
+    request: Request = None
 ) -> JSONResponse:
     """Load a new PDF file dynamically.
     
@@ -58,12 +59,16 @@ async def load_pdf(
     to all connected WebSocket clients. Optionally configures inverse
     search command for Shift+Click to editor functionality.
     
+    When accessed via Unix socket transport, API key is not required
+    (filesystem permissions provide authentication).
+    
     Args:
         data: JSON payload with PDF path and optional inverse search config
             - pdf_path (str): Absolute or relative path to PDF file
             - inverse_search_command (str, optional): Editor command template
               with %{line} and %{file} placeholders (e.g., 'nvr --remote-silent +%{line} %{file}')
-        x_api_key: API key from X-API-Key header
+        x_api_key: API key from X-API-Key header (not required for Unix socket)
+        request: FastAPI request object (used to detect transport)
     
     Returns:
         JSONResponse: Success status with websocket_token if inverse search enabled
@@ -73,8 +78,14 @@ async def load_pdf(
     """
     settings = get_settings()
     
-    # Validate API key
-    if x_api_key != settings.api_key:
+    # Check if request came via Unix socket (skip API key check)
+    is_unix_socket = (
+        request is not None and 
+        getattr(request.state, "unix_socket", False)
+    )
+    
+    # Validate API key (skip for Unix socket transport)
+    if not is_unix_socket and x_api_key != settings.api_key:
         raise HTTPException(
             status_code=403,
             detail="Authentication failed. Ensure ENTANGLEDPDF_API_KEY is set and server was restarted."

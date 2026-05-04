@@ -1,133 +1,110 @@
 """Sync client library for EntangledPdf.
 
 This module provides utility functions for loading PDFs and performing
-forward search via SyncTeX. These functions are used by the 
-entangle-pdf sync CLI command.
+forward search via SyncTeX using Unix domain sockets for communication
+with the local server.
+
+No API key or SSL configuration is required - authentication is provided
+by filesystem permissions on the Unix socket (mode 0600).
 """
 
 import http.client
 import json
-import os
-import ssl
-import urllib.request
+import socket as socket_module
 from pathlib import Path
 from typing import Optional
 
-import urllib3
-from urllib3.exceptions import InsecureRequestWarning
-
-# Suppress SSL warnings for self-signed certificates
-urllib3.disable_warnings(InsecureRequestWarning)
-
-DEFAULT_PORT = 8431
+from entangledpdf.socket_path import get_socket_path
 
 
-def get_server_url(port: int = DEFAULT_PORT, use_http: bool = False) -> str:
-    """Get server base URL for given port and protocol.
+def get_default_socket_path() -> Path:
+    """Get the default Unix socket path for server communication.
     
-    Args:
-        port: Server port number
-        use_http: Use HTTP instead of HTTPS
-        
     Returns:
-        Server base URL string
+        Path to the Unix socket file
     """
-    protocol = "http" if use_http else "https"
-    return f"{protocol}://localhost:{port}"
+    return get_socket_path()
 
 
-def create_ssl_context() -> ssl.SSLContext:
-    """Create SSL context that allows self-signed certificates."""
-    context = ssl.create_default_context()
-    context.check_hostname = False
-    context.verify_mode = ssl.CERT_NONE
-    return context
+class UnixHTTPConnection(http.client.HTTPConnection):
+    """HTTP connection over Unix domain socket.
+    
+    Overrides the connect() method to use a Unix socket instead of TCP.
+    """
+    
+    def __init__(self, socket_path: str):
+        """Initialize connection to Unix socket.
+        
+        Args:
+            socket_path: Path to the Unix socket file
+        """
+        super().__init__("localhost")
+        self.socket_path = socket_path
+    
+    def connect(self) -> None:
+        """Connect to the Unix socket."""
+        self.sock = socket_module.socket(socket_module.AF_UNIX, socket_module.SOCK_STREAM)
+        self.sock.connect(self.socket_path)
 
 
 def send_request(
     method: str,
     path: str,
-    port: int,
-    data: Optional[dict] = None,
-    api_key: Optional[str] = None,
-    use_http: bool = False
+    socket_path: Path,
+    data: Optional[dict] = None
 ) -> dict:
-    """Send HTTP request to the server.
+    """Send HTTP request to the server via Unix socket.
     
     Args:
         method: HTTP method (GET, POST, etc.)
         path: Request path
-        port: Server port
+        socket_path: Path to Unix socket
         data: Optional JSON data to send
-        api_key: Optional API key for authentication
-        use_http: Use HTTP instead of HTTPS
         
     Returns:
         JSON response as dictionary
         
     Raises:
+        FileNotFoundError: If socket does not exist (server not running)
+        ConnectionRefusedError: If server is not accepting connections
         Exception: If request fails
     """
-    protocol = "http" if use_http else "https"
-    url = f"{protocol}://localhost:{port}{path}"
-    
-    # Build request
     headers = {"Content-Type": "application/json"}
-    if api_key:
-        headers["X-API-Key"] = api_key
+    body = json.dumps(data).encode("utf-8") if data else None
     
-    if data:
-        body = json.dumps(data).encode('utf-8')
-    else:
-        body = None
-    
-    request = urllib.request.Request(
-        url,
-        data=body,
-        headers=headers,
-        method=method
-    )
-    
-    # Create SSL context
-    if not use_http:
-        ssl_context = create_ssl_context()
-    else:
-        ssl_context = None
-    
-    # Send request
+    conn = UnixHTTPConnection(str(socket_path))
     try:
-        response = urllib.request.urlopen(
-            request,
-            context=ssl_context,
-            timeout=10
-        )
-        return json.loads(response.read().decode('utf-8'))
-    except urllib.error.HTTPError as e:
-        error_body = e.read().decode('utf-8')
-        if e.code == 403:
-            # Provide actionable error message for authentication failures
-            raise Exception(
-                f"Authentication failed (HTTP 403). "
-                f"Ensure ENTANGLEDPDF_API_KEY matches on both client and server. "
-                f"Restart server after setting the environment variable."
-            )
-        raise Exception(f"HTTP {e.code}: {error_body}")
+        conn.request(method, path, body=body, headers=headers)
+        response = conn.getresponse()
+        response_body = response.read().decode("utf-8")
+        
+        if response.status >= 400:
+            raise Exception(f"HTTP {response.status}: {response_body}")
+        
+        return json.loads(response_body)
+    except (FileNotFoundError, ConnectionRefusedError):
+        raise
     except Exception as e:
         raise Exception(f"Request failed: {e}")
+    finally:
+        conn.close()
 
 
-def load_pdf(pdf_path: Path, port: int, api_key: Optional[str] = None, use_http: bool = False) -> dict:
+def load_pdf(pdf_path: Path, socket_path: Optional[Path] = None) -> dict:
     """Load a PDF file onto the server.
     
     Args:
         pdf_path: Path to PDF file
-        port: Server port
-        api_key: Optional API key
-        use_http: Use HTTP instead of HTTPS
+        socket_path: Path to Unix socket (uses default if not specified)
         
     Returns:
         Server response
+        
+    Raises:
+        FileNotFoundError: If PDF file not found or server not running
     """
+    socket_path = socket_path or get_default_socket_path()
+    
     # Resolve to absolute path
     pdf_path = pdf_path.resolve()
     
@@ -136,14 +113,7 @@ def load_pdf(pdf_path: Path, port: int, api_key: Optional[str] = None, use_http:
     
     data = {"pdf_path": str(pdf_path)}
     
-    return send_request(
-        "POST",
-        "/api/load-pdf",
-        port,
-        data=data,
-        api_key=api_key,
-        use_http=use_http
-    )
+    return send_request("POST", "/api/load-pdf", socket_path, data)
 
 
 def forward_search(
@@ -151,9 +121,7 @@ def forward_search(
     column: int,
     tex_file: str,
     pdf_file: str,
-    port: int,
-    api_key: Optional[str] = None,
-    use_http: bool = False
+    socket_path: Optional[Path] = None
 ) -> dict:
     """Perform forward search via webhook.
 
@@ -162,14 +130,14 @@ def forward_search(
         column: Column number in source file
         tex_file: Path to TeX source file
         pdf_file: Path to PDF file (must match currently loaded PDF)
-        port: Server port
-        api_key: Optional API key
-        use_http: Use HTTP instead of HTTPS
+        socket_path: Path to Unix socket (uses default if not specified)
 
     Returns:
         Server response
     """
-    # Resolve PDF path to absolute (like load_pdf does)
+    socket_path = socket_path or get_default_socket_path()
+    
+    # Resolve PDF path to absolute
     pdf_path = Path(pdf_file).resolve()
     
     data = {
@@ -179,14 +147,24 @@ def forward_search(
         "pdf_file": str(pdf_path)
     }
 
-    return send_request(
-        "POST",
-        "/webhook/update",
-        port,
-        data=data,
-        api_key=api_key,
-        use_http=use_http
-    )
+    return send_request("POST", "/webhook/update", socket_path, data)
+
+
+def get_server_state(socket_path: Optional[Path] = None) -> Optional[dict]:
+    """Get current server state.
+    
+    Args:
+        socket_path: Path to Unix socket (uses default if not specified)
+        
+    Returns:
+        Server state dictionary, or None if server not running
+    """
+    socket_path = socket_path or get_default_socket_path()
+    
+    try:
+        return send_request("GET", "/state", socket_path)
+    except (FileNotFoundError, ConnectionRefusedError):
+        return None
 
 
 def parse_synctex_forward(value: str) -> tuple[int, int, str]:

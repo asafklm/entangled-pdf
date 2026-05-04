@@ -1,13 +1,17 @@
 """Main entry point for EntangledPdf.
 
-Initializes the FastAPI application, configures settings, and starts the server.
-Server can be started without a PDF file (PDF is loaded dynamically via API).
+Initializes the FastAPI applications, configures settings, and starts both servers:
+- Admin server on Unix domain socket (for CLI commands)
+- Browser server on TCP + HTTPS (for browser/WebSocket clients)
+
 Server runs in foreground mode (use Ctrl+C to stop).
 """
 
 import argparse
+import asyncio
 import logging
 import re
+import signal
 import socket
 import subprocess
 import sys
@@ -15,7 +19,6 @@ from pathlib import Path
 from typing import Optional
 
 import uvicorn
-from fastapi import FastAPI
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
@@ -23,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from entangledpdf.certs import get_cert_paths, validate_certificate
 from entangledpdf.config import init_settings, ConfigError
 from entangledpdf.logging_sanitizer import SensitiveDataFilter
-from entangledpdf.routes import auth, load_pdf, pdf, state, static_files, test_utils, view, webhook, websocket
+from entangledpdf.socket_path import get_socket_path, prepare_socket_path
 from entangledpdf.state import pdf_state
 from entangledpdf.websocket_monitor import monitor as ws_monitor
 
@@ -35,6 +38,76 @@ logging.basicConfig(
 )
 logging.getLogger().addFilter(SensitiveDataFilter())
 logger = logging.getLogger(__name__)
+
+
+async def run_servers(
+    socket_path: Path,
+    host: str,
+    port: int,
+    ssl_config: Optional[dict],
+    verbose: bool
+) -> None:
+    """Run both admin and browser servers concurrently.
+    
+    Args:
+        socket_path: Path to Unix socket for admin server
+        host: Host address for browser server
+        port: Port for browser server
+        ssl_config: SSL configuration dict or None for HTTP
+        verbose: Whether to enable verbose logging
+    """
+    # Admin server on Unix socket
+    admin_config = uvicorn.Config(
+        "entangledpdf.admin_app:app",
+        uds=str(socket_path),
+        loop="asyncio",
+        log_level="debug" if verbose else "warning",
+        access_log=verbose
+    )
+    
+    # Browser server on TCP
+    browser_kwargs = {}
+    if ssl_config:
+        browser_kwargs.update(ssl_config)
+    
+    browser_config = uvicorn.Config(
+        "entangledpdf.browser_app:app",
+        host=host,
+        port=port,
+        loop="asyncio",
+        log_level="info" if verbose else "warning",
+        access_log=verbose,
+        timeout_keep_alive=30,
+        **browser_kwargs
+    )
+    
+    admin_server = uvicorn.Server(admin_config)
+    browser_server = uvicorn.Server(browser_config)
+    
+    # Setup signal handlers for clean shutdown
+    def signal_handler(sig, frame):
+        logger.info(f"Received signal {sig}, shutting down...")
+        # Remove socket file
+        try:
+            socket_path.unlink(missing_ok=True)
+        except Exception as e:
+            logger.warning(f"Failed to remove socket file: {e}")
+        # Trigger server shutdown
+        admin_server.should_exit = True
+        browser_server.should_exit = True
+    
+    # Register signal handlers
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    logger.info(f"Starting admin server on Unix socket: {socket_path}")
+    logger.info(f"Starting browser server on {host}:{port}")
+    
+    # Run both servers concurrently
+    await asyncio.gather(
+        admin_server.serve(),
+        browser_server.serve()
+    )
 
 
 def validate_ssl_config(settings) -> Optional[dict]:
@@ -93,34 +166,6 @@ def validate_ssl_config(settings) -> Optional[dict]:
         )
     
     return {"ssl_keyfile": str(key_path), "ssl_certfile": str(cert_path)}
-
-
-def create_app() -> FastAPI:
-    """Create and configure the FastAPI application.
-    
-    Returns:
-        FastAPI: Configured application instance
-    """
-    app = FastAPI(
-        title="EntangledPdf",
-        description="Real-time PDF synchronization server with SyncTeX support",
-        version="1.0.0"
-    )
-    
-    # Include all routes
-    app.include_router(auth.router)
-    app.include_router(view.router)
-    app.include_router(pdf.router)
-    app.include_router(state.router)
-    app.include_router(webhook.router)
-    app.include_router(websocket.router)
-    app.include_router(load_pdf.router)
-    app.include_router(test_utils.router)
-    
-    # Setup static files
-    static_files.setup_static_files(app)
-    
-    return app
 
 
 def parse_args() -> argparse.Namespace:
@@ -365,6 +410,16 @@ def main() -> None:
     # Parse port
     port = args.port
     
+    # Get socket path
+    socket_path = get_socket_path()
+    
+    # Check if server already running via socket
+    try:
+        prepare_socket_path(socket_path)
+    except RuntimeError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    
     # Get inverse search command
     inverse_command = get_inverse_search_command(args)
     
@@ -431,6 +486,7 @@ def main() -> None:
         pdf_state.inverse_search_enabled = False
     
     logger.info(f"Starting EntangledPdf on {settings.host}:{settings.port}")
+    logger.info(f"Unix socket: {socket_path}")
     logger.info("No PDF loaded - waiting for entangle-pdf sync to load a PDF")
     
     # Print startup banner to stdout (visible before daemonization)
@@ -448,6 +504,7 @@ def main() -> None:
             prefix = "  " if i == 0 else "    "
             print(f"{prefix}{url}  ({label})")
         print(f"Token:  {pdf_state.websocket_token}")
+        print(f"Socket: {socket_path}")
         print(f"{'='*60}")
         print("Copy the token to your browser to enable inverse search")
         print(f"{'='*60}\n")
@@ -461,6 +518,7 @@ def main() -> None:
             prefix = "  " if i == 0 else "    "
             print(f"{prefix}{url}  ({label})")
         print(f"Token:  {pdf_state.websocket_token}")
+        print(f"Socket: {socket_path}")
         print(f"{'='*60}")
         print("Copy the token to your browser")
         print(f"{'='*60}\n")
@@ -473,19 +531,23 @@ def main() -> None:
         for i, (url, label) in enumerate(urls):
             prefix = "  " if i == 0 else "    "
             print(f"{prefix}{url}  ({label})")
+        print(f"Socket: {socket_path}")
         print(f"{'='*60}\n")
         logger.warning("Running in HTTP mode - inverse search is disabled for security")
     
-    # Create app and start server
-    app = create_app()
-    uvicorn.run(
-        app,
-        host=settings.host,
-        port=settings.port,
-        log_level="info" if args.verbose else "warning",
-        timeout_keep_alive=30,  # Send TCP keepalive every 30 seconds
-        **ssl_config if ssl_config else {}
-    )
+    # Run both servers
+    try:
+        asyncio.run(run_servers(
+            socket_path=socket_path,
+            host=settings.host,
+            port=settings.port,
+            ssl_config=ssl_config,
+            verbose=args.verbose
+        ))
+    except KeyboardInterrupt:
+        # Socket cleanup handled by signal handler
+        print("\nServer stopped by user")
+        sys.exit(0)
 
 
 if __name__ == "__main__":
