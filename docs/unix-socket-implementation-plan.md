@@ -1,8 +1,9 @@
 # Unix Socket Implementation Plan for Editor→Server Communication
 
-**Status**: Draft  
+**Status**: Implementation Complete  
 **Branch**: `feature/unix-socket-cli`  
-**Date**: 2026-05-04
+**Date**: 2026-05-04  
+**Last Updated**: 2026-05-04
 
 ## Overview
 
@@ -475,20 +476,30 @@ entangle-pdf sync --socket-path /tmp/custom.sock document.pdf
 
 ## Implementation Checklist
 
-- [ ] Create `socket_path.py` with path resolution and stale socket detection
-- [ ] Create `admin_app.py` with admin-only routes
-- [ ] Create `browser_app.py` with browser-only routes (refactored from `main.py`)
-- [ ] Update `main.py` with dual-server runner and signal handlers
-- [ ] Rewrite `sync.py` with `UnixHTTPConnection` (remove TCP/HTTPS/API key)
-- [ ] Update `cli.py`:
-  - [ ] `cmd_start`: Socket-based "already running" check
-  - [ ] `cmd_sync`: Unix socket communication, remove `--api-key`, `--http`, `--port`
-  - [ ] `cmd_status`: Unix socket communication, remove `--port`
+### Core Implementation (Complete)
+
+- [x] Create `socket_path.py` with path resolution and stale socket detection
+- [x] Create `admin_app.py` with admin-only routes
+- [x] Create `browser_app.py` with browser-only routes (refactored from `main.py`)
+- [x] Update `main.py` with dual-server runner and signal handlers
+- [x] Rewrite `sync.py` with `UnixHTTPConnection` (remove TCP/HTTPS/API key)
+- [x] Update `cli.py`:
+  - [x] `cmd_start`: Socket-based "already running" check
+  - [x] `cmd_sync`: Unix socket communication, remove `--api-key`, `--http`, `--port`
+  - [x] `cmd_status`: Unix socket communication, remove `--port`
+- [x] Update routes to skip API key for Unix socket transport:
+  - [x] `load_pdf.py`
+  - [x] `webhook.py`
+- [x] Update `state.py` to include port in response
+
+### Remaining Work
+
 - [ ] Update tests:
   - [ ] Unit tests for socket path management
-  - [ ] Update sync client utils tests
+  - [ ] Update sync client utils tests (remove TCP/HTTPS tests)
   - [ ] Update E2E tests for socket-based communication
 - [ ] Update documentation (AGENTS.md, README.md)
+- [ ] Manual testing of full workflow
 
 ## Open Questions
 
