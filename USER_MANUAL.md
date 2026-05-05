@@ -104,9 +104,11 @@ To enable forward search (editor → PDF) and inverse search (PDF → editor), y
 
 ## Setup
 
-### 1. API Key Configuration (Required)
+### 1. API Key Configuration (Required for Browser Access)
 
-EntangledPdf requires an API key for authentication between the server and client.
+EntangledPdf requires an API key for browser access to the PDF viewer. The CLI commands
+(`entangle-pdf sync`, `status`) do **not** require an API key—they use Unix socket
+authentication instead.
 
 **Generate a secure key:**
 
@@ -124,6 +126,12 @@ source ~/.bashrc
 ```
 
 > **Security Note:** Use a long, random key in shared environments. A simple password is acceptable for personal use on a single machine.
+> 
+> **Note:** The API key is only required for:
+> - Browser authentication (viewing PDFs)
+> - External tools accessing the TCP/HTTPS endpoints
+> 
+> CLI commands on the same machine use Unix socket permissions (socket mode 0600) for authentication.
 
 **Verify the key is set:**
 
@@ -264,14 +272,16 @@ entangle-pdf sync document.pdf
 entangle-pdf sync document.pdf 42:5:chapter.tex
 ```
 
-**Custom port:**
+**Custom socket path (rarely needed):**
 ```bash
-entangle-pdf sync document.pdf --port 9000
+entangle-pdf sync --socket-path /tmp/custom.sock document.pdf
 ```
 
 **Using VimTeX:**
 - Press `<leader>lv` to view PDF and jump to cursor position
 - Press `<leader>ll` to compile LaTeX document
+
+> **Note:** No API key is required for `entangle-pdf sync`—it uses Unix socket authentication automatically.
 
 ### Connection Status Button
 
@@ -410,7 +420,7 @@ entangle-pdf sync your-document.pdf
 
 ### Authentication Failed Errors
 
-**Problem:** "Authentication failed (HTTP 403)" when loading PDFs.
+**Problem:** "Authentication failed (HTTP 403)" when viewing PDFs in browser.
 
 **Causes & Solutions:**
 
@@ -420,15 +430,21 @@ entangle-pdf sync your-document.pdf
    # If empty, set it: export ENTANGLEDPDF_API_KEY="your-key"
    ```
 
-2. **Mismatched keys:** Server and client must use the same key
-   - Check server: `entangle-pdf status`
-   - Check client: `echo $ENTANGLEDPDF_API_KEY`
-
-3. **Server not restarted:** After setting the environment variable:
+2. **Server not restarted:** After setting the environment variable:
    ```bash
-   entangle-pdf stop
+   # Stop any running server
+   pkill -f "entangle-pdf"
+   # Restart
    entangle-pdf start --inverse-search-nvim
    ```
+
+> **Note:** CLI commands (`entangle-pdf sync`, `status`) do **not** require the API key.
+> They use Unix socket authentication. If you're getting authentication errors from
+> CLI commands, check that you own the socket file:
+> ```bash
+> ls -la $XDG_RUNTIME_DIR/entangledpdf/server.sock
+> # Should show your username as owner
+> ```
 
 ### SSL Certificate Warnings
 
@@ -541,6 +557,22 @@ Start separate servers on different ports for each project.
 
 Send PDF updates programmatically:
 
+**Using curl with Unix socket (recommended for local scripts):**
+```bash
+curl --unix-socket /run/user/$(id -u)/entangledpdf/server.sock \
+  -X POST http://localhost/webhook/update \
+  -H "Content-Type: application/json" \
+  -d '{"page": 2, "y": 1000}'
+```
+
+**Using curl with TCP (requires API key):**
+```bash
+curl -X POST http://localhost:8431/webhook/update \
+  -H "X-API-Key: your-secret-key" \
+  -H "Content-Type: application/json" \
+  -d '{"page": 2, "y": 1000}'
+```
+
 **Using httpie:**
 ```bash
 http POST localhost:8431/webhook/update \
@@ -549,33 +581,37 @@ http POST localhost:8431/webhook/update \
   y:=1000
 ```
 
-**Using curl:**
-```bash
-curl -X POST http://localhost:8431/webhook/update \
-  -H "X-API-Key: your-secret-key" \
-  -H "Content-Type: application/json" \
-  -d '{"page": 2, "y": 1000}'
-```
-
-**Using Python:**
+**Using Python (Unix socket):**
 ```python
-import requests
+import http.client
+import json
+import socket
 
-response = requests.post(
-    "http://localhost:8431/webhook/update",
-    headers={"X-API-Key": "your-secret-key"},
-    json={"page": 2, "y": 1000}
+# Connect via Unix socket
+sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+sock.connect("/run/user/1000/entangledpdf/server.sock")
+
+conn = http.client.HTTPConnection("localhost")
+conn.sock = sock
+
+conn.request(
+    "POST", "/webhook/update",
+    body=json.dumps({"page": 2, "y": 1000}),
+    headers={"Content-Type": "application/json"}
 )
+response = conn.getresponse()
 ```
 
 ### Environment Variables Reference
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `ENTANGLEDPDF_PORT` | 8431 | Server port |
-| `ENTANGLEDPDF_API_KEY` | (required) | API key for authentication |
-| `NVIM_LISTEN_ADDRESS` | (none) | Neovim socket path |
+| `ENTANGLEDPDF_PORT` | 8431 | Server port (browser access) |
+| `ENTANGLEDPDF_API_KEY` | (required) | API key for browser authentication |
+| `ENTANGLEDPDF_SOCKET` | `$XDG_RUNTIME_DIR/entangledpdf/server.sock` | Unix socket path for CLI |
+| `NVIM_LISTEN_ADDRESS` | (none) | Neovim socket path (for inverse search) |
 | `ENTANGLEDPDF_TEST_PORT` | 18080 | Port for E2E tests |
+| `ENTANGLEDPDF_TEST_SOCKET` | `/tmp/entangledpdf_test.sock` | Socket path for E2E tests |
 
 ---
 
@@ -641,7 +677,11 @@ Messages are JSON objects with an `action` field.
 
 #### GET /state
 
-Returns current PDF state (public, no authentication required).
+Returns current PDF state.
+
+**Authentication:**
+- **TCP/HTTPS**: No authentication required
+- **Unix socket**: No authentication (filesystem permissions)
 
 **Response:**
 ```json
@@ -664,7 +704,11 @@ Returns current PDF state (public, no authentication required).
 
 Load a new PDF file.
 
-**Headers:**
+**Authentication:**
+- **TCP/HTTPS**: `X-API-Key` header required
+- **Unix socket**: No authentication (filesystem permissions)
+
+**Headers (TCP/HTTPS only):**
 - `X-API-Key`: Your API key
 - `Content-Type: application/json`
 
@@ -689,7 +733,11 @@ Load a new PDF file.
 
 Send forward search update.
 
-**Headers:**
+**Authentication:**
+- **TCP/HTTPS**: `X-API-Key` header required
+- **Unix socket**: No authentication (filesystem permissions)
+
+**Headers (TCP/HTTPS only):**
 - `X-API-Key`: Your API key
 - `Content-Type: application/json`
 
@@ -756,6 +804,19 @@ entangle-pdf start --http
 ### Q: Does EntangledPdf support multiple simultaneous PDFs?
 
 **A:** One PDF at a time per server instance. Start multiple servers on different ports for multiple PDFs.
+
+### Q: Why doesn't `entangle-pdf sync` require an API key?
+
+**A:** CLI commands use Unix domain sockets for communication instead of TCP. The socket file has permissions mode 0600, meaning only the owner can connect. This provides authentication via filesystem permissions, so no API key is needed for local CLI commands. The API key is only required for browser access (TCP/HTTPS endpoints).
+
+### Q: Where is the Unix socket file located?
+
+**A:** Default locations (in order of preference):
+1. `$ENTANGLEDPDF_SOCKET` environment variable (if set)
+2. `$XDG_RUNTIME_DIR/entangledpdf/server.sock` (typically `/run/user/<uid>/entangledpdf/server.sock`)
+3. `$HOME/.local/run/entangledpdf/server.sock` (fallback)
+
+Use `entangle-pdf status` to see the actual socket path being used.
 
 ### Q: What happens if I edit the PDF while viewing?
 
