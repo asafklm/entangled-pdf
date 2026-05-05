@@ -54,11 +54,14 @@ See [Debugging Process for Complex Issues](#debugging-process-for-complex-issues
 # Start server on custom port
 ./bin/entangle-pdf start --port 9000
 
-# Check server status (also shows authentication token)
+# Check server status (shows socket path and authentication token)
 ./bin/entangle-pdf status
 
-# Load PDF with forward search
+# Load PDF with forward search (no API key needed - uses Unix socket)
 ./bin/entangle-pdf sync document.pdf 42:5:chapter.tex
+
+# Load PDF with custom socket path (rarely needed)
+./bin/entangle-pdf sync --socket-path /tmp/custom.sock document.pdf
 
 # Run server directly (foreground mode for debugging)
 ./bin/python main.py --inverse-search-nvim --foreground
@@ -70,9 +73,11 @@ See [Debugging Process for Complex Issues](#debugging-process-for-complex-issues
 ./bin/python -m pytest tests/test_sync_unit.py -v                    # sync.py unit tests
 ./bin/python -m pytest tests/test_sync_e2e_subprocess.py -v          # E2E tests with real server
 ./bin/python -m pytest tests/test_sync_client_utils.py -v           # Client utility tests
+./bin/python -m pytest tests/test_socket_path.py -v                 # Unix socket tests
 
 # E2E test configuration (optional)
 export ENTANGLEDPDF_TEST_PORT=18080    # Default: 18080
+export ENTANGLEDPDF_TEST_SOCKET=/tmp/test.sock  # Default: /tmp/entangledpdf_test.sock
 ./bin/python -m pytest tests/test_sync_e2e_subprocess.py -v
 
 # TypeScript/JavaScript
@@ -83,8 +88,15 @@ npm test -- --watch # Watch mode
 npm run test:e2e     # Run Playwright E2E tests
 npm run test:e2e:ui  # Run E2E tests with UI
 
-# Webhook testing
+# Webhook testing via Unix socket (CLI commands)
+# CLI commands use Unix socket automatically - no curl needed
+
+# Webhook testing via TCP (browser/external tools)
 http POST localhost:8001/webhook/update X-API-Key:super-secret-123 page:=2 y:=221.19
+
+# Or using curl with Unix socket:
+curl --unix-socket /run/user/$(id - u)/entangledpdf/server.sock \
+     http://localhost/state
 ```
 
 ## IMPORTANT: Authentication Token Display
@@ -100,6 +112,17 @@ Server running on port 8431
 ```
 
 The token is displayed by the server on startup and can also be retrieved via `entangle-pdf status`.
+
+### Unix Socket for CLI Commands
+
+The CLI commands (`entangle-pdf sync`, `status`) communicate with the server via a **Unix domain socket** instead of TCP. This provides:
+- **No API key required** for local CLI commands (filesystem permissions authenticate)
+- **No SSL certificate validation issues** (socket transport is inherently secure)
+- **Better performance** (no TCP handshake overhead)
+
+**Default socket path**: `$XDG_RUNTIME_DIR/entangledpdf/server.sock` (typically `/run/user/<uid>/entangledpdf/server.sock`)
+
+**Override with**: `ENTANGLEDPDF_SOCKET` environment variable or `--socket-path` flag
 
 ## Python Code Style
 
@@ -220,7 +243,7 @@ class ConnectionManager:
 
 ```
 ./
-├── main.py                    # Server entry point
+├── main.py                    # Server entry point (dual transport)
 ├── bin/
 │   └── entangle-pdf            # Server lifecycle management (start/stop/status/sync)
 ├── entangledpdf/
@@ -228,9 +251,13 @@ class ConnectionManager:
 │   ├── connection_manager.py   # WebSocket connections
 │   ├── logging_config.py       # XDG-compliant logging setup
 │   ├── state.py                # PDF state tracking (includes token generation)
+│   ├── socket_path.py          # Unix socket filesystem management
+│   ├── admin_app.py            # FastAPI app for Unix socket (CLI commands)
+│   ├── browser_app.py          # FastAPI app for TCP/HTTPS (browser)
 │   └── routes/                 # API endpoints
 │       ├── auth.py             # Token authentication endpoint
-│       ├── load_pdf.py         # PDF loading API
+│       ├── load_pdf.py         # PDF loading API (skips auth for Unix socket)
+│       ├── webhook.py          # SyncTeX webhook (skips auth for Unix socket)
 │       ├── view.py             # HTML viewer with auth check
 │       ├── websocket.py        # WebSocket with token validation
 │       └── ...
@@ -248,6 +275,7 @@ class ConnectionManager:
 │   └── test-pdf2.synctex.gz    # SyncTeX data for second PDF
 ├── tests/
 │   ├── test_inverse_search.py  # Inverse search tests
+│   ├── test_socket_path.py     # Unix socket tests
 │   └── ...
 ```
 
@@ -255,8 +283,13 @@ class ConnectionManager:
 
 - Never hardcode secrets (use env vars: `ENTANGLEDPDF_API_KEY`)
 - Validate all input data
-- Use X-API-Key pattern for authentication
+- Use X-API-Key pattern for authentication (browser-facing endpoints only)
 - Escape HTML template variables
+- **Unix Socket Security**:
+  - CLI commands use Unix domain socket (filesystem permissions authenticate)
+  - Socket mode 0600 (only owner can connect)
+  - Directory mode 0700 (only owner can access)
+  - No API key required for local CLI commands
 - **Inverse Search Security**: 
   - Only enabled with HTTPS/WSS (HTTP mode disables it)
   - Token-based auth (Jupyter-style) required for WebSocket connections
