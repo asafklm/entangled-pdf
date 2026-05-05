@@ -1,264 +1,230 @@
 """Unit tests for entangledpdf/sync.py client functions.
 
 Tests the entangle-pdf sync CLI client functions without requiring a running server.
-Uses mocking to verify correct HTTP requests are constructed.
+Uses mocking to verify correct HTTP requests are constructed over Unix sockets.
 """
 
 import json
-import ssl
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-from urllib.error import HTTPError
 
 import pytest
 
 from entangledpdf.sync import (
-    create_ssl_context,
     forward_search,
     load_pdf,
     parse_synctex_forward,
     send_request,
+    UnixHTTPConnection,
+    get_default_socket_path,
 )
 from entangledpdf.cli import main
 
 
-class TestCreateSslContext:
-    """Test SSL context creation for self-signed certificates."""
+class TestUnixHTTPConnection:
+    """Test Unix domain socket HTTP connection."""
 
-    def test_creates_context_with_cert_none_verification(self):
-        """Test that SSL context allows self-signed certificates."""
-        context = create_ssl_context()
-        assert isinstance(context, ssl.SSLContext)
-        assert context.check_hostname is False
-        assert context.verify_mode == ssl.CERT_NONE
+    def test_connection_creation(self, tmp_path):
+        """Test that UnixHTTPConnection initializes with socket path."""
+        socket_path = str(tmp_path / "test.sock")
+        conn = UnixHTTPConnection(socket_path)
+        assert conn.socket_path == socket_path
 
 
 class TestSendRequest:
-    """Test HTTP/HTTPS request sending."""
+    """Test HTTP request sending over Unix socket."""
 
-    def test_send_request_with_https(self):
-        """Test sending request over HTTPS."""
+    def test_send_request_get(self, tmp_path):
+        """Test sending GET request over Unix socket."""
+        socket_path = tmp_path / "test.sock"
+        
+        # Create a mock socket and response
         mock_response = MagicMock()
+        mock_response.status = 200
         mock_response.read.return_value = b'{"status": "success"}'
+        
+        with patch('http.client.HTTPResponse', return_value=mock_response):
+            with patch.object(UnixHTTPConnection, 'connect') as mock_connect:
+                with patch.object(UnixHTTPConnection, 'request') as mock_request:
+                    with patch.object(UnixHTTPConnection, 'getresponse', return_value=mock_response):
+                        result = send_request("GET", "/test", socket_path)
+                        
+                        assert result == {"status": "success"}
+                        mock_request.assert_called_once()
+                        call_args = mock_request.call_args
+                        assert call_args[0][0] == "GET"
+                        assert call_args[0][1] == "/test"
 
-        with patch('urllib.request.urlopen', return_value=mock_response) as mock_urlopen:
-            result = send_request("GET", "/test", 8431)
-
-            assert result == {"status": "success"}
-            mock_urlopen.assert_called_once()
-            call_args = mock_urlopen.call_args
-            request = call_args[0][0]
-            assert request.full_url == "https://localhost:8431/test"
-
-    def test_send_request_with_http(self):
-        """Test sending request over HTTP."""
-        mock_response = MagicMock()
-        mock_response.read.return_value = b'{"status": "ok"}'
-
-        with patch('urllib.request.urlopen', return_value=mock_response) as mock_urlopen:
-            result = send_request("GET", "/api", 8080, use_http=True)
-
-            assert result == {"status": "ok"}
-            call_args = mock_urlopen.call_args
-            request = call_args[0][0]
-            assert request.full_url == "http://localhost:8080/api"
-
-    def test_send_request_with_api_key(self):
-        """Test that API key is added to headers."""
-        mock_response = MagicMock()
-        mock_response.read.return_value = b'{}'
-
-        with patch('urllib.request.urlopen', return_value=mock_response) as mock_urlopen:
-            send_request("GET", "/test", 8431, api_key="secret123")
-
-            call_args = mock_urlopen.call_args
-            request = call_args[0][0]
-            assert request.headers["X-api-key"] == "secret123"
-
-    def test_send_request_with_json_data(self):
+    def test_send_request_with_json_data(self, tmp_path):
         """Test sending JSON data in request body."""
-        mock_response = MagicMock()
-        mock_response.read.return_value = b'{"received": true}'
+        socket_path = tmp_path / "test.sock"
         test_data = {"pdf_path": "/path/to/file.pdf"}
-
-        with patch('urllib.request.urlopen', return_value=mock_response) as mock_urlopen:
-            result = send_request("POST", "/api/load-pdf", 8431, data=test_data)
-
-            assert result == {"received": True}
-            call_args = mock_urlopen.call_args
-            request = call_args[0][0]
-            assert request.data == json.dumps(test_data).encode('utf-8')
-            assert request.headers["Content-type"] == "application/json"
-
-    def test_send_request_authentication_error(self):
-        """Test handling of 403 authentication error."""
-        # Create a proper mock HTTPError
-        def mock_read():
-            return b'{"detail": "Unauthorized"}'
         
-        mock_error = HTTPError(
-            url='https://localhost:8431/test',
-            code=403,
-            msg='Forbidden',
-            hdrs={},
-            fp=None
-        )
-        mock_error.read = mock_read
-
-        with patch('urllib.request.urlopen', side_effect=mock_error):
-            with pytest.raises(Exception) as exc_info:
-                send_request("GET", "/test", 8431)
-
-            assert "Authentication failed" in str(exc_info.value)
-            assert "ENTANGLEDPDF_API_KEY" in str(exc_info.value)
-
-    def test_send_request_other_http_error(self):
-        """Test handling of other HTTP errors."""
-        # Create a proper mock HTTPError
-        def mock_read():
-            return b'{"detail": "Server error"}'
+        mock_response = MagicMock()
+        mock_response.status = 200
+        mock_response.read.return_value = b'{"received": true}'
         
-        mock_error = HTTPError(
-            url='https://localhost:8431/test',
-            code=500,
-            msg='Internal Server Error',
-            hdrs={},
-            fp=None
-        )
-        mock_error.read = mock_read
+        with patch.object(UnixHTTPConnection, 'connect'):
+            with patch.object(UnixHTTPConnection, 'request') as mock_request:
+                with patch.object(UnixHTTPConnection, 'getresponse', return_value=mock_response):
+                    result = send_request("POST", "/api/load-pdf", socket_path, data=test_data)
+                    
+                    assert result == {"received": True}
+                    mock_request.assert_called_once()
+                    call_args = mock_request.call_args
+                    # Check method, path, body, headers
+                    assert call_args[0][0] == "POST"
+                    assert call_args[0][1] == "/api/load-pdf"
+                    assert json.loads(call_args[1]['body']) == test_data
+                    assert call_args[1]['headers']["Content-Type"] == "application/json"
 
-        with patch('urllib.request.urlopen', side_effect=mock_error):
-            with pytest.raises(Exception) as exc_info:
-                send_request("GET", "/test", 8431)
+    def test_send_request_http_error(self, tmp_path):
+        """Test handling of HTTP errors."""
+        socket_path = tmp_path / "test.sock"
+        
+        mock_response = MagicMock()
+        mock_response.status = 500
+        mock_response.read.return_value = b'Server error'
+        
+        with patch.object(UnixHTTPConnection, 'connect'):
+            with patch.object(UnixHTTPConnection, 'request'):
+                with patch.object(UnixHTTPConnection, 'getresponse', return_value=mock_response):
+                    with pytest.raises(Exception) as exc_info:
+                        send_request("GET", "/test", socket_path)
+                    
+                    assert "HTTP 500" in str(exc_info.value)
 
-            assert "HTTP 500" in str(exc_info.value)
 
+class TestLoadPdf:
+    """Test PDF loading functionality."""
 
-class TestLoadPdfFieldName:
-    """Test that load_pdf sends correct field names to server."""
-
-    def test_load_pdf_sends_pdf_path_not_pdf_file(self, tmp_path):
-        """Verify load_pdf sends 'pdf_path' field, not 'pdf_file'."""
-        # Create a temporary PDF file
+    def test_load_pdf_sends_correct_data(self, tmp_path):
+        """Verify load_pdf sends 'pdf_path' field."""
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_text("dummy pdf content")
-
+        socket_path = tmp_path / "test.sock"
+        
         with patch('entangledpdf.sync.send_request') as mock_send:
             mock_send.return_value = {"status": "success"}
-
-            # Call load_pdf
-            load_pdf(pdf_file, port=8431, api_key="test-key")
-
-            # Verify send_request was called with correct field name
+            
+            load_pdf(pdf_file, socket_path)
+            
             mock_send.assert_called_once()
-            call_kwargs = mock_send.call_args[1] if mock_send.call_args[1] else mock_send.call_args.kwargs
-
-            # The data parameter should contain 'pdf_path', not 'pdf_file'
-            data = call_kwargs.get('data')
-            assert data is not None, "data parameter should be passed to send_request"
-            assert 'pdf_path' in data, \
-                f"load_pdf should send 'pdf_path' field, got: {list(data.keys())}"
-            assert 'pdf_file' not in data, \
-                f"load_pdf should NOT send 'pdf_file' field, got: {list(data.keys())}"
-            assert data['pdf_path'] == str(pdf_file)
+            call_args = mock_send.call_args
+            # call_args[0] is positional args, call_args[1] is keyword args
+            if call_args[0]:
+                # Positional args: (method, path, socket_path, data)
+                assert call_args[0][0] == "POST"
+                assert call_args[0][1] == "/api/load-pdf"
+                assert call_args[0][2] == socket_path
+                data = call_args[0][3] if len(call_args[0]) > 3 else None
+            else:
+                # Keyword args
+                kwargs = call_args[1]
+                assert kwargs.get('method') == "POST"
+                assert kwargs.get('path') == "/api/load-pdf"
+                assert kwargs.get('socket_path') == socket_path
+                data = kwargs.get('data')
+            
+            assert data is not None
+            assert 'pdf_path' in data
+            assert data['pdf_path'] == str(pdf_file.resolve())
 
     def test_load_pdf_resolves_relative_path(self, tmp_path):
         """Test that load_pdf resolves relative paths to absolute."""
-        # Create a temporary PDF file
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_text("dummy pdf content")
+        socket_path = tmp_path / "test.sock"
         rel_path = Path("test.pdf")
-
-        with patch('entangledpdf.sync.send_request') as mock_send:
-            mock_send.return_value = {"status": "success"}
-
-            # Change to temp directory and use relative path
-            import os
-            original_cwd = os.getcwd()
-            try:
-                os.chdir(tmp_path)
-                load_pdf(rel_path, port=8431, api_key="test-key")
-
-                # Verify the path was resolved to absolute
-                call_kwargs = mock_send.call_args[1] if mock_send.call_args[1] else mock_send.call_args.kwargs
-                data = call_kwargs.get('data')
+        
+        import os
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(tmp_path)
+            
+            with patch('entangledpdf.sync.send_request') as mock_send:
+                mock_send.return_value = {"status": "success"}
+                load_pdf(rel_path, socket_path)
+                
+                call_args = mock_send.call_args
+                # Get data from positional or keyword args
+                if call_args[0] and len(call_args[0]) > 3:
+                    data = call_args[0][3]
+                else:
+                    data = call_args[1].get('data') if call_args[1] else None
+                
+                assert data is not None
                 sent_path = Path(data['pdf_path'])
-                assert sent_path.is_absolute(), f"Path should be absolute, got: {sent_path}"
+                assert sent_path.is_absolute()
                 assert sent_path == pdf_file.resolve()
-            finally:
-                os.chdir(original_cwd)
+        finally:
+            os.chdir(original_cwd)
 
     def test_load_pdf_raises_file_not_found(self, tmp_path):
         """Test that load_pdf raises FileNotFoundError for nonexistent file."""
         nonexistent = tmp_path / "nonexistent.pdf"
-
+        socket_path = tmp_path / "test.sock"
+        
         with pytest.raises(FileNotFoundError) as exc_info:
-            load_pdf(nonexistent, port=8431)
-
+            load_pdf(nonexistent, socket_path)
+        
         assert str(nonexistent) in str(exc_info.value)
 
-
-class TestLoadPdfUsesCorrectEndpoint:
-    """Test that load_pdf calls the correct endpoint."""
-
-    def test_load_pdf_uses_correct_endpoint_and_method(self, tmp_path):
-        """Verify load_pdf uses POST /api/load-pdf."""
+    def test_load_pdf_uses_default_socket_path(self, tmp_path):
+        """Test that load_pdf uses default socket path when not specified."""
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_text("dummy pdf content")
-
+        
         with patch('entangledpdf.sync.send_request') as mock_send:
             mock_send.return_value = {"status": "success"}
-
-            load_pdf(pdf_file, port=8431, api_key="test-key")
-
-            mock_send.assert_called_once()
-            call_args = mock_send.call_args
-            positional_args = call_args[0]
+            load_pdf(pdf_file)
             
-            # Check positional arguments
-            assert positional_args[0] == "POST", f"Expected POST, got: {positional_args[0]}"
-            assert positional_args[1] == "/api/load-pdf", f"Expected /api/load-pdf, got: {positional_args[1]}"
-            assert positional_args[2] == 8431, f"Expected port 8431, got: {positional_args[2]}"
+            call_args = mock_send.call_args
+            socket_path_arg = call_args[0][2]
+            assert socket_path_arg == get_default_socket_path()
 
 
 class TestForwardSearch:
     """Test forward search functionality."""
 
-    def test_forward_search_sends_correct_data(self):
-        """Test that forward_search sends correct data structure with all required fields."""
+    def test_forward_search_sends_correct_data(self, tmp_path):
+        """Test that forward_search sends correct data structure."""
+        socket_path = tmp_path / "test.sock"
+        
         with patch('entangledpdf.sync.send_request') as mock_send:
             mock_send.return_value = {"status": "success"}
-
+            
             forward_search(
                 line=42,
                 column=5,
                 tex_file="chapter.tex",
                 pdf_file="/path/to/document.pdf",
-                port=8431,
-                api_key="test-key"
+                socket_path=socket_path
             )
-
+            
             mock_send.assert_called_once()
-            call_kwargs = mock_send.call_args[1] if mock_send.call_args[1] else mock_send.call_args.kwargs
-
-            # Check the data sent has all required fields
-            data = call_kwargs.get('data')
+            call_args = mock_send.call_args
+            # Get data from positional or keyword args
+            if call_args[0] and len(call_args[0]) > 3:
+                data = call_args[0][3]
+            else:
+                data = call_args[1].get('data') if call_args[1] else None
+            
             assert data is not None
-            assert data["line"] == 42, f"Expected line=42, got {data.get('line')}"
-            assert data["col"] == 5, f"Expected col=5, got {data.get('col')}"
-            assert data["tex_file"] == "chapter.tex", f"Expected tex_file='chapter.tex', got {data.get('tex_file')}"
-            assert data["pdf_file"] == "/path/to/document.pdf", f"Expected pdf_file='/path/to/document.pdf', got {data.get('pdf_file')}"
+            assert data["line"] == 42
+            assert data["col"] == 5
+            assert data["tex_file"] == "chapter.tex"
 
-    def test_forward_search_uses_webhook_endpoint(self):
-        """Test that forward_search uses /webhook/update endpoint."""
+    def test_forward_search_uses_default_socket_path(self, tmp_path):
+        """Test that forward_search uses default socket path when not specified."""
         with patch('entangledpdf.sync.send_request') as mock_send:
             mock_send.return_value = {"status": "success"}
-
-            forward_search(10, 0, "main.tex", "/path/to/file.pdf", 8431)
-
+            
+            forward_search(10, 0, "main.tex", "/path/to/file.pdf")
+            
             call_args = mock_send.call_args
-            positional_args = call_args[0]
-            assert positional_args[1] == "/webhook/update"
+            socket_path_arg = call_args[0][2]
+            assert socket_path_arg == get_default_socket_path()
 
 
 class TestParseSynctexForward:
@@ -275,7 +241,7 @@ class TestParseSynctexForward:
         assert result == (1, 0, "main.tex")
 
     def test_valid_format_with_path(self):
-        """Test parsing with file path containing colons (edge case)."""
+        """Test parsing with file path containing colons."""
         result = parse_synctex_forward("10:20:/path/to/file.tex")
         assert result == (10, 20, "/path/to/file.tex")
 
@@ -287,8 +253,6 @@ class TestParseSynctexForward:
 
     def test_invalid_format_too_many_parts(self):
         """Test format with too many colons."""
-        # The actual implementation splits by all colons, so "42:5:file:extra" 
-        # would have 4 parts and fail
         with pytest.raises(ValueError) as exc_info:
             parse_synctex_forward("42:5:file:extra")
         assert "Invalid synctex format" in str(exc_info.value)
@@ -309,102 +273,59 @@ class TestParseSynctexForward:
 class TestMainArgumentParsing:
     """Test CLI argument parsing in main()."""
 
-    def test_main_exits_without_api_key(self, tmp_path, monkeypatch):
-        """Test that main exits with error if no API key provided."""
+    def test_main_without_api_key_succeeds(self, tmp_path, monkeypatch):
+        """Test that main succeeds without API key (uses Unix socket)."""
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_text("dummy pdf content")
-
-        # Clear environment variable
+        
+        # Ensure no API key in environment
         monkeypatch.delenv("ENTANGLEDPDF_API_KEY", raising=False)
-
-        with patch('sys.argv', ['entangle-pdf', 'sync', str(pdf_file)]):
-            result = main()
-            assert result == 1
-
-    def test_main_with_api_key_from_env(self, tmp_path, monkeypatch):
-        """Test that main accepts API key from environment."""
-        pdf_file = tmp_path / "test.pdf"
-        pdf_file.write_text("dummy pdf content")
-
-        monkeypatch.setenv("ENTANGLEDPDF_API_KEY", "test-key")
-
+        
         with patch('entangledpdf.cli.load_pdf') as mock_load:
             mock_load.return_value = {"pdf_file": str(pdf_file)}
-
+            
             with patch('sys.argv', ['entangle-pdf', 'sync', str(pdf_file)]):
                 result = main()
                 assert result == 0
                 mock_load.assert_called_once()
 
-    def test_main_with_api_key_from_flag(self, tmp_path):
-        """Test that main accepts API key from --api-key flag."""
+    def test_main_with_socket_path_flag(self, tmp_path):
+        """Test that main accepts custom socket path."""
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_text("dummy pdf content")
-
+        custom_socket = tmp_path / "custom.sock"
+        
         with patch('entangledpdf.cli.load_pdf') as mock_load:
             mock_load.return_value = {"pdf_file": str(pdf_file)}
-
-            with patch('sys.argv', ['entangle-pdf', 'sync', '--api-key', 'flag-key', str(pdf_file)]):
+            
+            with patch('sys.argv', [
+                'entangle-pdf', 
+                'sync', 
+                '--socket-path', str(custom_socket),
+                str(pdf_file)
+            ]):
                 result = main()
                 assert result == 0
                 mock_load.assert_called_once()
-                call_kwargs = mock_load.call_args.kwargs
-                assert call_kwargs['api_key'] == 'flag-key'
-                assert call_kwargs['use_http'] is False
-
-    def test_main_with_port_flag(self, tmp_path, monkeypatch):
-        """Test that main accepts custom port from --port flag."""
-        pdf_file = tmp_path / "test.pdf"
-        pdf_file.write_text("dummy pdf content")
-
-        monkeypatch.setenv("ENTANGLEDPDF_API_KEY", "test-key")
-
-        with patch('entangledpdf.cli.load_pdf') as mock_load:
-            mock_load.return_value = {"pdf_file": str(pdf_file)}
-
-            with patch('sys.argv', ['entangle-pdf', 'sync', '--port', '9000', str(pdf_file)]):
-                result = main()
-                assert result == 0
-                mock_load.assert_called_once()
-                call_args = mock_load.call_args.args
-                call_kwargs = mock_load.call_args.kwargs
-                assert call_args[1] == 9000  # port argument
-                assert call_kwargs['api_key'] == 'test-key'
-                assert call_kwargs['use_http'] is False
-
-    def test_main_with_http_flag(self, tmp_path, monkeypatch):
-        """Test that main accepts --http flag."""
-        pdf_file = tmp_path / "test.pdf"
-        pdf_file.write_text("dummy pdf content")
-
-        monkeypatch.setenv("ENTANGLEDPDF_API_KEY", "test-key")
-
-        with patch('entangledpdf.cli.load_pdf') as mock_load:
-            mock_load.return_value = {"pdf_file": str(pdf_file)}
-
-            with patch('sys.argv', ['entangle-pdf', 'sync', '--http', str(pdf_file)]):
-                result = main()
-                assert result == 0
-                mock_load.assert_called_once()
-                call_kwargs = mock_load.call_args.kwargs
-                assert call_kwargs['use_http'] is True
+                call_args = mock_load.call_args
+                # Check positional args: load_pdf(pdf_file, socket_path)
+                assert call_args[0][0] == pdf_file
+                assert call_args[0][1] == custom_socket
 
     def test_main_with_synctex_forward(self, tmp_path, monkeypatch):
         """Test that main accepts synctex info as positional argument."""
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_text("dummy pdf content")
         
-        # Create a tex file that actually exists (for validation)
+        # Create a tex file that actually exists
         tex_file = tmp_path / "chapter.tex"
-        tex_file.write_text("\\documentclass{article}\\begin{document}Test\\end{document}")
-
-        monkeypatch.setenv("ENTANGLEDPDF_API_KEY", "test-key")
-
+        tex_file.write_text("\\documentclass{article}")
+        
         with patch('entangledpdf.cli.load_pdf') as mock_load, \
              patch('entangledpdf.cli.forward_search') as mock_forward:
             mock_load.return_value = {"pdf_file": str(pdf_file)}
             mock_forward.return_value = {"status": "success"}
-
+            
             with patch('sys.argv', [
                 'entangle-pdf',
                 'sync',
@@ -415,154 +336,136 @@ class TestMainArgumentParsing:
                 assert result == 0
                 mock_forward.assert_called_once()
                 call_args = mock_forward.call_args.args
-                call_kwargs = mock_forward.call_args.kwargs
                 assert call_args[0] == 42  # line
                 assert call_args[1] == 5   # column
-                assert call_args[2] == str(tex_file)  # tex_file (absolute path)
+                assert call_args[2] == str(tex_file)  # tex_file
                 assert call_args[3] == str(pdf_file)  # pdf_file
-                assert call_args[4] == 8431  # port
 
-    def test_main_handles_file_not_found(self, tmp_path, monkeypatch):
+    def test_main_handles_file_not_found(self, tmp_path):
         """Test that main handles FileNotFoundError gracefully."""
         nonexistent = tmp_path / "nonexistent.pdf"
-
-        monkeypatch.setenv("ENTANGLEDPDF_API_KEY", "test-key")
-
+        
         with patch('sys.argv', ['entangle-pdf', 'sync', str(nonexistent)]):
             result = main()
             assert result == 1
 
-    def test_main_handles_other_exceptions(self, tmp_path, monkeypatch):
+    def test_main_handles_other_exceptions(self, tmp_path):
         """Test that main handles general exceptions gracefully."""
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_text("dummy pdf content")
-
-        monkeypatch.setenv("ENTANGLEDPDF_API_KEY", "test-key")
-
-        with patch('entangledpdf.cli.load_pdf', side_effect=Exception("Network error")):
+        
+        with patch('entangledpdf.cli.load_pdf', side_effect=Exception("Socket error")):
             with patch('sys.argv', ['entangle-pdf', 'sync', str(pdf_file)]):
                 result = main()
                 assert result == 1
 
-    def test_main_verbose_output(self, tmp_path, monkeypatch, capsys):
+    def test_main_verbose_output(self, tmp_path, capsys):
         """Test that --verbose flag produces output."""
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_text("dummy pdf content")
-
-        monkeypatch.setenv("ENTANGLEDPDF_API_KEY", "test-key")
-
+        
         with patch('entangledpdf.cli.load_pdf') as mock_load:
             mock_load.return_value = {"pdf_file": str(pdf_file), "status": "loaded"}
-
+            
             with patch('sys.argv', ['entangle-pdf', 'sync', '-v', str(pdf_file)]):
                 result = main()
                 captured = capsys.readouterr()
                 assert result == 0
-                assert "Loading PDF" in captured.out or "Server response" in captured.out
+                assert "Loading PDF" in captured.out
 
 
 class TestIntegrationBetweenFunctions:
     """Test that functions work correctly together."""
 
     def test_load_pdf_integration_with_send_request(self, tmp_path):
-        """Integration test: load_pdf -> send_request with mocked URL open."""
+        """Integration test: load_pdf -> send_request."""
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_text("dummy pdf content")
-
+        socket_path = tmp_path / "test.sock"
+        
         mock_response = MagicMock()
+        mock_response.status = 200
         mock_response.read.return_value = json.dumps({
             "status": "success",
             "pdf_file": str(pdf_file),
             "changed": True
         }).encode('utf-8')
+        
+        with patch.object(UnixHTTPConnection, 'connect'):
+            with patch.object(UnixHTTPConnection, 'request') as mock_request:
+                with patch.object(UnixHTTPConnection, 'getresponse', return_value=mock_response):
+                    result = load_pdf(pdf_file, socket_path)
+                    
+                    assert result["status"] == "success"
+                    mock_request.assert_called_once()
+                    
+                    # Verify request was constructed correctly
+                    call_args = mock_request.call_args
+                    assert call_args[0][0] == "POST"
+                    assert call_args[0][1] == "/api/load-pdf"
+                    assert json.loads(call_args[1]['body'])['pdf_path'] == str(pdf_file.resolve())
 
-        with patch('urllib.request.urlopen', return_value=mock_response) as mock_urlopen:
-            result = load_pdf(pdf_file, port=8431, api_key="test-key")
-
-            assert result["status"] == "success"
-            mock_urlopen.assert_called_once()
-            
-            # Verify the request was constructed correctly
-            call_args = mock_urlopen.call_args
-            request = call_args[0][0]
-            assert request.full_url == "https://localhost:8431/api/load-pdf"
-            assert request.method == "POST"
-            assert request.headers["X-api-key"] == "test-key"
-            
-            # Verify the request body
-            sent_data = json.loads(request.data.decode('utf-8'))
-            assert sent_data['pdf_path'] == str(pdf_file)
-
-    def test_forward_search_integration_with_send_request(self):
-        """Integration test: forward_search -> send_request with mocked URL open."""
+    def test_forward_search_integration_with_send_request(self, tmp_path):
+        """Integration test: forward_search -> send_request."""
+        socket_path = tmp_path / "test.sock"
+        
         mock_response = MagicMock()
+        mock_response.status = 200
         mock_response.read.return_value = json.dumps({
             "status": "success",
             "page": 42,
             "y": 500.0
         }).encode('utf-8')
-
-        with patch('urllib.request.urlopen', return_value=mock_response) as mock_urlopen:
-            result = forward_search(
-                line=42,
-                column=5,
-                tex_file="chapter.tex",
-                pdf_file="/path/to/document.pdf",
-                port=8431,
-                api_key="test-key"
-            )
-
-            assert result["status"] == "success"
-            mock_urlopen.assert_called_once()
-            
-            # Verify the request
-            call_args = mock_urlopen.call_args
-            request = call_args[0][0]
-            assert request.full_url == "https://localhost:8431/webhook/update"
-            
-            sent_data = json.loads(request.data.decode('utf-8'))
-            assert sent_data['line'] == 42
-            assert sent_data['col'] == 5
-            assert sent_data['tex_file'] == "chapter.tex"
-            assert sent_data['pdf_file'] == "/path/to/document.pdf"
+        
+        with patch.object(UnixHTTPConnection, 'connect'):
+            with patch.object(UnixHTTPConnection, 'request') as mock_request:
+                with patch.object(UnixHTTPConnection, 'getresponse', return_value=mock_response):
+                    result = forward_search(
+                        line=42,
+                        column=5,
+                        tex_file="chapter.tex",
+                        pdf_file="/path/to/document.pdf",
+                        socket_path=socket_path
+                    )
+                    
+                    assert result["status"] == "success"
+                    mock_request.assert_called_once()
+                    
+                    # Verify request
+                    call_args = mock_request.call_args
+                    assert call_args[0][0] == "POST"
+                    assert call_args[0][1] == "/webhook/update"
+                    
+                    sent_data = json.loads(call_args[1]['body'])
+                    assert sent_data['line'] == 42
+                    assert sent_data['col'] == 5
+                    assert sent_data['tex_file'] == "chapter.tex"
 
 
 class TestPatchPathValidation:
-    """Validate that mock patch paths point to real modules.
-    
-    These tests catch refactoring errors where module paths change
-    but tests still patch the old paths (which silently do nothing).
-    """
+    """Validate that mock patch paths point to real modules."""
     
     def test_webhook_patch_path_exists(self):
-        """Verify that entangledpdf.routes.webhook module exists for patching."""
+        """Verify that entangledpdf.routes.webhook module exists."""
         try:
             import entangledpdf.routes.webhook
             assert hasattr(entangledpdf.routes.webhook, 'get_settings')
             assert hasattr(entangledpdf.routes.webhook, 'run_synctex_view')
         except ImportError:
-            pytest.fail("entangledpdf.routes.webhook module not found - tests may be patching wrong path")
+            pytest.fail("entangledpdf.routes.webhook module not found")
     
     def test_config_patch_path_exists(self):
-        """Verify that entangledpdf.config module exists for patching."""
+        """Verify that entangledpdf.config module exists."""
         try:
             import entangledpdf.config
             assert hasattr(entangledpdf.config, 'get_settings')
         except ImportError:
-            pytest.fail("entangledpdf.config module not found - tests may be patching wrong path")
+            pytest.fail("entangledpdf.config module not found")
     
     def test_connection_manager_patch_path_exists(self):
-        """Verify that entangledpdf.connection_manager module exists for patching."""
+        """Verify that entangledpdf.connection_manager module exists."""
         try:
             import entangledpdf.connection_manager
             assert hasattr(entangledpdf.connection_manager, 'manager')
         except ImportError:
-            pytest.fail("entangledpdf.connection_manager module not found - tests may be patching wrong path")
-    
-    def test_src_routes_webhook_does_not_exist(self):
-        """Verify that old 'src.routes.webhook' path no longer exists.
-        
-        This ensures tests have been updated after the src/ -> entangledpdf/ refactor.
-        """
-        with pytest.raises(ImportError):
-            import src.routes.webhook
+            pytest.fail("entangledpdf.connection_manager module not found")

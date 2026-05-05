@@ -1,13 +1,14 @@
 """Unit tests for entangle-pdf sync client utility functions.
 
 Tests the utility functions from entangledpdf/sync that support the 
-CLI client functionality (argument parsing, URL construction, etc.).
+CLI client functionality (argument parsing, socket path, etc.).
 """
 
 import pytest
 from pathlib import Path
 
-from entangledpdf.sync import parse_synctex_forward, get_server_url
+from entangledpdf.sync import parse_synctex_forward, get_default_socket_path
+from entangledpdf.socket_path import get_socket_path
 
 
 class TestParseSynctexForward:
@@ -53,30 +54,26 @@ class TestParseSynctexForward:
         assert "Line and column must be integers" in str(exc_info.value)
 
 
-class TestGetServerUrl:
-    """Test server URL construction."""
+class TestGetDefaultSocketPath:
+    """Test socket path retrieval."""
 
-    def test_https_default(self):
-        """Test that HTTPS is default."""
-        url = get_server_url(8431)
-        assert url == "https://localhost:8431"
+    def test_returns_path_object(self):
+        """Test that get_default_socket_path returns a Path."""
+        path = get_default_socket_path()
+        assert isinstance(path, Path)
 
-    def test_http_when_requested(self):
-        """Test that HTTP is used when requested."""
-        url = get_server_url(8431, use_http=True)
-        assert url == "http://localhost:8431"
+    def test_returns_absolute_path(self):
+        """Test that socket path is absolute."""
+        path = get_default_socket_path()
+        assert path.is_absolute()
 
-    def test_different_port(self):
-        """Test URL with different port."""
-        url = get_server_url(8080)
-        assert url == "https://localhost:8080"
-        
-    def test_custom_port_with_http(self):
-        """Test custom port with HTTP protocol."""
-        url = get_server_url(3000, use_http=True)
-        assert url == "http://localhost:3000"
+    def test_contains_socket_filename(self):
+        """Test that path ends with server.sock."""
+        path = get_default_socket_path()
+        assert path.name == "server.sock"
 
-    def test_high_number_port(self):
-        """Test with high-numbered port."""
-        url = get_server_url(65000)
-        assert url == "https://localhost:65000"
+    def test_matches_get_socket_path(self):
+        """Test that get_default_socket_path matches get_socket_path."""
+        from_default = get_default_socket_path()
+        from_module = get_socket_path()
+        assert from_default == from_module

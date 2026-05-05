@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Optional
 
 import uvicorn
+from fastapi import FastAPI
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
@@ -29,6 +30,44 @@ from entangledpdf.logging_sanitizer import SensitiveDataFilter
 from entangledpdf.socket_path import get_socket_path, prepare_socket_path
 from entangledpdf.state import pdf_state
 from entangledpdf.websocket_monitor import monitor as ws_monitor
+
+
+def create_app() -> "FastAPI":
+    """Create and configure the FastAPI application for testing.
+    
+    This function creates a combined app with both admin and browser routes
+    for backward compatibility with existing tests. The production server
+    uses separate admin_app and browser_app instances.
+    
+    Returns:
+        FastAPI: Configured application instance with all routes
+    """
+    from fastapi import FastAPI
+    from entangledpdf.routes import (
+        auth, load_pdf, pdf, state, static_files, 
+        test_utils, view, webhook, websocket
+    )
+    
+    app = FastAPI(
+        title="EntangledPdf",
+        description="Real-time PDF synchronization server with SyncTeX support",
+        version="1.0.0"
+    )
+    
+    # Include all routes
+    app.include_router(auth.router)
+    app.include_router(view.router)
+    app.include_router(pdf.router)
+    app.include_router(state.router)
+    app.include_router(webhook.router)
+    app.include_router(websocket.router)
+    app.include_router(load_pdf.router)
+    app.include_router(test_utils.router)
+    
+    # Setup static files
+    static_files.setup_static_files(app)
+    
+    return app
 
 
 # Configure logging for foreground mode
