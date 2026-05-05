@@ -1,19 +1,18 @@
 """End-to-end integration tests for entangle-pdf sync CLI with real server subprocess.
 
 These tests spawn actual entangle-pdf and entangle-pdf sync processes to test real-world
-usage without any mocking. Uses self-signed SSL certificates on port 18080.
+usage without any mocking. Uses Unix domain sockets for CLI-server communication.
 
 Environment Variables:
-    ENTANGLEDPDF_TEST_PORT: Override default test port (default: 18080)
+    ENTANGLEDPDF_TEST_SOCKET: Override default test socket path
     ENTANGLEDPDF_TEST_DIR: Override temp directory for test artifacts
 
 Example:
-    ENTANGLEDPDF_TEST_PORT=28080 pytest tests/test_sync_e2e_subprocess.py -v
+    ENTANGLEDPDF_TEST_SOCKET=/tmp/test.sock pytest tests/test_sync_e2e_subprocess.py -v
 """
 
 import os
 import signal
-import socket
 import subprocess
 import sys
 import tempfile
@@ -26,12 +25,13 @@ import pytest
 
 from entangledpdf.certs import generate_self_signed_cert
 from entangledpdf.sync import (
-    create_ssl_context,
     forward_search,
     load_pdf,
     parse_synctex_forward,
     send_request,
+    get_default_socket_path,
 )
+from entangledpdf.socket_path import get_socket_path
 
 # Import process tracking utilities from conftest
 from tests.conftest import (
@@ -40,10 +40,9 @@ from tests.conftest import (
     untrack_test_process,
 )
 
-# Default test port (can be overridden via env var)
+# Default test socket path (can be overridden via env var)
+TEST_SOCKET_PATH = Path(os.getenv("ENTANGLEDPDF_TEST_SOCKET", "/tmp/entangledpdf_test.sock"))
 TEST_SERVER_PORT = int(os.getenv("ENTANGLEDPDF_TEST_PORT", 18080))
-TEST_SERVER_HOST = "localhost"
-TEST_API_KEY = "test-api-key-e2e-12345"
 
 
 @pytest.fixture(scope="module")
@@ -55,7 +54,7 @@ def test_certs(tmp_path_factory) -> Generator[tuple[Path, Path], None, None]:
     
     # Generate certificate for localhost
     generate_self_signed_cert(
-        hostname=TEST_SERVER_HOST,
+        hostname="localhost",
         cert_path=cert_path,
         key_path=key_path,
         days_valid=1  # Short-lived for tests
@@ -77,10 +76,18 @@ def running_server(test_certs, tmp_path_factory, request):
     - Cleans up even if tests are interrupted
     
     Yields:
-        dict: Server info with 'port', 'api_key', 'cert_path', 'key_path', 'process'
+        dict: Server info with 'port', 'socket_path', 'cert_path', 'key_path', 'process'
     """
     cert_path, key_path = test_certs
     port = TEST_SERVER_PORT
+    socket_path = TEST_SOCKET_PATH
+    
+    # Remove socket if it exists from previous test run
+    if socket_path.exists():
+        try:
+            socket_path.unlink()
+        except OSError:
+            pass
     
     # Create a temp directory for the server
     server_dir = tmp_path_factory.mktemp("server")
@@ -101,7 +108,6 @@ def running_server(test_certs, tmp_path_factory, request):
 </html>""")
     
     # Build command to start server
-    # Using python main.py directly
     project_root = Path(__file__).parent.parent
     cmd = [
         sys.executable,
@@ -113,8 +119,8 @@ def running_server(test_certs, tmp_path_factory, request):
     
     # Set environment variables
     env = os.environ.copy()
-    env["ENTANGLEDPDF_API_KEY"] = TEST_API_KEY
-    env["ENTANGLEDPDF_TESTING"] = "1"  # Marker for test-cleanup script to identify test processes
+    env["ENTANGLEDPDF_TESTING"] = "1"
+    env["ENTANGLEDPDF_SOCKET"] = str(socket_path)  # Use custom socket for testing
     
     # Start server process
     process = subprocess.Popen(
@@ -122,25 +128,21 @@ def running_server(test_certs, tmp_path_factory, request):
         cwd=str(Path(__file__).parent.parent),
         env=env,
         stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,  # Merge stderr into stdout
+        stderr=subprocess.STDOUT,
     )
     
-    # Track process for cleanup (even if tests crash)
+    # Track process for cleanup
     test_id = f"{request.node.name}_{time.time()}"
     track_test_process(process.pid, port, test_id)
     
-    # Wait for server to be ready (check with health endpoint or wait fixed time)
+    # Wait for server to be ready (check socket file exists)
     max_retries = 30
     server_ready = False
     for i in range(max_retries):
-        try:
-            # Try to connect
-            ctx = create_ssl_context()
-            with socket.create_connection((TEST_SERVER_HOST, port), timeout=1):
-                server_ready = True
-                break
-        except (socket.error, ConnectionRefusedError):
-            time.sleep(0.5)
+        if socket_path.exists():
+            server_ready = True
+            break
+        time.sleep(0.5)
     
     if not server_ready:
         # Server didn't start - clean up and fail
@@ -148,22 +150,18 @@ def running_server(test_certs, tmp_path_factory, request):
         untrack_test_process(process.pid)
         stdout, _ = process.communicate(timeout=5)
         raise RuntimeError(
-            f"Server failed to start on port {port}.\n"
+            f"Server failed to start (socket not created).\n"
             f"output: {stdout.decode()}"
         )
     
-    # Wait for server to be fully ready by checking /state endpoint
-    import urllib.request
+    # Wait for server to be fully ready by checking /state endpoint via Unix socket
     http_ready = False
     for i in range(max_retries):
         try:
-            url = f"https://{TEST_SERVER_HOST}:{port}/state"
-            req = urllib.request.Request(url)
-            ctx = create_ssl_context()
-            with urllib.request.urlopen(req, context=ctx, timeout=2) as resp:
-                if resp.status == 200:
-                    http_ready = True
-                    break
+            result = send_request("GET", "/state", socket_path)
+            if result.get("port") == port:
+                http_ready = True
+                break
         except Exception:
             time.sleep(0.5)
     
@@ -182,7 +180,7 @@ def running_server(test_certs, tmp_path_factory, request):
     
     server_info = {
         "port": port,
-        "api_key": TEST_API_KEY,
+        "socket_path": socket_path,
         "cert_path": cert_path,
         "key_path": key_path,
         "process": process,
@@ -192,13 +190,11 @@ def running_server(test_certs, tmp_path_factory, request):
     
     yield server_info
     
-    # Teardown: robust cleanup with process tree kill
+    # Teardown: robust cleanup
     try:
-        # Use process tree kill which handles children and escalation
         success = kill_process_tree(process.pid, timeout=5.0)
         if not success:
             print(f"Warning: Could not kill process {process.pid} gracefully", file=sys.stderr)
-            # Last resort - direct SIGKILL
             try:
                 os.kill(process.pid, signal.SIGKILL)
             except (OSError, ProcessLookupError):
@@ -206,8 +202,13 @@ def running_server(test_certs, tmp_path_factory, request):
     except Exception as e:
         print(f"Warning: Error during server teardown: {e}", file=sys.stderr)
     finally:
-        # Always untrack, even if kill failed
         untrack_test_process(process.pid)
+        # Clean up socket file
+        if socket_path.exists():
+            try:
+                socket_path.unlink()
+            except OSError:
+                pass
 
 
 @pytest.mark.slow
@@ -220,14 +221,13 @@ class TestSyncRemotePdfSubprocess:
         pdf_file = tmp_path / "test_document.pdf"
         pdf_file.write_bytes(b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n>>\nendobj\n")
         
-        # Build command using new CLI structure
+        # Build command using new CLI structure (no --port or --api-key needed)
         cmd = [
             sys.executable,
             "-m", "entangledpdf.cli",
             "sync",
+            "--socket-path", str(running_server["socket_path"]),
             str(pdf_file),
-            "--port", str(running_server["port"]),
-            "--api-key", running_server["api_key"],
         ]
         
         # Run entangle-pdf sync
@@ -242,12 +242,11 @@ class TestSyncRemotePdfSubprocess:
         assert result.returncode == 0, f"Command failed: {result.stderr}"
         assert "successfully" in result.stdout.lower() or "PDF loaded" in result.stdout
         
-        # Verify server state via API
+        # Verify server state via Unix socket API
         response = send_request(
             "GET",
             "/state",
-            running_server["port"],
-            api_key=running_server["api_key"],
+            running_server["socket_path"],
         )
         
         assert response["pdf_loaded"] is True
@@ -268,9 +267,8 @@ class TestSyncRemotePdfSubprocess:
             sys.executable,
             "-m", "entangledpdf.cli",
             "sync",
+            "--socket-path", str(running_server["socket_path"]),
             str(example_pdf),
-            "--port", str(running_server["port"]),
-            "--api-key", running_server["api_key"],
         ]
         
         result = subprocess.run(
@@ -286,10 +284,9 @@ class TestSyncRemotePdfSubprocess:
             sys.executable,
             "-m", "entangledpdf.cli",
             "sync",
+            "--socket-path", str(running_server["socket_path"]),
             str(example_pdf),
             f"42:5:{example_tex}",
-            "--port", str(running_server["port"]),
-            "--api-key", running_server["api_key"],
         ]
         
         result = subprocess.run(
@@ -306,40 +303,11 @@ class TestSyncRemotePdfSubprocess:
         response = send_request(
             "GET",
             "/state",
-            running_server["port"],
-            api_key=running_server["api_key"],
+            running_server["socket_path"],
         )
         
         # Server should have updated state from webhook
         assert response["pdf_loaded"] is True
-        # Note: Without actual synctex binary, the webhook may not update page/y
-        # but the request should succeed
-
-    def test_sync_remote_pdf_wrong_api_key_fails(self, running_server, tmp_path):
-        """Wrong API key produces clear error message."""
-        pdf_file = tmp_path / "test_auth.pdf"
-        pdf_file.write_bytes(b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n>>\nendobj\n")
-        
-        cmd = [
-            sys.executable,
-            "-m", "entangledpdf.cli",
-            "sync",
-            str(pdf_file),
-            "--port", str(running_server["port"]),
-            "--api-key", "wrong-api-key",
-        ]
-        
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            cwd=str(Path(__file__).parent.parent),
-        )
-        
-        # Should fail with non-zero exit code
-        assert result.returncode != 0
-        # Error message should mention authentication
-        assert "authentication" in result.stderr.lower() or "auth" in result.stderr.lower() or "403" in result.stderr
 
     def test_sync_remote_pdf_nonexistent_pdf_fails(self, running_server, tmp_path):
         """Nonexistent PDF file produces clear error."""
@@ -349,9 +317,8 @@ class TestSyncRemotePdfSubprocess:
             sys.executable,
             "-m", "entangledpdf.cli",
             "sync",
+            "--socket-path", str(running_server["socket_path"]),
             str(nonexistent),
-            "--port", str(running_server["port"]),
-            "--api-key", running_server["api_key"],
         ]
         
         result = subprocess.run(
@@ -376,9 +343,8 @@ class TestSyncRemotePdfSubprocess:
             "-m", "entangledpdf.cli",
             "sync",
             "-v",
+            "--socket-path", str(running_server["socket_path"]),
             str(pdf_file),
-            "--port", str(running_server["port"]),
-            "--api-key", running_server["api_key"],
         ]
         
         result = subprocess.run(
@@ -398,16 +364,15 @@ class TestSyncRemotePdfSubprocess:
         pdf_file = tmp_path / "test_noserver.pdf"
         pdf_file.write_bytes(b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n>>\nendobj\n")
         
-        # Use a port that's definitely not used (very high port)
-        unused_port = 55555
+        # Use a socket path that definitely doesn't exist
+        unused_socket = "/tmp/entangledpdf_unused_test.sock"
         
         cmd = [
             sys.executable,
             "-m", "entangledpdf.cli",
             "sync",
+            "--socket-path", unused_socket,
             str(pdf_file),
-            "--port", str(unused_port),
-            "--api-key", TEST_API_KEY,
         ]
         
         result = subprocess.run(
@@ -419,9 +384,9 @@ class TestSyncRemotePdfSubprocess:
         
         # Should fail
         assert result.returncode != 0
-        # Error should mention connection issue
+        # Error should mention socket/connection issue
         error_lower = result.stderr.lower()
-        assert any(x in error_lower for x in ["connection", "refused", "failed", "request failed"])
+        assert any(x in error_lower for x in ["socket", "not running", "failed", "no such file"])
 
     def test_sync_remote_pdf_multiple_files_sequentially(self, running_server, tmp_path):
         """Can load multiple PDFs in sequence."""
@@ -437,9 +402,8 @@ class TestSyncRemotePdfSubprocess:
             sys.executable,
             "-m", "entangledpdf.cli",
             "sync",
+            "--socket-path", str(running_server["socket_path"]),
             str(pdf1),
-            "--port", str(running_server["port"]),
-            "--api-key", running_server["api_key"],
         ]
         
         result1 = subprocess.run(
@@ -452,8 +416,7 @@ class TestSyncRemotePdfSubprocess:
         
         # Verify first PDF loaded
         state1 = send_request(
-            "GET", "/state", running_server["port"],
-            api_key=running_server["api_key"]
+            "GET", "/state", running_server["socket_path"]
         )
         assert Path(state1["pdf_file"]).name == pdf1.name
         
@@ -462,9 +425,8 @@ class TestSyncRemotePdfSubprocess:
             sys.executable,
             "-m", "entangledpdf.cli",
             "sync",
+            "--socket-path", str(running_server["socket_path"]),
             str(pdf2),
-            "--port", str(running_server["port"]),
-            "--api-key", running_server["api_key"],
         ]
         
         result2 = subprocess.run(
@@ -477,8 +439,7 @@ class TestSyncRemotePdfSubprocess:
         
         # Verify second PDF is now loaded
         state2 = send_request(
-            "GET", "/state", running_server["port"],
-            api_key=running_server["api_key"]
+            "GET", "/state", running_server["socket_path"]
         )
         assert Path(state2["pdf_file"]).name == pdf2.name
         
@@ -493,41 +454,9 @@ class TestSyncRemotePdfSubprocess:
         
         # Verify first PDF is loaded again
         state3 = send_request(
-            "GET", "/state", running_server["port"],
-            api_key=running_server["api_key"]
+            "GET", "/state", running_server["socket_path"]
         )
         assert Path(state3["pdf_file"]).name == pdf1.name
-
-    def test_sync_remote_pdf_with_custom_port(self, running_server, tmp_path):
-        """--port flag connects to correct server (redundant but explicit test)."""
-        # This test verifies the custom port we set in running_server works
-        pdf_file = tmp_path / "test_port.pdf"
-        pdf_file.write_bytes(b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n>>\nendobj\n")
-        
-        cmd = [
-            sys.executable,
-            "-m", "entangledpdf.cli",
-            "sync",
-            str(pdf_file),
-            "--port", str(running_server["port"]),
-            "--api-key", running_server["api_key"],
-        ]
-        
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            cwd=str(Path(__file__).parent.parent),
-        )
-        
-        assert result.returncode == 0
-        
-        # Verify via state endpoint
-        state = send_request(
-            "GET", "/state", running_server["port"],
-            api_key=running_server["api_key"]
-        )
-        assert state["pdf_loaded"] is True
 
 
 @pytest.mark.slow
@@ -535,15 +464,14 @@ class TestLoadPdfClientFunction:
     """Integration tests using the load_pdf() function directly (not subprocess)."""
 
     def test_load_pdf_updates_server_state(self, running_server, tmp_path):
-        """load_pdf() function updates server state via real HTTP."""
+        """load_pdf() function updates server state via Unix socket."""
         pdf_file = tmp_path / "test_function.pdf"
         pdf_file.write_bytes(b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n>>\nendobj\n")
         
-        # Call load_pdf directly (it will make real HTTP request)
+        # Call load_pdf directly (uses Unix socket, no API key needed)
         result = load_pdf(
             pdf_file,
-            port=running_server["port"],
-            api_key=running_server["api_key"],
+            socket_path=running_server["socket_path"],
         )
         
         assert result["status"] == "success"
@@ -551,8 +479,7 @@ class TestLoadPdfClientFunction:
         
         # Verify server state
         state = send_request(
-            "GET", "/state", running_server["port"],
-            api_key=running_server["api_key"]
+            "GET", "/state", running_server["socket_path"]
         )
         assert state["pdf_file"] == str(pdf_file)
 
@@ -564,8 +491,7 @@ class TestLoadPdfClientFunction:
         # This should succeed if field name is correct
         result = load_pdf(
             pdf_file,
-            port=running_server["port"],
-            api_key=running_server["api_key"],
+            socket_path=running_server["socket_path"],
         )
         
         assert result["status"] == "success"
@@ -589,44 +515,21 @@ class TestForwardSearchFunction:
         
         load_pdf(
             example_pdf,
-            port=running_server["port"],
-            api_key=running_server["api_key"],
+            socket_path=running_server["socket_path"],
         )
         
-        # Call forward_search
+        # Call forward_search (uses Unix socket, no API key needed)
         result = forward_search(
             line=42,
             column=5,
             tex_file=str(example_tex),
             pdf_file=str(example_pdf),
-            port=running_server["port"],
-            api_key=running_server["api_key"],
+            socket_path=running_server["socket_path"],
         )
         
         # Should return success (webhook received)
         assert "status" in result
         assert result["status"] in ["success", "ok", "received"]
-
-
-@pytest.mark.slow
-class TestPortOverride:
-    """Test port conflict workaround via environment variable."""
-
-    def test_port_override_via_env_var(self, tmp_path, monkeypatch):
-        """ENTANGLEDPDF_TEST_PORT env var overrides default port."""
-        # This test just verifies the env var is respected in the fixture
-        # The actual port override would require restarting the server fixture
-        # So we just verify the constant is set correctly
-        custom_port = 28080
-        monkeypatch.setenv("ENTANGLEDPDF_TEST_PORT", str(custom_port))
-        
-        # Re-import to pick up new value
-        # Note: In real usage, user would run pytest with the env var
-        import importlib
-        import tests.test_sync_e2e_subprocess as test_module
-        importlib.reload(test_module)
-        
-        assert test_module.TEST_SERVER_PORT == custom_port
 
 
 @pytest.mark.slow
@@ -654,9 +557,8 @@ class TestParseSynctexForwardInE2E:
             sys.executable,
             "-m", "entangledpdf.cli",
             "sync",
+            "--socket-path", str(running_server["socket_path"]),
             str(example_pdf),
-            "--port", str(running_server["port"]),
-            "--api-key", running_server["api_key"],
         ]
         
         result = subprocess.run(
@@ -668,17 +570,15 @@ class TestParseSynctexForwardInE2E:
         assert result.returncode == 0
         
         # Use parsed values in forward search
-        # Note: entangle-pdf sync takes synctex info as positional arg
         synctex_arg = f"{line}:{col}:{tex}"
         
         forward_cmd = [
             sys.executable,
             "-m", "entangledpdf.cli",
             "sync",
+            "--socket-path", str(running_server["socket_path"]),
             str(example_pdf),
             synctex_arg,
-            "--port", str(running_server["port"]),
-            "--api-key", running_server["api_key"],
         ]
         
         result = subprocess.run(
@@ -689,5 +589,4 @@ class TestParseSynctexForwardInE2E:
         )
         
         # Should succeed (even if synctex binary isn't available)
-        # The webhook will be called
         assert result.returncode == 0
