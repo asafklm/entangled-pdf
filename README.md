@@ -108,13 +108,11 @@ After installation, complete the required setup and optional editor configuratio
 > 
 > If you used **Option 2 or 3** (pipx or pip), `entangle-pdf` is already in your PATH.
 
-#### 1. API Key (Required)
+#### 1. API Key (Required for Browser Access)
 
-The API key controls who can trigger PDF updates and forward search. Anyone with network 
-access to the server who knows this key can load PDFs and initiate forward sync. 
-The intended use is that your TeX editor and the EntangledPdf server share the same 
-key via the `ENTANGLEDPDF_API_KEY` environment variable—this ensures only your 
-authorized editor can control the PDF viewer, preventing updates from third parties.
+The API key controls who can access the PDF viewer via the browser. Anyone with network 
+access to the server who knows this key can view PDFs. The key is required for browser
+authentication but **not** for CLI commands (which use Unix socket authentication).
 
 Generate a unique API key and add it to your shell:
 
@@ -141,6 +139,8 @@ source ~/.bashrc
 ```
 
 > **Security:** Use a long, random key in shared environments. A simple password is fine for personal use on a single machine.
+> 
+> **Note:** The `entangle-pdf sync` command does **not** require the API key - it uses Unix socket authentication instead.
 
 #### 2. SSL Certificates (Required)
 
@@ -393,20 +393,17 @@ entangle-pdf sync document.pdf
 # Load PDF with forward search (line:column:texfile)
 entangle-pdf sync document.pdf 42:5:chapter.tex
 
-# Custom port
-entangle-pdf sync document.pdf --port 9000
-
-# Custom API key (if not using env var)
-entangle-pdf sync document.pdf --api-key "your-secret-key"
+# Custom socket path (rarely needed)
+entangle-pdf sync --socket-path /tmp/custom.sock document.pdf
 ```
 
 **Server Management:**
 
 ```bash
-# Check server status
+# Check server status (shows socket path and browser token)
 entangle-pdf status
 
-# Generate API key
+# Generate API key (for browser access)
 entangle-pdf generate-api-key --shell
 ```
 
@@ -452,21 +449,25 @@ Parameters:
 
 ### Environment Variables
 
-- `ENTANGLEDPDF_PORT`: Server port (default: 8431, used by both server and client)
-- `ENTANGLEDPDF_API_KEY`: API key for authentication (required)
+- `ENTANGLEDPDF_PORT`: Server port (default: 8431, used by browser)
+- `ENTANGLEDPDF_API_KEY`: API key for browser authentication (required)
+- `ENTANGLEDPDF_SOCKET`: Unix socket path for CLI commands (default: `$XDG_RUNTIME_DIR/entangledpdf/server.sock`)
 - `NVIM_LISTEN_ADDRESS`: Neovim socket path (for inverse search)
 
 ### Security
 
 **Authentication Model:**
 
-| Endpoint | Auth Required | Data Protected | Notes |
-|----------|---------------|----------------|-------|
-| `/view`, `/get-pdf` | `pdf_token` cookie | PDF content | Token set after auth form |
-| WebSocket (`/ws`) | `?token=` param | Inverse search | Same token as cookie |
-| `/state` | None | Page position, sync time | **Public metadata** (see below) |
-| `/webhook/update` | `X-API-Key` header | SyncTeX updates | Server-to-server only |
-| `/api/load-pdf` | `X-API-Key` header | PDF loading | Server-to-server only |
+| Endpoint | Transport | Auth Required | Data Protected | Notes |
+|----------|-----------|---------------|----------------|-------|
+| `/view`, `/get-pdf` | TCP/HTTPS | `pdf_token` cookie | PDF content | Token set after auth form |
+| WebSocket (`/ws`) | TCP/WSS | `?token=` param | Inverse search | Same token as cookie |
+| `/state` | TCP/HTTPS | None | Page position, sync time | **Public metadata** |
+| `/state` | Unix socket | None (filesystem) | Page position, sync time | CLI access |
+| `/webhook/update` | TCP/HTTPS | `X-API-Key` header | SyncTeX updates | Browser/external tools |
+| `/webhook/update` | Unix socket | None (filesystem) | SyncTeX updates | CLI commands |
+| `/api/load-pdf` | TCP/HTTPS | `X-API-Key` header | PDF loading | Browser/external tools |
+| `/api/load-pdf` | Unix socket | None (filesystem) | PDF loading | CLI commands |
 
 **Public Metadata (`/state`):**
 
@@ -532,12 +533,13 @@ The `/state` endpoint is intentionally unauthenticated. It returns:
 
 ### Authentication Failed Errors
 
-**Problem**: You see "Authentication failed" when loading PDFs.
+**Problem**: You see "Authentication failed" when viewing PDFs in the browser.
 
-**Solution**: Ensure the same `ENTANGLEDPDF_API_KEY` is used on both server and client:
-1. Check server has the key: `echo $ENTANGLEDPDF_API_KEY`
-2. Check client has the key: `echo $ENTANGLEDPDF_API_KEY`
-3. Restart the server after setting the environment variable
+**Solution**: The API key is only required for browser access. CLI commands use Unix socket authentication.
+
+1. Check the API key is set: `echo $ENTANGLEDPDF_API_KEY`
+2. Restart the server after setting the environment variable: `entangle-pdf start --inverse-search-nvim`
+3. For CLI commands, ensure you're the owner of the socket file (default: `/run/user/<uid>/entangledpdf/server.sock`)
 
 ### Multiple Editor Instances
 
@@ -612,12 +614,15 @@ python -m pytest tests/test_config.py -v                              # Configur
 python -m pytest tests/test_sync_unit.py -v                           # sync.py unit tests  
 python -m pytest tests/test_sync_e2e_subprocess.py -v                 # E2E tests with real server
 python -m pytest tests/test_sync_client_utils.py -v                   # entangle-pdf sync client tests
+python -m pytest tests/test_socket_path.py -v                         # Unix socket tests
 
 # Run specific test
 python -m pytest tests/test_config.py::TestSettings::test_default_values -v
 
-# E2E tests use port 18080 by default. Override with:
-ENTANGLEDPDF_TEST_PORT=28080 python -m pytest tests/test_sync_e2e_subprocess.py -v
+# E2E test configuration (optional)
+export ENTANGLEDPDF_TEST_PORT=18080    # Default: 18080
+export ENTANGLEDPDF_TEST_SOCKET=/tmp/test.sock  # Default: /tmp/entangledpdf_test.sock
+python -m pytest tests/test_sync_e2e_subprocess.py -v
 ```
 
 ### TypeScript Build & Test
