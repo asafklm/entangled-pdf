@@ -25,7 +25,6 @@ import requests
 import urllib3
 
 from entangledpdf.certs import generate_self_signed_cert
-from entangledpdf.sync import create_ssl_context
 
 # Import process tracking utilities
 from tests.conftest import (
