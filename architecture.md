@@ -11,23 +11,25 @@ EntangledPdf implements a **hybrid HTTP/WebSocket protocol** for LaTeX PDF synch
 
 ## Communication Protocols
 
-### Editor → Server: HTTP POST `/webhook/update`
+### Editor → Server: Unix Socket (HTTP Protocol)
 
-The `entangle-pdf sync` command sends forward sync requests via HTTP:
+The `entangle-pdf sync` command sends forward sync requests via **Unix domain socket**, using HTTP protocol over the socket:
 
 ```bash
 entangle-pdf sync document.pdf 42:5:chapter.tex
 ```
 
-**Why HTTP for Editor Communication?**
+**Why Unix Socket for Editor Communication?**
 
-1. **Simplicity**: Editors only need to make a simple POST request. No WebSocket library, no connection management, no reconnection logic.
+1. **Security**: Filesystem permissions (socket mode 0600) provide authentication. Only the user who started the server can connect. No API key needed for local CLI commands.
 
-2. **Fire-and-forget semantics**: Forward sync is a one-shot operation ("go to this position"). HTTP's request-response model matches this perfectly.
+2. **Simplicity**: Editors only need to make a simple POST request. No WebSocket library, no connection management, no reconnection logic.
 
-3. **Editor plugin compatibility**: Most editors can easily trigger HTTP requests from plugins, scripts, or Makefiles. Requiring WebSocket would complicate editor integration significantly.
+3. **Fire-and-forget semantics**: Forward sync is a one-shot operation ("go to this position"). HTTP's request-response model matches this perfectly.
 
-4. **No state needed**: The editor doesn't need to maintain a persistent connection or receive broadcast messages. It just triggers the sync and exits.
+4. **Editor plugin compatibility**: Most editors can easily trigger HTTP requests from plugins, scripts, or Makefiles. The Unix socket transport is transparent to the editor.
+
+5. **No SSL issues**: Self-signed certificate warnings and SSL validation are avoided entirely when using local Unix sockets.
 
 **Message Format**:
 ```json
@@ -39,7 +41,7 @@ entangle-pdf sync document.pdf 42:5:chapter.tex
 }
 ```
 
-**Authentication**: `X-API-Key` header (shared secret)
+**Authentication**: Filesystem permissions (socket mode 0600) - only the socket owner can connect
 
 ### Server → Browsers: WebSocket Broadcast
 
@@ -191,11 +193,12 @@ While a pure WebSocket architecture is possible, the current hybrid approach is 
 
 | Aspect | Current (Hybrid) | Pure WebSocket |
 |--------|----------------|----------------|
-| **Editor complexity** | Low: simple HTTP POST | High: WS client, reconnect, state mgmt |
+| **Editor complexity** | Low: simple HTTP over Unix socket | High: WS client, reconnect, state mgmt |
 | **Connection overhead** | None for editor | New WS connection per sync |
 | **Error handling** | HTTP status codes | Custom error protocol |
-| **Tooling** | curl, wget, any HTTP lib | Requires WS client library |
-| **Make/CI integration** | Easy: `curl -X POST` | Hard: need WS client |
+| **Tooling** | Python http.client (stdlib) | Requires WS client library |
+| **Make/CI integration** | Easy: direct Python call | Hard: need WS client |
+| **Security** | Filesystem permissions (socket 0600) | Requires token/auth per request |
 
 ### Why Not Use HTTP for Everything?
 
@@ -208,19 +211,46 @@ Using HTTP polling for browser updates would be inefficient:
 | **Multiple clients** | Single broadcast | N separate responses |
 | **Inverse search** | Already connected | New HTTP request per click |
 
+### Why Unix Socket Instead of TCP for CLI?
+
+Moving CLI commands from TCP/HTTPS to Unix domain sockets provides significant benefits:
+
+| Aspect | Unix Socket | TCP/HTTPS |
+|--------|-------------|-----------|
+| **Authentication** | Filesystem (mode 0600) | API key + SSL |
+| **SSL certificates** | Not required | Required (self-signed or real) |
+| **Certificate warnings** | None | Browser warnings for self-signed |
+| **Performance** | No TCP handshake | TCP + SSL handshake |
+| **User experience** | No API key needed locally | Must set and manage API key |
+
 ## Security Considerations
 
-- **HTTP endpoints** use `X-API-Key` header for editor authentication
+- **Unix socket endpoints** use filesystem permissions for authentication (socket mode 0600). No API key required for local CLI commands (`entangle-pdf sync`, `status`).
+- **TCP/HTTPS endpoints** use `X-API-Key` header for external tools accessing the server
 - **WebSocket connections** use token-based auth (query param) when inverse search is enabled
 - **Inverse search** only works over WSS (disabled in HTTP mode for security)
-- **Tokens** are regenerated on each PDF load and stored in secure, httpOnly cookies
+- **Tokens** are generated once per server instance and stored in secure, httpOnly cookies
+
+### Authentication by Transport
+
+| Transport | Routes | Authentication | Notes |
+|-----------|--------|---------------|-------|
+| Unix socket | `/api/load-pdf`, `/webhook/update`, `/state` | Filesystem (mode 0600) | CLI commands only |
+| TCP/HTTPS | `/api/load-pdf`, `/webhook/update` | `X-API-Key` header | External tools, browser |
+| TCP/HTTPS | `/view`, `/ws`, `/pdf` | Token (browser cookie) | Browser viewers |
+| TCP/HTTPS | `/state` | None | Public metadata |
 
 ## Key Files
 
 | File | Responsibility |
 |------|--------------|
-| `src/routes/webhook.py` | HTTP endpoint, SyncTeX forward search |
-| `src/routes/websocket.py` | WebSocket handler, inverse search execution |
-| `src/connection_manager.py` | Connection pooling, broadcasting |
-| `entangledpdf/sync.py` | Editor-side HTTP client library |
+| `entangledpdf/routes/webhook.py` | HTTP endpoint, SyncTeX forward search (Unix socket + TCP) |
+| `entangledpdf/routes/websocket.py` | WebSocket handler, inverse search execution |
+| `entangledpdf/routes/state.py` | State endpoint, token retrieval (Unix socket + TCP) |
+| `entangledpdf/routes/load_pdf.py` | PDF loading endpoint (Unix socket + TCP) |
+| `entangledpdf/connection_manager.py` | Connection pooling, broadcasting |
+| `entangledpdf/sync.py` | Editor-side Unix socket HTTP client |
+| `entangledpdf/socket_path.py` | Unix socket filesystem management |
+| `entangledpdf/admin_app.py` | FastAPI app for Unix socket transport |
+| `entangledpdf/browser_app.py` | FastAPI app for TCP/HTTPS transport |
 | `static/websocket-manager.ts` | Browser-side WebSocket client |

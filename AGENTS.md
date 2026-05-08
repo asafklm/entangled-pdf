@@ -290,12 +290,12 @@ class ConnectionManager:
   - Socket mode 0600 (only owner can connect)
   - Directory mode 0700 (only owner can access)
   - No API key required for local CLI commands
-- **Inverse Search Security**: 
+- **Inverse Search Security**:
   - Only enabled with HTTPS/WSS (HTTP mode disables it)
   - Token-based auth (Jupyter-style) required for WebSocket connections
   - Secure cookies: httpOnly, secure, sameSite=strict
   - Template interpolation: only `%{line}` and `%{file}` allowed
-  - Token regeneration on each PDF load
+  - Token generated once per server instance
 
 ## Git Workflow
 
@@ -306,10 +306,12 @@ class ConnectionManager:
 
 ## Dependencies
 
-**Python**: fastapi, uvicorn, websockets, pydantic-settings, jinja2, requests, responses, pytest, pytest-asyncio, httpx
+**Python**: fastapi, uvicorn, websockets, pydantic-settings, jinja2, pytest, pytest-asyncio, httpx
 **TypeScript**: typescript, vitest, happy-dom, @types/node, pdfjs-dist, @playwright/test
 
 When adding deps, prefer packages already in use.
+
+**Note**: `requests` was removed from production dependencies (moved to dev). CLI commands now use Unix domain sockets via Python's `http.client` (stdlib) instead of HTTP requests.
 
 ### External Dependencies
 
