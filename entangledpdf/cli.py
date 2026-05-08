@@ -220,7 +220,9 @@ def cmd_status(args):
     
     # Display authentication token if available
     if state.get('websocket_token'):
-        print(f"\n  Authentication Token: {state['websocket_token']}")
+        print(f"\n  Authentication Token (for browser access): {state['websocket_token']}")
+        print(f"    ↑ This token is only needed when accessing the PDF viewer via browser.")
+        print(f"      CLI commands on this machine use Unix socket authentication instead.")
     
     # Display browser URLs
     port = state.get('port', DEFAULT_PORT)

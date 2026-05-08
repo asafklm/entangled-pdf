@@ -19,8 +19,8 @@ async def get_state(request: Request) -> JSONResponse:
     Returns the PDF file path, current page, y-coordinate, and last update timestamp.
     Used by clients when they refocus to check for new updates.
     
-    When accessed from localhost (127.0.0.1 or ::1), includes the WebSocket
-    authentication token for use by local management tools.
+    When accessed from localhost (127.0.0.1 or ::1) or via Unix domain socket,
+    includes the WebSocket authentication token for use by local management tools.
     
     Returns:
         JSONResponse: Current state with pdf_file, pdf_loaded, page, y, 
@@ -34,7 +34,10 @@ async def get_state(request: Request) -> JSONResponse:
     state_dict["port"] = settings.port
     
     client_host = request.client.host if request.client else None
-    if client_host in ("127.0.0.1", "::1", "localhost"):
+    is_unix_socket = getattr(request.state, "unix_socket", False)
+    
+    # Include token for localhost TCP or Unix socket (both are local/trusted)
+    if client_host in ("127.0.0.1", "::1", "localhost") or is_unix_socket:
         state_dict["websocket_token"] = pdf_state.websocket_token
     
     return JSONResponse(content=state_dict)
