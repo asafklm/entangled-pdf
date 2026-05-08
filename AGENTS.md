@@ -399,6 +399,55 @@ class ConnectionManager:
 3. Stage: `git add <file>`
 4. Commit only when explicitly requested: `git commit -m "Description"`
 
+### Branch Policy: Keep Merged Branches
+
+**Rule**: Do NOT delete feature branches after merging into `main`.
+
+**Rationale**:
+1. **Historical record** — Preserves the development context and commit sequence for each feature
+2. **Post-merge fixes** — Provides a place to continue fixing issues discovered after merge without cluttering `main`
+   - Example: Unix socket branch (`feature/unix-socket-cli`) was merged, but several follow-up fixes (documentation updates, test fixes) continued on related commits that conceptually belonged to that feature
+3. **Easier debugging** — Can check out old branches to bisect or understand when specific behaviors were introduced
+
+**Branch naming convention**:
+- `feature/<description>` — New features
+- `fix/<description>` — Bug fixes
+- `refactor/<description>` — Code restructuring
+- `test/<description>` — Test-only changes
+- `docs/<description>` — Documentation updates
+- `develop` — Integration branch for ongoing development (if used)
+
+**Naming rules**:
+- Use **hyphens** (`-`) as word separators, never underscores (`_`)
+- Keep names descriptive but concise
+- Avoid mixing concerns in branch names (e.g., `feature/abc-tests-def` is an anti-pattern)
+
+**Example workflow**:
+```
+# Create feature branch
+git checkout -b feature/unix-socket-cli
+# ... work, commit, test ...
+git push origin feature/unix-socket-cli
+
+# Merge to main when ready
+git checkout main
+git merge feature/unix-socket-cli
+
+# DO NOT delete the branch:
+# git branch -d feature/unix-socket-cli  ❌ DON'T DO THIS
+
+# Continue related work on the same branch:
+git checkout feature/unix-socket-cli
+git commit -m "docs: update README with Unix socket info"
+git checkout main
+git merge feature/unix-socket-cli  # Merge again when ready
+```
+
+**When to delete**:
+- Only delete if the branch was truly experimental and superseded by another approach
+- Only delete with explicit user approval
+- Prefer archiving with `git tag archive/<branch-name>` before deleting if space is a concern
+
 ## Dependencies
 
 **Python**: fastapi, uvicorn, websockets, pydantic-settings, jinja2, pytest, pytest-asyncio, httpx
