@@ -33,14 +33,14 @@ class TestCreateApp:
     
     def test_create_app_returns_fastapi_instance(self, mock_settings):
         """Test that create_app returns a FastAPI instance."""
-        with patch("main.static_files.setup_static_files"):
+        with patch("entangledpdf.routes.static_files.setup_static_files"):
             with patch("main.init_settings", return_value=mock_settings):
                 app = create_app()
                 assert isinstance(app, FastAPI)
     
     def test_create_app_has_correct_title(self, mock_settings):
         """Test that app has correct title and description."""
-        with patch("main.static_files.setup_static_files"):
+        with patch("entangledpdf.routes.static_files.setup_static_files"):
             with patch("main.init_settings", return_value=mock_settings):
                 app = create_app()
                 assert app.title == "EntangledPdf"
@@ -48,7 +48,7 @@ class TestCreateApp:
     
     def test_create_app_includes_view_router(self, mock_settings):
         """Test that view router is included."""
-        with patch("main.static_files.setup_static_files"):
+        with patch("entangledpdf.routes.static_files.setup_static_files"):
             with patch("main.init_settings", return_value=mock_settings):
                 app = create_app()
                 routes = [str(route) for route in app.routes]
@@ -56,7 +56,7 @@ class TestCreateApp:
     
     def test_create_app_includes_pdf_router(self, mock_settings):
         """Test that PDF router is included."""
-        with patch("main.static_files.setup_static_files"):
+        with patch("entangledpdf.routes.static_files.setup_static_files"):
             with patch("main.init_settings", return_value=mock_settings):
                 app = create_app()
                 routes = [str(route) for route in app.routes]
@@ -64,7 +64,7 @@ class TestCreateApp:
     
     def test_create_app_includes_state_router(self, mock_settings):
         """Test that state router is included."""
-        with patch("main.static_files.setup_static_files"):
+        with patch("entangledpdf.routes.static_files.setup_static_files"):
             with patch("main.init_settings", return_value=mock_settings):
                 app = create_app()
                 routes = [str(route) for route in app.routes]
@@ -72,7 +72,7 @@ class TestCreateApp:
     
     def test_create_app_includes_webhook_router(self, mock_settings):
         """Test that webhook router is included."""
-        with patch("main.static_files.setup_static_files"):
+        with patch("entangledpdf.routes.static_files.setup_static_files"):
             with patch("main.init_settings", return_value=mock_settings):
                 app = create_app()
                 routes = [str(route) for route in app.routes]
@@ -80,7 +80,7 @@ class TestCreateApp:
     
     def test_create_app_includes_websocket_router(self, mock_settings):
         """Test that WebSocket router is included."""
-        with patch("main.static_files.setup_static_files"):
+        with patch("entangledpdf.routes.static_files.setup_static_files"):
             with patch("main.init_settings", return_value=mock_settings):
                 app = create_app()
                 routes = [str(route) for route in app.routes]
@@ -88,7 +88,7 @@ class TestCreateApp:
     
     def test_create_app_setup_static_files(self, mock_settings):
         """Test that static files are configured."""
-        with patch("main.static_files.setup_static_files") as mock_setup:
+        with patch("entangledpdf.routes.static_files.setup_static_files") as mock_setup:
             with patch("main.init_settings", return_value=mock_settings):
                 app = create_app()
                 mock_setup.assert_called_once_with(app)
@@ -168,25 +168,28 @@ class TestMain:
         static_dir.mkdir()
         
         with patch.object(sys, "argv", ["main.py"]):
-            with patch("main.uvicorn.run") as mock_run:
-                with patch("main.init_settings") as mock_init:
-                    from entangledpdf.config import Settings
-                    mock_settings = Settings(
-                        pdf_file=None,  # No PDF file in new architecture
-                        port=8431,
-                        api_key="test-secret",
-                        host="0.0.0.0",
-                        static_dir=static_dir
-                    )
-                    mock_init.return_value = mock_settings
-                    
-                    with patch("main.create_app") as mock_create:
+            with patch("main.run_servers") as mock_run_servers:
+                with patch("main.prepare_socket_path") as mock_prepare_socket:
+                    with patch("main.init_settings") as mock_init:
+                        from entangledpdf.config import Settings
+                        mock_settings = Settings(
+                            pdf_file=None,  # No PDF file in new architecture
+                            port=8431,
+                            api_key="test-secret",
+                            host="0.0.0.0",
+                            static_dir=static_dir
+                        )
+                        mock_init.return_value = mock_settings
+                        
                         with patch("main.validate_ssl_config", return_value={"ssl_keyfile": "test", "ssl_certfile": "test"}):
-                            mock_create.return_value = MagicMock()
-                            main()
-                            
-                            mock_init.assert_called_once()
-                            mock_run.assert_called_once()
+                            # Mock asyncio.run to avoid actually running the servers
+                            with patch("main.asyncio.run") as mock_asyncio_run:
+                                main()
+                                
+                                mock_init.assert_called_once()
+                                mock_prepare_socket.assert_called_once()
+                                mock_run_servers.assert_called_once()
+                                mock_asyncio_run.assert_called_once()
     
     def test_main_with_port_argument(self, tmp_path):
         """Test main with --port argument."""
@@ -194,25 +197,26 @@ class TestMain:
         static_dir.mkdir()
         
         with patch.object(sys, "argv", ["main.py", "--port", "9000"]):
-            with patch("main.uvicorn.run"):
-                with patch("main.init_settings") as mock_init:
-                    from entangledpdf.config import Settings
-                    mock_settings = Settings(
-                        pdf_file=None,
-                        port=9000,
-                        api_key="test-secret",
-                        host="0.0.0.0",
-                        static_dir=static_dir
-                    )
-                    mock_init.return_value = mock_settings
-                    
-                    with patch("main.create_app"):
+            with patch("main.run_servers"):
+                with patch("main.prepare_socket_path"):
+                    with patch("main.init_settings") as mock_init:
+                        from entangledpdf.config import Settings
+                        mock_settings = Settings(
+                            pdf_file=None,
+                            port=9000,
+                            api_key="test-secret",
+                            host="0.0.0.0",
+                            static_dir=static_dir
+                        )
+                        mock_init.return_value = mock_settings
+                        
                         with patch("main.validate_ssl_config", return_value={"ssl_keyfile": "test", "ssl_certfile": "test"}):
-                            main()
-                            
-                            # Verify init_settings was called with port=9000
-                            call_kwargs = mock_init.call_args[1]
-                            assert call_kwargs["port"] == 9000
+                            with patch("main.asyncio.run"):
+                                main()
+                                
+                                # Verify init_settings was called with port=9000
+                                call_kwargs = mock_init.call_args[1]
+                                assert call_kwargs["port"] == 9000
     
     def test_main_with_inverse_search_nvim(self, tmp_path):
         """Test main with --inverse-search-nvim flag."""
@@ -220,53 +224,52 @@ class TestMain:
         static_dir.mkdir()
         
         with patch.object(sys, "argv", ["main.py", "--inverse-search-nvim"]):
-            with patch("main.uvicorn.run"):
-                with patch("main.init_settings") as mock_init:
-                    from entangledpdf.config import Settings
-                    mock_settings = Settings(
-                        pdf_file=None,
-                        port=8431,
-                        api_key="test-secret",
-                        host="0.0.0.0",
-                        static_dir=static_dir,
-                        use_https=True  # Required for inverse search
-                    )
-                    mock_init.return_value = mock_settings
-                    
-                    with patch("main.create_app"):
+            with patch("main.run_servers"):
+                with patch("main.prepare_socket_path"):
+                    with patch("main.init_settings") as mock_init:
+                        from entangledpdf.config import Settings
+                        mock_settings = Settings(
+                            pdf_file=None,
+                            port=8431,
+                            api_key="test-secret",
+                            host="0.0.0.0",
+                            static_dir=static_dir,
+                            use_https=True  # Required for inverse search
+                        )
+                        mock_init.return_value = mock_settings
+                        
                         with patch("main.validate_ssl_config", return_value={"ssl_keyfile": "test", "ssl_certfile": "test"}):
                             with patch("main.pdf_state") as mock_state:
-                                main()
-                                # Verify inverse search was enabled
-                                assert mock_state.inverse_search_enabled is True
+                                with patch("main.asyncio.run"):
+                                    main()
+                                    # Verify inverse search was enabled
+                                    assert mock_state.inverse_search_enabled is True
     
-    def test_main_uvicorn_configuration(self, tmp_path):
-        """Test that uvicorn is configured correctly."""
+    def test_main_server_configuration(self, tmp_path):
+        """Test that server is configured correctly with host and port."""
         static_dir = tmp_path / "static"
         static_dir.mkdir()
         
         with patch.object(sys, "argv", ["main.py", "--port", "8080"]):
-            with patch("main.uvicorn.run") as mock_run:
-                with patch("main.init_settings") as mock_init:
-                    from entangledpdf.config import Settings
-                    mock_settings = Settings(
-                        pdf_file=None,
-                        port=8080,
-                        api_key="test-secret",
-                        host="127.0.0.1",
-                        static_dir=static_dir
-                    )
-                    mock_init.return_value = mock_settings
-                    
-                    with patch("main.create_app") as mock_create:
+            with patch("main.run_servers") as mock_run_servers:
+                with patch("main.prepare_socket_path"):
+                    with patch("main.init_settings") as mock_init:
+                        from entangledpdf.config import Settings
+                        mock_settings = Settings(
+                            pdf_file=None,
+                            port=8080,
+                            api_key="test-secret",
+                            host="127.0.0.1",
+                            static_dir=static_dir
+                        )
+                        mock_init.return_value = mock_settings
+                        
                         with patch("main.validate_ssl_config", return_value={"ssl_keyfile": "test", "ssl_certfile": "test"}):
-                            mock_app = MagicMock()
-                            mock_create.return_value = mock_app
-                            
-                            main()
-                            
-                            # Verify uvicorn.run was called with correct args
-                            mock_run.assert_called_once()
-                            call_args = mock_run.call_args
-                            assert call_args[1]["host"] == "127.0.0.1"
-                            assert call_args[1]["port"] == 8080
+                            with patch("main.asyncio.run") as mock_asyncio_run:
+                                main()
+                                
+                                # Verify run_servers was called with correct args
+                                mock_run_servers.assert_called_once()
+                                call_kwargs = mock_run_servers.call_args[1]
+                                assert call_kwargs["host"] == "127.0.0.1"
+                                assert call_kwargs["port"] == 8080

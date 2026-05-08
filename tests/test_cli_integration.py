@@ -176,11 +176,15 @@ class TestCLISubcommands:
                "arguments" in result.stderr.lower(), \
             f"Unexpected error message: {result.stderr}"
 
-    def test_start_without_api_key_fails(self):
+    def test_start_without_api_key_fails(self, tmp_path):
         """Verify entangle-pdf start fails without API key."""
-        # Clear API key from environment
+        # Use unique socket path to avoid interference from stale sockets
+        unique_socket = tmp_path / "test_api_key.sock"
+        
+        # Clear API key from environment but set unique socket path
         env = {k: v for k, v in os.environ.items()
                if not k.startswith("ENTANGLEDPDF")}
+        env["ENTANGLEDPDF_SOCKET"] = str(unique_socket)
 
         result = subprocess.run(
             [str(get_cli_path()), "start", "--http"],
