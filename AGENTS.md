@@ -44,6 +44,27 @@ For bugs involving:
 
 See [Debugging Process for Complex Issues](#debugging-process-for-complex-issues) for detailed workflow.
 
+## Platform Support
+
+**Supported Platforms:**
+- **Linux**: Primary development platform, fully supported
+- **macOS**: Supported (Unix domain socket path falls back to `$HOME/.local/run/` when `XDG_RUNTIME_DIR` is not set)
+- **Windows**: Requires WSL (Windows Subsystem for Linux). Native Windows is **not supported**.
+
+**Why Not Native Windows?**
+The project uses Unix domain sockets (`socket.AF_UNIX`) for CLI-server communication. While Windows 10+ has AF_UNIX support, the implementation differs significantly:
+- Socket paths are not filesystem-based (`C:\` paths vs Unix paths)
+- Uvicorn's `uds=` parameter behavior on Windows is untested
+- Python's `XDG_RUNTIME_DIR` and related XDG conventions don't exist on Windows
+
+**Adding Windows Support:**
+Native Windows support will only be considered when a user explicitly requests it and is willing to:
+1. Test the implementation on actual Windows hardware
+2. Provide feedback on socket path handling
+3. Verify Uvicorn behavior with Unix sockets on Windows
+
+Until then, Windows users must use WSL, which provides a full Linux environment where everything works.
+
 ## Build / Test / Run Commands
 
 ```bash

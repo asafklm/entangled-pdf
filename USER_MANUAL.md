@@ -21,7 +21,12 @@ Complete guide for using EntangledPdf to view and synchronize PDFs with LaTeX ed
 - **Python**: 3.8 or higher
 - **Node.js**: 16 or higher (for PDF.js compilation)
 - **Operating System**: Linux, macOS, or Windows with WSL
+  - **Linux**: Fully supported (primary development platform)
+  - **macOS**: Supported (socket path falls back to `$HOME/.local/run/`)
+  - **Windows**: Requires WSL (Windows Subsystem for Linux). Native Windows is not supported.
 - **Browser**: Modern browser with WebSocket support (Chrome, Firefox, Safari, Edge)
+
+> **Note on Windows Support**: EntangledPdf uses Unix domain sockets for CLI-server communication, which requires a Unix-like environment. Windows users must use WSL. Native Windows support will only be considered when a user explicitly requests it and is willing to assist with testing.
 
 ### Installation Methods
 

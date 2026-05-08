@@ -26,6 +26,14 @@ EntangledPdf allows you to:
 
 The server uses WebSockets for real-time updates with automatic fallback to HTTP polling when connections drop. Perfect for LaTeX editing workflows where you want to see your compiled PDF update instantly as you edit.
 
+## Platform Support
+
+- **Linux**: Fully supported (primary development platform)
+- **macOS**: Supported (Unix domain socket path falls back to `$HOME/.local/run/`)
+- **Windows**: Requires WSL (Windows Subsystem for Linux). Native Windows is **not supported** due to the use of Unix domain sockets for CLI-server communication.
+
+> **Note**: Native Windows support will only be considered if a user explicitly requests it and is willing to assist with manual testing. Until then, Windows users must use WSL.
+
 ## Quick Start
 
 ### Installation
