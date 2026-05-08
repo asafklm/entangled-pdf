@@ -139,8 +139,8 @@ source ~/.bashrc
 ```
 
 > **Security:** Use a long, random key in shared environments. A simple password is fine for personal use on a single machine.
-> 
-> **Note:** The `entangle-pdf sync` command does **not** require the API key - it uses Unix socket authentication instead.
+>
+> **Note:** The `entangle-pdf sync` command does **not** require the API key. It communicates with the server via a Unix domain socket (default: `$XDG_RUNTIME_DIR/entangledpdf/server.sock`). To use a custom socket path, set the `ENTANGLEDPDF_SOCKET` environment variable. See [Socket Configuration](USER_MANUAL.md#socket-configuration) for details.
 
 #### 2. SSL Certificates (Required)
 

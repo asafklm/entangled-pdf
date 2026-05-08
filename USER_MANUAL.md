@@ -615,6 +615,62 @@ response = conn.getresponse()
 
 ---
 
+## Socket Configuration
+
+### How CLI Commands Find the Server
+
+The `entangle-pdf sync` and `status` commands communicate with the server through a Unix domain socket instead of TCP. Both the server and CLI commands automatically use the same socket path, so they "just work" without any configuration.
+
+### Default Socket Path Resolution
+
+The socket path is resolved automatically (in order of priority):
+
+1. **`$ENTANGLEDPDF_SOCKET`** environment variable (if set)
+2. **`$XDG_RUNTIME_DIR/entangledpdf/server.sock`** (default on most Linux systems with systemd/logind, typically `/run/user/<uid>/entangledpdf/server.sock`)
+3. **`$HOME/.local/run/entangledpdf/server.sock`** (fallback for systems without XDG)
+
+To see the actual socket path being used:
+```bash
+entangle-pdf status
+```
+
+### Custom Socket Path
+
+Override the default socket path when running multiple servers as the same user:
+
+**Terminal 1 (Project A):**
+```bash
+export ENTANGLEDPDF_SOCKET=/tmp/server-project-a.sock
+export ENTANGLEDPDF_PORT=9000
+entangle-pdf start --inverse-search-nvim
+```
+
+**Terminal 2 (Project B):**
+```bash
+export ENTANGLEDPDF_SOCKET=/tmp/server-project-b.sock
+export ENTANGLEDPDF_PORT=9001
+entangle-pdf start --inverse-search-nvim
+```
+
+**Load PDF to Project A:**
+```bash
+entangle-pdf sync --socket-path /tmp/server-project-a.sock document-a.pdf
+```
+
+### Socket Permissions
+
+The socket file is created with mode `0600` (only the owner can read/write). This provides authentication — only the user who started the server can connect to it. This is why CLI commands don't require an API key.
+
+### Multiple Users on Same Machine
+
+Each user gets their own socket path automatically because:
+- `$XDG_RUNTIME_DIR` is user-specific (e.g., `/run/user/1000` vs `/run/user/1001`)
+- `$HOME` is different for each user
+
+Users cannot interfere with each other's servers because they cannot connect to each other's sockets.
+
+---
+
 ## API Reference
 
 ### WebSocket Protocol
