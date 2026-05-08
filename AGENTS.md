@@ -120,6 +120,80 @@ curl --unix-socket /run/user/$(id - u)/entangledpdf/server.sock \
      http://localhost/state
 ```
 
+## Workflow: Pre-Push Testing
+
+**Rule**: Run fast tests before pushing to prevent CI failures that waste everyone's time.
+
+### Quick Method: Git Pre-Push Hook (Recommended)
+
+A pre-push hook automatically runs fast tests on every push:
+
+```bash
+# One-time setup
+git config core.hooksPath .githooks
+```
+
+Now every `git push` will run `./bin/python -m pytest tests/ -q -m "not slow"` (~15s).
+
+**Bypass if needed**: `git push --no-verify`
+
+**What it catches:**
+- Unit test failures (config, routes, socket path tests)
+- Import errors from refactorings
+- Test code that doesn't match new implementation
+
+**What it doesn't catch:**
+- Slow tests (marked `@pytest.mark.slow`) - these run in CI
+- E2E tests with real subprocesses
+- Platform-specific issues
+
+### When to Run the Full Fast Suite Manually
+
+Run `./bin/python -m pytest tests/ -q` **before pushing** when:
+- Changing architecture (adding/removing modules)
+- Modifying `main.py`, CLI entry points, or test infrastructure
+- Moving/renaming files
+- Any change affecting multiple test files
+
+### Architecture Changes Require Extra Care
+
+The Unix socket refactor (commit `dd26826`) broke `test_main.py` because:
+1. `main.py` changed how `create_app()` imports `static_files`
+2. Tests patched the old import path (`main.static_files`)
+3. Local testing used curated subset; CI caught the break
+
+**Lesson**: After architectural changes, the pre-push hook is not optional. It would have caught this in ~15 seconds locally instead of failing CI.
+
+### Alternative: Feature Branches + Pull Requests (More Robust)
+
+For significant changes, consider using feature branches instead of pushing directly to `main`:
+
+**Workflow change:**
+```
+# Instead of:
+git commit -m "Big refactor"
+git push origin main          # CI fails here, everyone blocked
+
+# Do this:
+git checkout -b feature/big-refactor
+# ... make changes, commit ...
+git push origin feature/big-refactor
+# Open Pull Request → CI runs → Merge only when green
+```
+
+**Why this is safer:**
+- CI is the gatekeeper - must pass before code reaches `main`
+- No risk of breaking `main` for others
+- Forces full test suite validation (including slow tests on PRs)
+- Enables code review before merge
+
+**Trade-offs:**
+- Slightly more friction for small fixes
+- Requires GitHub branch protection setup (Settings → Branches → Add rule)
+- Changes your workflow from direct push to PR-based
+
+**Recommendation:** Use pre-push hooks for quick fixes, PRs for architectural changes. Both prevent the "oops, broke main" scenario.
+
 ## IMPORTANT: Authentication Token Display
 
 **When starting the server with `--inverse-search-nvim` or similar flags, ALWAYS show the authentication token at the end of your reply.** The token is required for accessing the PDF viewer when inverse search is enabled. Example:

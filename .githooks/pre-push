@@ -1,0 +1,44 @@
+#!/bin/bash
+#
+# Pre-push hook for EntangledPdf
+#
+# This hook runs fast tests before allowing a push to catch issues early.
+# To enable: git config core.hooksPath .githooks
+# To bypass: git push --no-verify
+#
+# Why: Fast tests (~15s) prevent CI failures that waste time for everyone.
+# Architecture changes especially need full test validation.
+#
+# Hook ordering: pre-commit → pre-push (this) → post-checkout
+#
+
+echo "Running fast tests before push..."
+echo ""
+
+# Check if we're in the project root
+if [ ! -f "main.py" ]; then
+    echo "Error: main.py not found. Are you in the project root?"
+    exit 1
+fi
+
+# Run fast tests (unit tests only, no slow/E2E)
+./bin/python -m pytest tests/ -q -m "not slow"
+TEST_RESULT=$?
+
+if [ $TEST_RESULT -ne 0 ]; then
+    echo ""
+    echo "❌ Tests failed. Push aborted."
+    echo ""
+    echo "To bypass this check (not recommended):"
+    echo "  git push --no-verify"
+    echo ""
+    echo "To run specific tests to debug:"
+    echo "  ./bin/python -m pytest tests/test_file.py -v"
+    echo ""
+    exit 1
+fi
+
+echo ""
+echo "✅ All fast tests passed. Proceeding with push."
+echo ""
+exit 0
